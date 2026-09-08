@@ -3,6 +3,7 @@ import type {
   CommitImportOutput,
   CreateManyInput,
   DeleteInput,
+  DictionaryError,
   DictionaryReply,
   DictionarySnapshotV1,
   ImportPreviewResult,
@@ -40,6 +41,16 @@ export function computeRequestDigest(payload: unknown): string {
   return sha256(JSON.stringify(canonical))
 }
 
+export const MAX_CREATE_ITEMS = 500
+export const MAX_RECORD_PAYLOAD_BYTES = 5 * 1024 * 1024 // 5MB
+
+export class TransactionBusinessError extends Error {
+  constructor(public readonly dictionaryError: DictionaryError) {
+    super(dictionaryError.message)
+    this.name = "TransactionBusinessError"
+  }
+}
+
 export class LocalDictionaryRepository {
   constructor(private readonly db: LocalDictionaryDB) {}
 
@@ -66,6 +77,51 @@ export class LocalDictionaryRepository {
   }
 
   async createMany(input: CreateManyInput): Promise<DictionaryReply<{ createdIds: string[] }>> {
+    if (!input.items || input.items.length === 0) {
+      return {
+        ok: false,
+        error: { code: "INVALID_DATA", retryable: false, message: "Cannot create empty items" },
+      }
+    }
+
+    if (input.items.length > MAX_CREATE_ITEMS) {
+      return {
+        ok: false,
+        error: {
+          code: "INVALID_DATA",
+          retryable: false,
+          message: `Batch size (${input.items.length}) exceeds maximum limit of ${MAX_CREATE_ITEMS} items`,
+        },
+      }
+    }
+
+    const seenBatchIds = new Set<string>()
+    for (const item of input.items) {
+      if (seenBatchIds.has(item.id)) {
+        return {
+          ok: false,
+          error: {
+            code: "INVALID_DATA",
+            retryable: false,
+            message: `Duplicate item id in batch: "${item.id}"`,
+          },
+        }
+      }
+      seenBatchIds.add(item.id)
+
+      const payloadBytes = JSON.stringify(item).length
+      if (payloadBytes > MAX_RECORD_PAYLOAD_BYTES) {
+        return {
+          ok: false,
+          error: {
+            code: "INVALID_DATA",
+            retryable: false,
+            message: `Item "${item.id}" payload size (${payloadBytes} bytes) exceeds limit of ${MAX_RECORD_PAYLOAD_BYTES} bytes`,
+          },
+        }
+      }
+    }
+
     const digest = computeRequestDigest(input)
 
     try {
@@ -110,18 +166,15 @@ export class LocalDictionaryRepository {
           let seqRecord = await this.db.metadata.get("changeSequence")
           let currentSeq = (seqRecord?.value as number) || 0
 
-          // 3. Check for existing IDs
+          // 3. Check for existing IDs across database
           for (const item of input.items) {
             const exists = await this.db.vocabularies.get(item.id)
             if (exists) {
-              return {
-                ok: false,
-                error: {
-                  code: "INVALID_DATA",
-                  retryable: false,
-                  message: `Record with id "${item.id}" already exists`,
-                },
-              }
+              throw new TransactionBusinessError({
+                code: "INVALID_DATA",
+                retryable: false,
+                message: `Record with id "${item.id}" already exists`,
+              })
             }
           }
 
@@ -181,6 +234,12 @@ export class LocalDictionaryRepository {
         },
       )
     } catch (error: any) {
+      if (error instanceof TransactionBusinessError || error?.name === "TransactionBusinessError") {
+        return {
+          ok: false,
+          error: error.dictionaryError,
+        }
+      }
       if (error?.name === "QuotaExceededError") {
         return {
           ok: false,
