@@ -106,6 +106,25 @@ options:
     product: 产品
   tools:
     translationHub: 翻译中心
+  dictionary:
+    title: 本地词典
+    pageDescription: 管理保存在本地离线词典中的词汇与笔记。
+    searchPlaceholder: 搜索词条与内容...
+    emptyTitle: 暂无本地词典记录
+    emptyDescription: 从词典或 Custom AI Action 保存的结果会显示在这里。
+    edit: 编辑
+    editTitle: 编辑记录
+    delete: 删除
+    deleteConfirmTitle: 确定删除记录？
+    deleteConfirmDescription: 该条目将从活动词典中移除，并在冲突版本中保留以供同步恢复。
+    save: 保存
+    cancel: 取消
+    cells: 字段
+    conflictWarning: 该记录已被修改，请刷新后再编辑。
+    columns:
+      action: 来源动作
+      updatedAt: 更新时间
+      cells: 内容
   product:
     roadmap: 路线图
   helpAndCommunity:
@@ -1238,6 +1257,10 @@ action:
   regenerate: 重新生成
   viewContextDetails: 上下文
   customizeCustomAction: 定制“$1”动作
+  saveToLocalDictionary: 保存到本地
+  saveToLocalDictionarySaving: 保存中...
+  saveToLocalDictionarySuccess: 已保存到本地词典
+  saveToLocalDictionaryFailed: 保存到本地词典失败
   saveToNotebase: 保存到笔记库
   saveToNotebaseSaving: 保存中...
   saveToNotebaseSuccess: 已保存到笔记库

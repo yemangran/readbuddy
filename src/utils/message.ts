@@ -20,6 +20,15 @@ import type {
   TTSPlaybackStopRequest,
 } from "@/types/tts-playback"
 import type { HostedAiStatus } from "@/utils/hosted-ai/types"
+import type {
+  CreateManyInput,
+  DeleteInput,
+  DictionaryReply,
+  ListInput,
+  ListOutput,
+  LocalDictionaryRecord,
+  UpdateCellsInput,
+} from "@/utils/local-dictionary/types"
 import type { PromptableProviderRef, SerializableProviderRef } from "@/utils/providers/provider-ref"
 import type { EdgeTTSVoice } from "@/utils/server/edge-tts/types"
 import { defineExtensionMessaging } from "@webext-core/messaging"
@@ -174,6 +183,17 @@ interface ProtocolMap {
   // offscreen internal
   ttsOffscreenPlay: (data: TTSPlaybackStartRequest) => Promise<TTSPlaybackStartResponse>
   ttsOffscreenStop: (data: TTSPlaybackStopRequest) => Promise<{ ok: true }>
+  // local dictionary
+  dictionaryGet: (data: { id: string }) => Promise<DictionaryReply<LocalDictionaryRecord>>
+  dictionaryList: (data?: ListInput) => Promise<DictionaryReply<ListOutput>>
+  dictionaryCreateMany: (
+    data: CreateManyInput,
+  ) => Promise<DictionaryReply<{ createdIds: string[] }>>
+  dictionaryUpdateCells: (data: UpdateCellsInput) => Promise<DictionaryReply<LocalDictionaryRecord>>
+  dictionaryDelete: (
+    data: DeleteInput,
+  ) => Promise<DictionaryReply<{ id: string; deleted: boolean }>>
+  dictionaryGetMutationResult: (data: { requestId: string }) => Promise<DictionaryReply<unknown>>
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>()

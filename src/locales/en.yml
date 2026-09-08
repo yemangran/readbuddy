@@ -106,6 +106,25 @@ options:
     product: Product
   tools:
     translationHub: Translation Hub
+  dictionary:
+    title: Dictionary
+    pageDescription: Manage words and notes saved to your local offline dictionary.
+    searchPlaceholder: Search terms and contents...
+    emptyTitle: No dictionary records yet
+    emptyDescription: Save results from the Dictionary or Custom AI Actions to see them here.
+    edit: Edit
+    editTitle: Edit Record
+    delete: Delete
+    deleteConfirmTitle: Delete Record?
+    deleteConfirmDescription: This entry will be removed from your active dictionary and retained for sync recovery.
+    save: Save
+    cancel: Cancel
+    cells: Fields
+    conflictWarning: This record was modified concurrently. Please refresh and review before editing.
+    columns:
+      action: Source Action
+      updatedAt: Updated
+      cells: Content
   product:
     roadmap: Roadmap
   helpAndCommunity:
@@ -1238,6 +1257,10 @@ action:
   regenerate: Regenerate
   viewContextDetails: Context
   customizeCustomAction: Customize $1 action
+  saveToLocalDictionary: Save to Local
+  saveToLocalDictionarySaving: Saving...
+  saveToLocalDictionarySuccess: Saved to local dictionary
+  saveToLocalDictionaryFailed: Failed to save to local dictionary
   saveToNotebase: Save to Notebase
   saveToNotebaseSaving: Saving...
   saveToNotebaseSuccess: Saved to Notebase
