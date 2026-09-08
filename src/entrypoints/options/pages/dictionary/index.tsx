@@ -1,12 +1,17 @@
-import type { LocalDictionaryRecord } from "@/utils/local-dictionary/types"
+import type {
+  DictionarySnapshotV1,
+  ImportPreviewResult,
+  LocalDictionaryRecord,
+  PortableDictionaryRecord,
+} from "@/utils/local-dictionary/types"
 import { Icon } from "@iconify/react"
 import { useQuery } from "@tanstack/react-query"
+import { saveAs } from "file-saver"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -26,11 +31,17 @@ import { toastManager } from "@/components/ui/base-ui/toast"
 import { getRandomUUID } from "@/utils/crypto-polyfill"
 import { i18n } from "@/utils/i18n"
 import {
+  commitDictionaryImport,
   deleteDictionaryRecord,
+  exportDictionarySnapshot,
+  listConflictVersions,
   listDictionaryRecords,
+  previewDictionaryImport,
+  restoreConflictVersionAsNew,
   updateDictionaryCells,
   watchDictionaryChangeSignal,
 } from "@/utils/local-dictionary/client"
+import { parseAndValidateSnapshot } from "@/utils/local-dictionary/snapshot"
 import { queryClient } from "@/utils/tanstack-query"
 import { PageLayout } from "../../components/page-layout"
 
@@ -49,6 +60,20 @@ export function DictionaryPage() {
   const [deletingRecord, setDeletingRecord] = useState<LocalDictionaryRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // History & conflicts dialog state
+  const [historyRecord, setHistoryRecord] = useState<LocalDictionaryRecord | null>(null)
+  const [isRestoring, setIsRestoring] = useState(false)
+
+  // Snapshot Export state
+  const [isExporting, setIsExporting] = useState(false)
+
+  // Snapshot Import dialog state
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [importSnapshot, setImportSnapshot] = useState<DictionarySnapshotV1 | null>(null)
+  const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+
   const { data, isPending } = useQuery({
     queryKey: ["local-dictionary-records", page, search],
     queryFn: async () => {
@@ -64,9 +89,24 @@ export function DictionaryPage() {
     },
   })
 
+  const historyRecordId = historyRecord?.id
+  const { data: conflictVersions, isPending: isLoadingConflicts } = useQuery({
+    queryKey: ["local-dictionary-conflicts", historyRecordId],
+    enabled: Boolean(historyRecordId),
+    queryFn: async () => {
+      if (!historyRecordId) return []
+      const reply = await listConflictVersions(historyRecordId)
+      if (!reply.ok) {
+        throw new Error(reply.error.message || "Failed to load conflict versions")
+      }
+      return reply.data
+    },
+  })
+
   useEffect(() => {
     return watchDictionaryChangeSignal(() => {
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-conflicts"] })
     })
   }, [])
 
@@ -136,14 +176,142 @@ export function DictionaryPage() {
     }
   }
 
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      const res = await exportDictionarySnapshot()
+      if (res.ok) {
+        const blob = new Blob([res.data], { type: "application/json" })
+        saveAs(blob, "readfrog.json")
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.exportSuccess"),
+        })
+      } else {
+        toastManager.add({
+          type: "error",
+          title: res.error.message || "Failed to export snapshot",
+        })
+      }
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImportError(null)
+    setImportPreview(null)
+    setImportSnapshot(null)
+
+    try {
+      const text = await file.text()
+      const parseResult = parseAndValidateSnapshot(text)
+      if (!parseResult.ok) {
+        setImportError(parseResult.error)
+        return
+      }
+
+      setImportSnapshot(parseResult.snapshot)
+      const previewRes = await previewDictionaryImport(parseResult.snapshot)
+      if (!previewRes.ok) {
+        setImportError(previewRes.error.message || "Preview failed")
+        return
+      }
+
+      setImportPreview(previewRes.data)
+      if (previewRes.data.errors.length > 0) {
+        setImportError(previewRes.data.errors.join("; "))
+      }
+    } catch (err: any) {
+      setImportError(err?.message || "Failed to read file")
+    }
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importSnapshot || !importPreview) return
+    setIsImporting(true)
+    try {
+      const reply = await commitDictionaryImport({
+        requestId: getRandomUUID(),
+        snapshot: importSnapshot,
+        expectedSequence: importPreview.expectedSequence,
+        snapshotHash: importPreview.snapshotHash,
+      })
+
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.importSuccess"),
+        })
+        setIsImportOpen(false)
+        setImportSnapshot(null)
+        setImportPreview(null)
+        setImportError(null)
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+      } else {
+        if (reply.error.code === "EDIT_CONFLICT") {
+          toastManager.add({
+            type: "error",
+            title: i18n.t("options.dictionary.importConflict"),
+          })
+          // Re-trigger preview
+          const previewRes = await previewDictionaryImport(importSnapshot)
+          if (previewRes.ok) {
+            setImportPreview(previewRes.data)
+          }
+        } else {
+          toastManager.add({
+            type: "error",
+            title: reply.error.message || "Failed to commit import",
+          })
+        }
+      }
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleRestoreConflict = async (conflict: PortableDictionaryRecord) => {
+    setIsRestoring(true)
+    try {
+      const reply = await restoreConflictVersionAsNew({
+        requestId: getRandomUUID(),
+        versionId: {
+          id: conflict.id,
+          updatedAt: conflict.updatedAt,
+          deviceId: conflict.deviceId,
+        },
+      })
+
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.restoreSuccess"),
+        })
+        setHistoryRecord(null)
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+      } else {
+        toastManager.add({
+          type: "error",
+          title: reply.error.message || "Failed to restore version",
+        })
+      }
+    } finally {
+      setIsRestoring(false)
+    }
+  }
+
   return (
     <PageLayout
       title={i18n.t("options.dictionary.title")}
       description={i18n.t("options.dictionary.pageDescription")}
       innerClassName="flex flex-col gap-6"
     >
-      {/* Search Bar */}
-      <div className="flex items-center gap-4">
+      {/* Top Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="relative max-w-sm flex-1">
           <Input
             placeholder={i18n.t("options.dictionary.searchPlaceholder")}
@@ -153,6 +321,32 @@ export function DictionaryPage() {
               setPage(1)
             }}
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting}
+            aria-label="export-snapshot"
+          >
+            <Icon icon="tabler:download" className="mr-1.5 size-4" />
+            {i18n.t("options.dictionary.export")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setImportSnapshot(null)
+              setImportPreview(null)
+              setImportError(null)
+              setIsImportOpen(true)
+            }}
+            aria-label="import-snapshot"
+          >
+            <Icon icon="tabler:upload" className="mr-1.5 size-4" />
+            {i18n.t("options.dictionary.import")}
+          </Button>
         </div>
       </div>
 
@@ -228,7 +422,17 @@ export function DictionaryPage() {
                         <Button
                           variant="ghost"
                           size="xs"
+                          aria-label="history-record"
+                          title={i18n.t("options.dictionary.history")}
+                          onClick={() => setHistoryRecord(record)}
+                        >
+                          <Icon icon="tabler:history" className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           aria-label="edit-record"
+                          title={i18n.t("options.dictionary.edit")}
                           onClick={() => handleOpenEdit(record)}
                         >
                           <Icon icon="tabler:edit" className="size-3.5" />
@@ -237,6 +441,7 @@ export function DictionaryPage() {
                           variant="ghost"
                           size="xs"
                           aria-label="delete-record"
+                          title={i18n.t("options.dictionary.delete")}
                           className="text-destructive hover:bg-destructive/10"
                           onClick={() => setDeletingRecord(record)}
                         >
@@ -253,12 +458,12 @@ export function DictionaryPage() {
       </div>
 
       {/* Pagination */}
-      {total > 0 && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            {total} {total === 1 ? "record" : "records"}
+            {page} / {totalPages} (total: {total})
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="xs"
@@ -267,9 +472,6 @@ export function DictionaryPage() {
             >
               Previous
             </Button>
-            <span>
-              {page} / {totalPages}
-            </span>
             <Button
               variant="outline"
               size="xs"
@@ -284,58 +486,46 @@ export function DictionaryPage() {
 
       {/* Edit Record Dialog */}
       <Dialog
-        open={!!editingRecord}
-        onOpenChange={(open) => {
-          if (!open) setEditingRecord(null)
-        }}
+        open={Boolean(editingRecord)}
+        onOpenChange={(open) => !open && setEditingRecord(null)}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{i18n.t("options.dictionary.editTitle")}</DialogTitle>
           </DialogHeader>
-
-          {editingRecord && (
-            <div className="my-2 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-              {editingRecord.columns.map((col) => (
-                <div key={col.id} className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">{col.name}</label>
-                  <Input
-                    value={
-                      editCells[col.id] !== null && editCells[col.id] !== undefined
-                        ? String(editCells[col.id])
-                        : ""
-                    }
-                    onChange={(e) => {
-                      setEditCells((prev) => ({
-                        ...prev,
-                        [col.id]: e.target.value,
-                      }))
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
+          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto py-2">
+            {editingRecord?.columns.map((col) => (
+              <div key={col.id} className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-foreground">{col.name}</label>
+                <Input
+                  value={String(editCells[col.id] ?? "")}
+                  onChange={(e) =>
+                    setEditCells((prev) => ({
+                      ...prev,
+                      [col.id]: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" size="sm" />}>
+            <Button variant="outline" size="sm" onClick={() => setEditingRecord(null)}>
               {i18n.t("options.dictionary.cancel")}
-            </DialogClose>
-            <Button variant="brand" size="sm" disabled={isSavingEdit} onClick={handleSaveEdit}>
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={isSavingEdit}>
               {i18n.t("options.dictionary.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Record Dialog */}
       <Dialog
-        open={!!deletingRecord}
-        onOpenChange={(open) => {
-          if (!open) setDeletingRecord(null)
-        }}
+        open={Boolean(deletingRecord)}
+        onOpenChange={(open) => !open && setDeletingRecord(null)}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{i18n.t("options.dictionary.deleteConfirmTitle")}</DialogTitle>
             <DialogDescription>
@@ -343,11 +533,174 @@ export function DictionaryPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" size="sm" />}>
+            <Button variant="outline" size="sm" onClick={() => setDeletingRecord(null)}>
               {i18n.t("options.dictionary.cancel")}
-            </DialogClose>
-            <Button variant="destructive" size="sm" disabled={isDeleting} onClick={handleDelete}>
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
               {i18n.t("options.dictionary.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History & Conflict Versions Dialog */}
+      <Dialog
+        open={Boolean(historyRecord)}
+        onOpenChange={(open) => !open && setHistoryRecord(null)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{i18n.t("options.dictionary.historyTitle")}</DialogTitle>
+            <DialogDescription>{i18n.t("options.dictionary.historyDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto py-2">
+            {isLoadingConflicts ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">Loading...</div>
+            ) : !conflictVersions || conflictVersions.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                {i18n.t("options.dictionary.historyEmpty")}
+              </div>
+            ) : (
+              conflictVersions.map((version) => (
+                <div
+                  key={`${version.id}-${version.updatedAt}-${version.deviceId}`}
+                  className="flex items-start justify-between rounded-md border p-3 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-medium text-foreground">
+                      <span>{new Date(version.updatedAt).toLocaleString()}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {version.deviceId}
+                      </Badge>
+                      {version.deletedAt && (
+                        <Badge variant="destructive" className="text-[10px]">
+                          Tombstone
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-0.5 text-muted-foreground">
+                      {Object.entries(version.cells).map(([colId, val]) => {
+                        const col = version.columns.find((c) => c.id === colId)
+                        return (
+                          <div key={colId}>
+                            <span className="font-semibold">{col?.name || colId}:</span>{" "}
+                            {String(val ?? "")}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={isRestoring}
+                    onClick={() => handleRestoreConflict(version)}
+                  >
+                    <Icon icon="tabler:arrow-back-up" className="mr-1 size-3.5" />
+                    {i18n.t("options.dictionary.restoreAsNew")}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setHistoryRecord(null)}>
+              {i18n.t("options.dictionary.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Snapshot Import Dialog */}
+      <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{i18n.t("options.dictionary.importTitle")}</DialogTitle>
+            <DialogDescription>{i18n.t("options.dictionary.importDescription")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2">
+            <input
+              type="file"
+              accept=".json"
+              aria-label="snapshot-file-input"
+              className="text-xs text-muted-foreground file:mr-3 file:rounded file:border file:border-border file:bg-muted file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted/80"
+              onChange={handleFileChange}
+            />
+
+            {importError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                <div className="font-semibold">{i18n.t("options.dictionary.previewErrors")}</div>
+                <div className="mt-1">{importError}</div>
+              </div>
+            )}
+
+            {importPreview && !importError && (
+              <div className="rounded-md border bg-muted/30 p-4">
+                <h4 className="mb-3 text-xs font-semibold text-foreground">
+                  {i18n.t("options.dictionary.preview")}
+                </h4>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded border bg-card p-2">
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.previewAdded")}:
+                    </span>
+                    <span className="ml-1 font-bold text-foreground">
+                      {importPreview.addedCount}
+                    </span>
+                  </div>
+                  <div className="rounded border bg-card p-2">
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.previewUpdated")}:
+                    </span>
+                    <span className="ml-1 font-bold text-foreground">
+                      {importPreview.updatedCount}
+                    </span>
+                  </div>
+                  <div className="rounded border bg-card p-2">
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.previewDeleted")}:
+                    </span>
+                    <span className="ml-1 font-bold text-foreground">
+                      {importPreview.deletedCount}
+                    </span>
+                  </div>
+                  <div className="rounded border bg-card p-2">
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.previewPreserved")}:
+                    </span>
+                    <span className="ml-1 font-bold text-foreground">
+                      {importPreview.addedConflictCount}
+                    </span>
+                  </div>
+                  <div className="rounded border bg-card p-2">
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.previewUnchanged")}:
+                    </span>
+                    <span className="ml-1 font-bold text-foreground">
+                      {importPreview.unchangedCount}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setIsImportOpen(false)}>
+              {i18n.t("options.dictionary.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmImport}
+              disabled={
+                isImporting ||
+                !importPreview ||
+                Boolean(importError) ||
+                importPreview.errors.length > 0
+              }
+            >
+              {i18n.t("options.dictionary.confirmImport")}
             </Button>
           </DialogFooter>
         </DialogContent>

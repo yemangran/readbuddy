@@ -326,4 +326,160 @@ describe("LocalDictionaryRepository", () => {
     if (!receiptRes.ok) return
     expect((receiptRes.data as any).createdIds).toEqual(["vocab-1", "vocab-2", "vocab-3"])
   })
+
+  it("lists conflict versions and restores a conflict version as a new record", async () => {
+    // 1. Create a vocabulary
+    await repository.createMany({
+      requestId: "req-init",
+      items: [
+        {
+          id: "vocab-conflict",
+          actionId: "default-dictionary",
+          actionName: "Dictionary",
+          outputSchema: [makeField("field-1", "Term")],
+          result: { Term: "conflict-word" },
+          columns: [{ id: "col-1", name: "Term", position: 0 }],
+          mappings: [
+            {
+              id: "m-1",
+              localFieldId: "field-1",
+              notebaseColumnId: "col-1",
+              notebaseColumnNameSnapshot: "Term",
+            },
+          ],
+          cells: { "col-1": "Original Version" },
+        },
+      ],
+    })
+
+    const initial = (await repository.get("vocab-conflict")) as any
+    const initialRev = initial.data.localRevision
+
+    // 2. Delete it so that initial version is archived to conflict_versions
+    await repository.delete({
+      requestId: "req-del",
+      id: "vocab-conflict",
+      expectedRevision: initialRev,
+    })
+
+    const conflictsRes = await repository.listConflictVersions("vocab-conflict")
+    expect(conflictsRes.ok).toBe(true)
+    if (!conflictsRes.ok) return
+    expect(conflictsRes.data.length).toBe(1)
+    expect(conflictsRes.data[0]?.cells["col-1"]).toBe("Original Version")
+
+    // 3. Restore the conflict version as a new record
+    const restoreRes = await repository.restoreConflictVersionAsNew({
+      requestId: "req-restore-1",
+      versionId: {
+        id: "vocab-conflict",
+        updatedAt: conflictsRes.data[0]!.updatedAt,
+        deviceId: conflictsRes.data[0]!.deviceId,
+      },
+    })
+    expect(restoreRes.ok).toBe(true)
+    if (!restoreRes.ok) return
+    const newRecordId = restoreRes.data.id
+    expect(newRecordId).not.toBe("vocab-conflict")
+
+    // Verify new record is active and un-deleted
+    const newRecord = (await repository.get(newRecordId)) as any
+    expect(newRecord.ok).toBe(true)
+    expect(newRecord.data.deletedAt).toBeUndefined()
+    expect(newRecord.data.cells["col-1"]).toBe("Original Version")
+
+    // Original record is still a tombstone
+    const origRecord = (await repository.get("vocab-conflict", true)) as any
+    expect(origRecord.data.deletedAt).toBeDefined()
+  })
+
+  it("exports snapshot and handles preview and atomic import", async () => {
+    // 1. Create a record locally
+    await repository.createMany({
+      requestId: "req-exp-1",
+      items: [
+        {
+          id: "vocab-local",
+          actionId: "default-dictionary",
+          actionName: "Dictionary",
+          outputSchema: [makeField("field-1", "Term")],
+          result: { Term: "local-word" },
+          columns: [{ id: "col-1", name: "Term", position: 0 }],
+          mappings: [
+            {
+              id: "m-1",
+              localFieldId: "field-1",
+              notebaseColumnId: "col-1",
+              notebaseColumnNameSnapshot: "Term",
+            },
+          ],
+          cells: { "col-1": "local-val" },
+        },
+      ],
+    })
+
+    // 2. Export snapshot
+    const exportRes = await repository.exportSnapshot()
+    expect(exportRes.ok).toBe(true)
+    if (!exportRes.ok) return
+    expect(exportRes.data).toContain("readfrog-local")
+
+    // 3. Prepare an incoming snapshot with an added record and an updated record
+    const incomingRecord = {
+      id: "vocab-incoming",
+      createdAt: 1000,
+      updatedAt: 2000,
+      deviceId: "dev-remote",
+      actionId: "default-dictionary",
+      actionName: "Dictionary",
+      outputSchema: [makeField("field-1", "Term")],
+      result: { Term: "incoming-word" },
+      columns: [{ id: "col-1", name: "Term", position: 0 }],
+      mappings: [
+        {
+          id: "m-1",
+          localFieldId: "field-1",
+          notebaseColumnId: "col-1",
+          notebaseColumnNameSnapshot: "Term",
+        },
+      ],
+      cells: { "col-1": "incoming-val" },
+    }
+
+    const snapshotObj = {
+      format: "readfrog-local" as const,
+      version: 1 as const,
+      updatedAt: Date.now(),
+      vocabularies: [incomingRecord],
+      conflictVersions: [],
+    }
+
+    // 4. Preview import
+    const previewRes = await repository.previewImport(snapshotObj)
+    expect(previewRes.ok).toBe(true)
+    if (!previewRes.ok) return
+    expect(previewRes.data.addedCount).toBe(1)
+    expect(previewRes.data.errors.length).toBe(0)
+
+    // 5. Commit import
+    const commitRes = await repository.commitImport({
+      requestId: "req-commit-1",
+      snapshot: snapshotObj,
+      expectedSequence: previewRes.data.expectedSequence,
+      snapshotHash: previewRes.data.snapshotHash,
+    })
+    expect(commitRes.ok).toBe(true)
+
+    // Verify imported record exists
+    const fetched = (await repository.get("vocab-incoming")) as any
+    expect(fetched.ok).toBe(true)
+    expect(fetched.data.cells["col-1"]).toBe("incoming-val")
+
+    // 6. Re-importing same snapshot is idempotent and does not create duplicates
+    const previewAgain = await repository.previewImport(snapshotObj)
+    expect(previewAgain.ok).toBe(true)
+    if (!previewAgain.ok) return
+    expect(previewAgain.data.addedCount).toBe(0)
+    expect(previewAgain.data.unchangedCount).toBe(1)
+  })
 })

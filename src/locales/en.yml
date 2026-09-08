@@ -121,6 +121,28 @@ options:
     cancel: Cancel
     cells: Fields
     conflictWarning: This record was modified concurrently. Please refresh and review before editing.
+    export: Export Snapshot
+    exportSuccess: Dictionary snapshot exported successfully
+    import: Import Snapshot
+    importTitle: Import Dictionary Snapshot
+    importDescription: Select a previously exported JSON snapshot to merge. Tombstones take priority and existing identical entries will not be duplicated.
+    selectFile: Select File
+    preview: Import Preview
+    previewAdded: Added
+    previewUpdated: Updated
+    previewDeleted: Deleted
+    previewPreserved: Preserved Versions
+    previewUnchanged: Unchanged
+    previewErrors: "Cannot import: Data validation error detected"
+    confirmImport: Confirm Import
+    importSuccess: Dictionary snapshot imported successfully
+    importConflict: Database was modified concurrently during import. Please preview again.
+    history: History & Conflicts
+    historyTitle: Version History & Conflicts
+    historyDescription: Complete versions preserved before edits or deletion. You can restore any version as a new active dictionary entry.
+    historyEmpty: No conflict or preserved versions found
+    restoreAsNew: Restore as New Record
+    restoreSuccess: Successfully restored as a new active dictionary record
     columns:
       action: Source Action
       updatedAt: Updated

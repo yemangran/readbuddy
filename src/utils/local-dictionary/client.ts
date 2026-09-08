@@ -1,10 +1,16 @@
 import type {
+  CommitImportInput,
+  CommitImportOutput,
   CreateManyInput,
   DeleteInput,
   DictionaryReply,
+  DictionarySnapshotV1,
+  ImportPreviewResult,
   ListInput,
   ListOutput,
   LocalDictionaryRecord,
+  PortableDictionaryRecord,
+  RestoreConflictVersionInput,
   UpdateCellsInput,
 } from "./types"
 import { storage } from "#imports"
@@ -46,6 +52,34 @@ export async function getDictionaryMutationResult(
   requestId: string,
 ): Promise<DictionaryReply<unknown>> {
   return await sendMessage("dictionaryGetMutationResult", { requestId })
+}
+
+export async function listConflictVersions(
+  id: string,
+): Promise<DictionaryReply<PortableDictionaryRecord[]>> {
+  return await sendMessage("dictionaryListConflictVersions", { id })
+}
+
+export async function restoreConflictVersionAsNew(
+  input: RestoreConflictVersionInput,
+): Promise<DictionaryReply<LocalDictionaryRecord>> {
+  return await sendMessage("dictionaryRestoreAsNew", input)
+}
+
+export async function exportDictionarySnapshot(): Promise<DictionaryReply<string>> {
+  return await sendMessage("dictionaryExportSnapshot")
+}
+
+export async function previewDictionaryImport(
+  snapshot: DictionarySnapshotV1,
+): Promise<DictionaryReply<ImportPreviewResult>> {
+  return await sendMessage("dictionaryPreviewImport", snapshot)
+}
+
+export async function commitDictionaryImport(
+  input: CommitImportInput,
+): Promise<DictionaryReply<CommitImportOutput>> {
+  return await sendMessage("dictionaryCommitImport", input)
 }
 
 export function watchDictionaryChangeSignal(callback: () => void): () => void {

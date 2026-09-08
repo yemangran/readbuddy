@@ -21,12 +21,19 @@ import type {
 } from "@/types/tts-playback"
 import type { HostedAiStatus } from "@/utils/hosted-ai/types"
 import type {
+  CommitImportInput,
+  CommitImportOutput,
   CreateManyInput,
   DeleteInput,
   DictionaryReply,
+  DictionarySnapshotV1,
+  ImportPreviewResult,
+  ListConflictVersionsInput,
   ListInput,
   ListOutput,
   LocalDictionaryRecord,
+  PortableDictionaryRecord,
+  RestoreConflictVersionInput,
   UpdateCellsInput,
 } from "@/utils/local-dictionary/types"
 import type { PromptableProviderRef, SerializableProviderRef } from "@/utils/providers/provider-ref"
@@ -194,6 +201,17 @@ interface ProtocolMap {
     data: DeleteInput,
   ) => Promise<DictionaryReply<{ id: string; deleted: boolean }>>
   dictionaryGetMutationResult: (data: { requestId: string }) => Promise<DictionaryReply<unknown>>
+  dictionaryListConflictVersions: (
+    data: ListConflictVersionsInput,
+  ) => Promise<DictionaryReply<PortableDictionaryRecord[]>>
+  dictionaryRestoreAsNew: (
+    data: RestoreConflictVersionInput,
+  ) => Promise<DictionaryReply<LocalDictionaryRecord>>
+  dictionaryExportSnapshot: () => Promise<DictionaryReply<string>>
+  dictionaryPreviewImport: (
+    data: DictionarySnapshotV1,
+  ) => Promise<DictionaryReply<ImportPreviewResult>>
+  dictionaryCommitImport: (data: CommitImportInput) => Promise<DictionaryReply<CommitImportOutput>>
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>()

@@ -1,16 +1,23 @@
 import type {
+  CommitImportInput,
+  CommitImportOutput,
   CreateManyInput,
   DeleteInput,
   DictionaryReply,
+  DictionarySnapshotV1,
+  ImportPreviewResult,
   ListInput,
   ListOutput,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
+  RestoreConflictVersionInput,
   UpdateCellsInput,
 } from "./types"
 import { sha256 } from "js-sha256"
 import { getRandomUUID } from "@/utils/crypto-polyfill"
 import { type LocalDictionaryDB } from "./db"
+import { canonicalStringify, getVersionIdentityKey, reconcileRecordSets } from "./reconciler"
+import { exportDictionarySnapshot, toPortableRecord } from "./snapshot"
 
 function canonicalize(val: unknown): unknown {
   if (val === null || typeof val !== "object") {
@@ -463,10 +470,10 @@ export class LocalDictionaryRepository {
     }
   }
 
-  async get(id: string): Promise<DictionaryReply<LocalDictionaryRecord>> {
+  async get(id: string, includeDeleted = false): Promise<DictionaryReply<LocalDictionaryRecord>> {
     try {
       const record = await this.db.vocabularies.get(id)
-      if (!record || record.deletedAt) {
+      if (!record || (!includeDeleted && record.deletedAt)) {
         return {
           ok: false,
           error: { code: "NOT_FOUND", retryable: false, message: "Record not found" },
@@ -568,6 +575,526 @@ export class LocalDictionaryRepository {
         data: receipt.result,
         changeSequence: receipt.changeSequence,
       }
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async listConflictVersions(id: string): Promise<DictionaryReply<PortableDictionaryRecord[]>> {
+    try {
+      const list = await this.db.conflictVersions.where("id").equals(id).toArray()
+      list.sort((a, b) => {
+        if (b.updatedAt !== a.updatedAt) return b.updatedAt - a.updatedAt
+        return a.deviceId > b.deviceId ? -1 : a.deviceId < b.deviceId ? 1 : 0
+      })
+      const seq = await this.db.metadata.get("changeSequence")
+      return {
+        ok: true,
+        data: list,
+        changeSequence: (seq?.value as number) || 0,
+      }
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async restoreConflictVersionAsNew(
+    input: RestoreConflictVersionInput,
+  ): Promise<DictionaryReply<LocalDictionaryRecord>> {
+    const digest = computeRequestDigest(input)
+    const existingReceipt = await this.db.mutationReceipts.get(input.requestId)
+    if (existingReceipt) {
+      if (existingReceipt.requestDigest !== digest) {
+        return {
+          ok: false,
+          error: {
+            code: "REQUEST_ID_REUSED",
+            retryable: false,
+            message: "Request ID already used with different payload",
+          },
+        }
+      }
+      return {
+        ok: true,
+        data: existingReceipt.result as LocalDictionaryRecord,
+        changeSequence: existingReceipt.changeSequence,
+      }
+    }
+
+    try {
+      return await this.db.transaction(
+        "rw",
+        [
+          this.db.vocabularies,
+          this.db.conflictVersions,
+          this.db.metadata,
+          this.db.syncChanges,
+          this.db.mutationReceipts,
+        ],
+        async () => {
+          const conflicts = await this.db.conflictVersions
+            .where("id")
+            .equals(input.versionId.id)
+            .toArray()
+          let source = conflicts.find(
+            (c) =>
+              c.updatedAt === input.versionId.updatedAt && c.deviceId === input.versionId.deviceId,
+          )
+          if (!source) {
+            const vocab = await this.db.vocabularies.get(input.versionId.id)
+            if (
+              vocab &&
+              vocab.updatedAt === input.versionId.updatedAt &&
+              vocab.deviceId === input.versionId.deviceId
+            ) {
+              source = toPortableRecord(vocab)
+            }
+          }
+
+          if (!source) {
+            return {
+              ok: false,
+              error: {
+                code: "NOT_FOUND",
+                retryable: false,
+                message: "Specified conflict version not found",
+              },
+            }
+          }
+
+          const newId = input.targetId || getRandomUUID()
+          const now = Date.now()
+          const metadata = await this.getMetadata()
+          const newSequence = metadata.changeSequence + 1
+          const localRevision = `${now}#${metadata.deviceId}#${newSequence}`
+
+          const newRecord: LocalDictionaryRecord = {
+            id: newId,
+            createdAt: now,
+            updatedAt: now,
+            deviceId: metadata.deviceId,
+            localRevision,
+            actionId: source.actionId,
+            actionName: source.actionName,
+            outputSchema: source.outputSchema,
+            result: source.result,
+            columns: source.columns,
+            mappings: source.mappings,
+            cells: { ...source.cells },
+          }
+
+          await this.db.vocabularies.put(newRecord)
+          await this.db.metadata.put({ key: "changeSequence", value: newSequence })
+          await this.db.syncChanges.add({
+            sequence: newSequence,
+            entityId: newId,
+            entityType: "vocabulary",
+            operation: "create",
+            timestamp: now,
+            deviceId: metadata.deviceId,
+            version: { id: newId, updatedAt: now, deviceId: metadata.deviceId },
+          })
+          await this.db.mutationReceipts.put({
+            requestId: input.requestId,
+            requestDigest: digest,
+            result: newRecord,
+            changeSequence: newSequence,
+            createdAt: now,
+          })
+
+          return {
+            ok: true,
+            data: newRecord,
+            changeSequence: newSequence,
+          }
+        },
+      )
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async exportSnapshot(): Promise<DictionaryReply<string>> {
+    try {
+      return await this.db.transaction(
+        "r",
+        [this.db.vocabularies, this.db.conflictVersions, this.db.metadata],
+        async () => {
+          const records = await this.db.vocabularies.toArray()
+          const conflicts = await this.db.conflictVersions.toArray()
+          const jsonStr = exportDictionarySnapshot(records, conflicts)
+          const seq = await this.db.metadata.get("changeSequence")
+          return {
+            ok: true,
+            data: jsonStr,
+            changeSequence: (seq?.value as number) || 0,
+          }
+        },
+      )
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async previewImport(
+    snapshot: DictionarySnapshotV1,
+  ): Promise<DictionaryReply<ImportPreviewResult>> {
+    try {
+      const envelopeErrors: string[] = []
+      if (snapshot.format !== "readfrog-local") envelopeErrors.push("Invalid format")
+      if (snapshot.version !== 1) envelopeErrors.push("Unsupported version")
+      if (envelopeErrors.length > 0) {
+        return {
+          ok: true,
+          data: {
+            addedCount: 0,
+            updatedCount: 0,
+            deletedCount: 0,
+            preservedCount: 0,
+            unchangedCount: 0,
+            addedConflictCount: 0,
+            expectedSequence: 0,
+            snapshotHash: "",
+            errors: envelopeErrors,
+          },
+          changeSequence: 0,
+        }
+      }
+
+      const snapshotHash = sha256(canonicalStringify(snapshot))
+      const involvedIds = new Set<string>()
+      for (const v of snapshot.vocabularies) involvedIds.add(v.id)
+      for (const c of snapshot.conflictVersions) involvedIds.add(c.id)
+
+      const idList = Array.from(involvedIds)
+
+      return await this.db.transaction(
+        "r",
+        [this.db.vocabularies, this.db.conflictVersions, this.db.metadata],
+        async () => {
+          const seqRecord = await this.db.metadata.get("changeSequence")
+          const currentSequence = (seqRecord?.value as number) || 0
+
+          const localRecords: PortableDictionaryRecord[] = []
+          const localConflicts: PortableDictionaryRecord[] = []
+
+          for (const id of idList) {
+            const localV = await this.db.vocabularies.get(id)
+            if (localV) localRecords.push(toPortableRecord(localV))
+            const cList = await this.db.conflictVersions.where("id").equals(id).toArray()
+            for (const c of cList) localConflicts.push(toPortableRecord(c))
+          }
+
+          let reconciled: ReturnType<typeof reconcileRecordSets>
+          try {
+            reconciled = reconcileRecordSets(
+              localRecords,
+              localConflicts,
+              snapshot.vocabularies,
+              snapshot.conflictVersions,
+            )
+          } catch (err: any) {
+            return {
+              ok: true,
+              data: {
+                addedCount: 0,
+                updatedCount: 0,
+                deletedCount: 0,
+                preservedCount: 0,
+                unchangedCount: 0,
+                addedConflictCount: 0,
+                expectedSequence: currentSequence,
+                snapshotHash,
+                errors: [err?.message ?? "Reconciliation validation failed"],
+              },
+              changeSequence: currentSequence,
+            }
+          }
+
+          const localMap = new Map<string, PortableDictionaryRecord>(
+            localRecords.map((r) => [r.id, r]),
+          )
+          const localConflictMap = new Map<string, Set<string>>()
+          for (const c of localConflicts) {
+            const set = localConflictMap.get(c.id) ?? new Set()
+            set.add(getVersionIdentityKey(c))
+            localConflictMap.set(c.id, set)
+          }
+
+          let addedCount = 0
+          let updatedCount = 0
+          let deletedCount = 0
+          let preservedCount = 0
+          let unchangedCount = 0
+          let addedConflictCount = 0
+
+          for (const [id, winner] of reconciled.winners.entries()) {
+            const local = localMap.get(id)
+            const existingConflictKeys = localConflictMap.get(id) ?? new Set()
+            const mergedConflicts = reconciled.conflictsByRecordId.get(id) ?? []
+            const newConflicts = mergedConflicts.filter(
+              (c) => !existingConflictKeys.has(getVersionIdentityKey(c)),
+            )
+            addedConflictCount += newConflicts.length
+
+            if (!local) {
+              if (winner.deletedAt !== undefined && winner.deletedAt !== null) {
+                deletedCount++
+              } else {
+                addedCount++
+              }
+            } else {
+              const winnerKey = getVersionIdentityKey(winner)
+              const localKey = getVersionIdentityKey(local)
+              if (winnerKey !== localKey) {
+                if (winner.deletedAt !== undefined && winner.deletedAt !== null) {
+                  deletedCount++
+                } else {
+                  updatedCount++
+                }
+              } else {
+                if (newConflicts.length > 0) {
+                  preservedCount++
+                } else {
+                  unchangedCount++
+                }
+              }
+            }
+          }
+
+          return {
+            ok: true,
+            data: {
+              addedCount,
+              updatedCount,
+              deletedCount,
+              preservedCount,
+              unchangedCount,
+              addedConflictCount,
+              expectedSequence: currentSequence,
+              snapshotHash,
+              errors: [],
+            },
+            changeSequence: currentSequence,
+          }
+        },
+      )
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async commitImport(input: CommitImportInput): Promise<DictionaryReply<CommitImportOutput>> {
+    const digest = computeRequestDigest(input)
+    const existingReceipt = await this.db.mutationReceipts.get(input.requestId)
+    if (existingReceipt) {
+      if (existingReceipt.requestDigest !== digest) {
+        return {
+          ok: false,
+          error: {
+            code: "REQUEST_ID_REUSED",
+            retryable: false,
+            message: "Request ID already used with different payload",
+          },
+        }
+      }
+      return {
+        ok: true,
+        data: existingReceipt.result as CommitImportOutput,
+        changeSequence: existingReceipt.changeSequence,
+      }
+    }
+
+    try {
+      return await this.db.transaction(
+        "rw",
+        [
+          this.db.vocabularies,
+          this.db.conflictVersions,
+          this.db.metadata,
+          this.db.syncChanges,
+          this.db.mutationReceipts,
+        ],
+        async () => {
+          const seqRecord = await this.db.metadata.get("changeSequence")
+          const currentSequence = (seqRecord?.value as number) || 0
+          if (currentSequence !== input.expectedSequence) {
+            return {
+              ok: false,
+              error: {
+                code: "EDIT_CONFLICT",
+                retryable: true,
+                message: `Database change sequence changed (expected ${input.expectedSequence}, currently ${currentSequence}). Please re-preview before importing.`,
+              },
+            }
+          }
+
+          const involvedIds = new Set<string>()
+          for (const v of input.snapshot.vocabularies) involvedIds.add(v.id)
+          for (const c of input.snapshot.conflictVersions) involvedIds.add(c.id)
+          const idList = Array.from(involvedIds)
+
+          const localRecords: PortableDictionaryRecord[] = []
+          const localConflicts: PortableDictionaryRecord[] = []
+
+          for (const id of idList) {
+            const localV = await this.db.vocabularies.get(id)
+            if (localV) localRecords.push(toPortableRecord(localV))
+            const cList = await this.db.conflictVersions.where("id").equals(id).toArray()
+            for (const c of cList) localConflicts.push(toPortableRecord(c))
+          }
+
+          const reconciled = reconcileRecordSets(
+            localRecords,
+            localConflicts,
+            input.snapshot.vocabularies,
+            input.snapshot.conflictVersions,
+          )
+
+          const localMap = new Map<string, LocalDictionaryRecord>()
+          for (const id of idList) {
+            const localV = await this.db.vocabularies.get(id)
+            if (localV) localMap.set(id, localV)
+          }
+
+          const localConflictMap = new Map<string, Set<string>>()
+          for (const c of localConflicts) {
+            const set = localConflictMap.get(c.id) ?? new Set()
+            set.add(getVersionIdentityKey(c))
+            localConflictMap.set(c.id, set)
+          }
+
+          let addedCount = 0
+          let updatedCount = 0
+          let deletedCount = 0
+          let preservedCount = 0
+          let addedConflictCount = 0
+
+          let runningSequence = currentSequence
+          const metadata = await this.getMetadata()
+          const now = Date.now()
+
+          for (const [id, winner] of reconciled.winners.entries()) {
+            const local = localMap.get(id)
+            const existingConflictKeys = localConflictMap.get(id) ?? new Set()
+            const mergedConflicts = reconciled.conflictsByRecordId.get(id) ?? []
+            const newConflicts = mergedConflicts.filter(
+              (c) => !existingConflictKeys.has(getVersionIdentityKey(c)),
+            )
+            addedConflictCount += newConflicts.length
+
+            for (const c of newConflicts) {
+              await this.db.conflictVersions.put(c)
+            }
+
+            const winnerKey = getVersionIdentityKey(winner)
+            const localKey = local ? getVersionIdentityKey(local) : null
+
+            if (!local) {
+              runningSequence++
+              const localRevision = `${now}#${metadata.deviceId}#${runningSequence}`
+              await this.db.vocabularies.put({ ...winner, localRevision })
+              await this.db.syncChanges.add({
+                sequence: runningSequence,
+                entityId: id,
+                entityType: "vocabulary",
+                operation: winner.deletedAt ? "delete" : "create",
+                timestamp: now,
+                deviceId: metadata.deviceId,
+                version: { id, updatedAt: winner.updatedAt, deviceId: winner.deviceId },
+              })
+              if (winner.deletedAt) deletedCount++
+              else addedCount++
+            } else if (winnerKey !== localKey) {
+              runningSequence++
+              const localRevision = `${now}#${metadata.deviceId}#${runningSequence}`
+              await this.db.vocabularies.put({ ...winner, localRevision })
+              await this.db.syncChanges.add({
+                sequence: runningSequence,
+                entityId: id,
+                entityType: "vocabulary",
+                operation: winner.deletedAt ? "delete" : "update",
+                timestamp: now,
+                deviceId: metadata.deviceId,
+                version: { id, updatedAt: winner.updatedAt, deviceId: winner.deviceId },
+              })
+              if (winner.deletedAt) deletedCount++
+              else updatedCount++
+            } else if (newConflicts.length > 0) {
+              runningSequence++
+              await this.db.syncChanges.add({
+                sequence: runningSequence,
+                entityId: id,
+                entityType: "vocabulary",
+                operation: "update",
+                timestamp: now,
+                deviceId: metadata.deviceId,
+                version: { id, updatedAt: winner.updatedAt, deviceId: winner.deviceId },
+              })
+              preservedCount++
+            }
+          }
+
+          await this.db.metadata.put({ key: "changeSequence", value: runningSequence })
+
+          const output: CommitImportOutput = {
+            addedCount,
+            updatedCount,
+            deletedCount,
+            preservedCount,
+            addedConflictCount,
+          }
+
+          await this.db.mutationReceipts.put({
+            requestId: input.requestId,
+            requestDigest: digest,
+            result: output,
+            changeSequence: runningSequence,
+            createdAt: now,
+          })
+
+          return {
+            ok: true,
+            data: output,
+            changeSequence: runningSequence,
+          }
+        },
+      )
     } catch (error: any) {
       return {
         ok: false,

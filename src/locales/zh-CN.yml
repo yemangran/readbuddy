@@ -121,6 +121,28 @@ options:
     cancel: 取消
     cells: 字段
     conflictWarning: 该记录已被修改，请刷新后再编辑。
+    export: 导出快照
+    exportSuccess: 快照导出成功
+    import: 导入快照
+    importTitle: 导入词典快照
+    importDescription: 选择之前导出的 JSON 快照文件进行合并导入。已删除记录优先，同内容不重复添加。
+    selectFile: 选择文件
+    preview: 导入预览
+    previewAdded: 新增词条
+    previewUpdated: 更新词条
+    previewDeleted: 删除词条
+    previewPreserved: 新增保留版本
+    previewUnchanged: 完全一致
+    previewErrors: "无法导入：检测到数据异常"
+    confirmImport: 确认导入
+    importSuccess: 快照已成功合并导入
+    importConflict: 导入时检测到数据变动，请重新预览
+    history: 版本记录
+    historyTitle: 历史与保留版本
+    historyDescription: 被合并覆盖或删除前的完整版本。您可以将其恢复为新词条。
+    historyEmpty: 暂无保留版本
+    restoreAsNew: 恢复为新词条
+    restoreSuccess: 已成功恢复为新词条
     columns:
       action: 来源动作
       updatedAt: 更新时间

@@ -1,7 +1,11 @@
-import type { LocalDictionaryRecord } from "@/utils/local-dictionary/types"
+import type {
+  LocalDictionaryRecord,
+  PortableDictionaryRecord,
+} from "@/utils/local-dictionary/types"
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { saveAs } from "file-saver"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { i18n } from "@/utils/i18n"
 import { DictionaryPage } from "../index"
@@ -10,12 +14,26 @@ const listRecordsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const updateCellsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const deleteRecordMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const watchSignalMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const exportSnapshotMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const previewImportMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const commitImportMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const listConflictsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const restoreConflictMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+
+vi.mock("file-saver", () => ({
+  saveAs: vi.fn<() => void>(),
+}))
 
 vi.mock("@/utils/local-dictionary/client", () => ({
   listDictionaryRecords: listRecordsMock,
   updateDictionaryCells: updateCellsMock,
   deleteDictionaryRecord: deleteRecordMock,
   watchDictionaryChangeSignal: watchSignalMock,
+  exportDictionarySnapshot: exportSnapshotMock,
+  previewDictionaryImport: previewImportMock,
+  commitDictionaryImport: commitImportMock,
+  listConflictVersions: listConflictsMock,
+  restoreConflictVersionAsNew: restoreConflictMock,
 }))
 
 const mockRecords: LocalDictionaryRecord[] = [
@@ -54,6 +72,16 @@ describe("DictionaryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     watchSignalMock.mockReturnValue(() => {})
+    listRecordsMock.mockResolvedValue({
+      ok: true,
+      data: { records: mockRecords, total: 1, page: 1, pageSize: 15 },
+      changeSequence: 1,
+    })
+    listConflictsMock.mockResolvedValue({
+      ok: true,
+      data: [],
+      changeSequence: 1,
+    })
   })
 
   it("renders empty state when there are no records", async () => {
@@ -70,13 +98,7 @@ describe("DictionaryPage", () => {
     })
   })
 
-  it("renders records list with cells, action, and updated time", async () => {
-    listRecordsMock.mockResolvedValue({
-      ok: true,
-      data: { records: mockRecords, total: 1, page: 1, pageSize: 15 },
-      changeSequence: 1,
-    })
-
+  it("renders records and columns correctly", async () => {
     renderWithQuery(<DictionaryPage />)
 
     await waitFor(() => {
@@ -86,65 +108,48 @@ describe("DictionaryPage", () => {
     })
   })
 
-  it("opens edit dialog and submits updated cells", async () => {
-    listRecordsMock.mockResolvedValue({
+  it("handles export snapshot button click", async () => {
+    exportSnapshotMock.mockResolvedValue({
       ok: true,
-      data: { records: mockRecords, total: 1, page: 1, pageSize: 15 },
+      data: '{"format":"readfrog-local","version":1}',
       changeSequence: 1,
-    })
-    updateCellsMock.mockResolvedValue({
-      ok: true,
-      data: { ...mockRecords[0], cells: { "c-term": "froggy" } },
-      changeSequence: 2,
     })
 
     renderWithQuery(<DictionaryPage />)
 
-    await waitFor(() => {
-      expect(screen.getByText("frog")).toBeInTheDocument()
-    })
-
-    // Click edit button
-    const editBtn = screen.getByRole("button", { name: "edit-record" })
-    fireEvent.click(editBtn)
+    const exportBtn = screen.getByLabelText("export-snapshot")
+    fireEvent.click(exportBtn)
 
     await waitFor(() => {
-      expect(screen.getByText(i18n.t("options.dictionary.editTitle"))).toBeInTheDocument()
+      expect(exportSnapshotMock).toHaveBeenCalledTimes(1)
+      expect(saveAs).toHaveBeenCalledTimes(1)
     })
-
-    // Find the input containing "frog" and change it
-    const inputs = screen.getAllByRole("textbox")
-    const termInput = inputs.find((input) => (input as HTMLInputElement).value === "frog")
-    expect(termInput).toBeDefined()
-    if (termInput) {
-      fireEvent.change(termInput, { target: { value: "froggy" } })
-    }
-
-    const saveBtn = screen.getByRole("button", { name: i18n.t("options.dictionary.save") })
-    fireEvent.click(saveBtn)
-
-    await waitFor(() => {
-      expect(updateCellsMock).toHaveBeenCalledTimes(1)
-    })
-
-    expect(updateCellsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "rec-1",
-        expectedRevision: "rev-1",
-        cells: expect.objectContaining({ "c-term": "froggy" }),
-      }),
-    )
   })
 
-  it("opens delete dialog and deletes record", async () => {
-    listRecordsMock.mockResolvedValue({
+  it("opens history modal and restores a conflict version as new", async () => {
+    const conflictRecord: PortableDictionaryRecord = {
+      id: "rec-1",
+      createdAt: 1000,
+      updatedAt: 1500,
+      deviceId: "dev-prev",
+      actionId: "default-dictionary",
+      actionName: "Dictionary",
+      outputSchema: [],
+      result: {},
+      columns: [{ id: "c-term", name: "Term", position: 0 }],
+      mappings: [],
+      cells: { "c-term": "frog-old-version" },
+    }
+
+    listConflictsMock.mockResolvedValue({
       ok: true,
-      data: { records: mockRecords, total: 1, page: 1, pageSize: 15 },
+      data: [conflictRecord],
       changeSequence: 1,
     })
-    deleteRecordMock.mockResolvedValue({
+
+    restoreConflictMock.mockResolvedValue({
       ok: true,
-      data: { id: "rec-1", deleted: true },
+      data: { ...conflictRecord, id: "rec-new", localRevision: "new-rev" },
       changeSequence: 2,
     })
 
@@ -154,28 +159,90 @@ describe("DictionaryPage", () => {
       expect(screen.getByText("frog")).toBeInTheDocument()
     })
 
-    // Click delete button
-    const deleteBtn = screen.getByRole("button", { name: "delete-record" })
-    fireEvent.click(deleteBtn)
+    const historyBtn = screen.getByLabelText("history-record")
+    fireEvent.click(historyBtn)
 
     await waitFor(() => {
-      expect(screen.getByText(i18n.t("options.dictionary.deleteConfirmTitle"))).toBeInTheDocument()
+      expect(screen.getByText("dev-prev")).toBeInTheDocument()
+      expect(screen.getByText("frog-old-version")).toBeInTheDocument()
     })
 
-    const confirmDeleteBtn = screen.getByRole("button", {
-      name: i18n.t("options.dictionary.delete"),
-    })
-    fireEvent.click(confirmDeleteBtn)
+    const restoreBtn = screen.getByText(i18n.t("options.dictionary.restoreAsNew"))
+    fireEvent.click(restoreBtn)
 
     await waitFor(() => {
-      expect(deleteRecordMock).toHaveBeenCalledTimes(1)
+      expect(restoreConflictMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          versionId: {
+            id: "rec-1",
+            updatedAt: 1500,
+            deviceId: "dev-prev",
+          },
+        }),
+      )
+    })
+  })
+
+  it("handles import preview and confirmation", async () => {
+    previewImportMock.mockResolvedValue({
+      ok: true,
+      data: {
+        addedCount: 2,
+        updatedCount: 1,
+        deletedCount: 0,
+        preservedCount: 0,
+        unchangedCount: 0,
+        addedConflictCount: 0,
+        expectedSequence: 5,
+        snapshotHash: "hash-123",
+        errors: [],
+      },
+      changeSequence: 5,
     })
 
-    expect(deleteRecordMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "rec-1",
-        expectedRevision: "rev-1",
-      }),
-    )
+    commitImportMock.mockResolvedValue({
+      ok: true,
+      data: {
+        addedCount: 2,
+        updatedCount: 1,
+        deletedCount: 0,
+        preservedCount: 0,
+        addedConflictCount: 0,
+      },
+      changeSequence: 6,
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    const importBtn = screen.getByLabelText("import-snapshot")
+    fireEvent.click(importBtn)
+
+    expect(screen.getByText(i18n.t("options.dictionary.importTitle"))).toBeInTheDocument()
+
+    const validSnapshot = {
+      format: "readfrog-local",
+      version: 1,
+      updatedAt: Date.now(),
+      vocabularies: [],
+      conflictVersions: [],
+    }
+
+    const file = new File([JSON.stringify(validSnapshot)], "readfrog.json", {
+      type: "application/json",
+    })
+
+    const fileInput = screen.getByLabelText("snapshot-file-input")
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t("options.dictionary.preview"))).toBeInTheDocument()
+    })
+
+    const confirmBtn = screen.getByText(i18n.t("options.dictionary.confirmImport"))
+    fireEvent.click(confirmBtn)
+
+    await waitFor(() => {
+      expect(commitImportMock).toHaveBeenCalledTimes(1)
+    })
   })
 })

@@ -65,4 +65,37 @@ export function setupLocalDictionaryMessageHandlers(): void {
     const repo = getRepository()
     return await repo.getMutationResult(message.data.requestId)
   })
+
+  onMessage("dictionaryListConflictVersions", async (message) => {
+    const repo = getRepository()
+    return await repo.listConflictVersions(message.data.id)
+  })
+
+  onMessage("dictionaryRestoreAsNew", async (message) => {
+    const repo = getRepository()
+    const result = await repo.restoreConflictVersionAsNew(message.data)
+    if (result.ok) {
+      await notifyChange()
+    }
+    return result
+  })
+
+  onMessage("dictionaryExportSnapshot", async () => {
+    const repo = getRepository()
+    return await repo.exportSnapshot()
+  })
+
+  onMessage("dictionaryPreviewImport", async (message) => {
+    const repo = getRepository()
+    return await repo.previewImport(message.data)
+  })
+
+  onMessage("dictionaryCommitImport", async (message) => {
+    const repo = getRepository()
+    const result = await repo.commitImport(message.data)
+    if (result.ok) {
+      await notifyChange()
+    }
+    return result
+  })
 }

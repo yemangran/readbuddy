@@ -120,3 +120,52 @@ export interface ListOutput {
   page: number
   pageSize: number
 }
+
+export interface DictionarySnapshotV1 {
+  format: "readfrog-local"
+  version: 1
+  updatedAt: number
+  vocabularies: PortableDictionaryRecord[]
+  conflictVersions: PortableDictionaryRecord[]
+}
+
+export interface ImportPreviewResult {
+  addedCount: number
+  updatedCount: number
+  deletedCount: number
+  preservedCount: number
+  unchangedCount: number
+  addedConflictCount: number
+  expectedSequence: number
+  snapshotHash: string
+  errors: string[]
+}
+
+export interface CommitImportInput {
+  requestId: string
+  snapshot: DictionarySnapshotV1
+  expectedSequence: number
+  snapshotHash: string
+}
+
+export interface CommitImportOutput {
+  addedCount: number
+  updatedCount: number
+  deletedCount: number
+  preservedCount: number
+  addedConflictCount: number
+}
+
+export interface RestoreConflictVersionInput {
+  requestId: string
+  targetId?: string
+  versionId: {
+    id: string
+    updatedAt: number
+    deviceId: string
+  }
+}
+
+export interface ListConflictVersionsInput {
+  id: string
+}

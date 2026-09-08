@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import {
+  commitDictionaryImport,
   createDictionaryRecords,
   deleteDictionaryRecord,
+  exportDictionarySnapshot,
   getDictionaryRecord,
+  listConflictVersions,
   listDictionaryRecords,
+  previewDictionaryImport,
+  restoreConflictVersionAsNew,
   updateDictionaryCells,
 } from "@/utils/local-dictionary/client"
 import { setupLocalDictionaryMessageHandlers } from "../local-dictionary"
@@ -91,5 +96,46 @@ describe("Background Local Dictionary Messaging", () => {
     expect(afterDelList.ok).toBe(true)
     if (!afterDelList.ok) return
     expect(afterDelList.data.records.length).toBe(0)
+
+    // 6. Conflict versions of deleted record
+    const conflictsRes = await listConflictVersions("msg-vocab-1")
+    expect(conflictsRes.ok).toBe(true)
+    if (!conflictsRes.ok) return
+    expect(conflictsRes.data.length).toBe(1)
+    expect(conflictsRes.data[0]?.cells["c-1"]).toBe("test-word-updated")
+
+    // 7. Restore as new
+    const restoreRes = await restoreConflictVersionAsNew({
+      requestId: "msg-req-restore-1",
+      versionId: {
+        id: "msg-vocab-1",
+        updatedAt: conflictsRes.data[0]!.updatedAt,
+        deviceId: conflictsRes.data[0]!.deviceId,
+      },
+    })
+    expect(restoreRes.ok).toBe(true)
+    if (!restoreRes.ok) return
+    expect(restoreRes.data.id).not.toBe("msg-vocab-1")
+
+    // 8. Snapshot export
+    const exportRes = await exportDictionarySnapshot()
+    expect(exportRes.ok).toBe(true)
+    if (!exportRes.ok) return
+    expect(exportRes.data).toContain("readfrog-local")
+
+    // 9. Snapshot preview & commit import
+    const parsedSnapshot = JSON.parse(exportRes.data)
+    const previewRes = await previewDictionaryImport(parsedSnapshot)
+    expect(previewRes.ok).toBe(true)
+    if (!previewRes.ok) return
+    expect(previewRes.data.errors.length).toBe(0)
+
+    const commitRes = await commitDictionaryImport({
+      requestId: "msg-req-commit-1",
+      snapshot: parsedSnapshot,
+      expectedSequence: previewRes.data.expectedSequence,
+      snapshotHash: previewRes.data.snapshotHash,
+    })
+    expect(commitRes.ok).toBe(true)
   })
 })
