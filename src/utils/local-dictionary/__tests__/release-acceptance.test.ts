@@ -1,5 +1,7 @@
+import type { AddressInfo } from "node:net"
 import type { CreateVocabularyItem, DictionarySnapshotV1, WebdavConfig } from "../types"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import http from "node:http"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import { getLocalDictionaryDb } from "../db"
 import { LocalDictionaryRepository } from "../repository"
@@ -382,6 +384,123 @@ describe("Issue #15: Release Acceptance Verification", () => {
       expect(result.ok).toBe(false)
       expect(result.error?.code).toBe("UNSUPPORTED_VERSION")
       expect(result.error?.retryable).toBe(false)
+    })
+  })
+
+  describe("5. Controllable WebDAV HTTP Server Harness (Real TCP Wire)", () => {
+    let server: http.Server
+    let serverUrl: string
+    let remoteFileContent: string | null = null
+    let remoteEtag = '"real-etag-v1"'
+
+    beforeEach(async () => {
+      remoteFileContent = null
+      remoteEtag = '"real-etag-v1"'
+
+      server = http.createServer((req, res) => {
+        const url = new URL(req.url || "/", `http://${req.headers.host}`)
+        if (url.pathname !== "/readfrog.json") {
+          res.writeHead(404)
+          res.end("Not Found")
+          return
+        }
+
+        if (req.method === "GET") {
+          if (!remoteFileContent) {
+            res.writeHead(404)
+            res.end("Not Found")
+            return
+          }
+          res.writeHead(200, {
+            "Content-Type": "application/json",
+            ETag: remoteEtag,
+          })
+          res.end(remoteFileContent)
+          return
+        }
+
+        if (req.method === "PUT") {
+          const ifNoneMatch = req.headers["if-none-match"]
+          const ifMatch = req.headers["if-match"]
+
+          // Conditional validation
+          if (ifNoneMatch === "*" && remoteFileContent) {
+            res.writeHead(412, "Precondition Failed")
+            res.end("Already exists")
+            return
+          }
+          if (ifMatch && ifMatch !== remoteEtag) {
+            res.writeHead(412, "Precondition Failed")
+            res.end("ETag mismatch")
+            return
+          }
+
+          let body = ""
+          req.on("data", (chunk) => {
+            body += chunk
+          })
+          req.on("end", () => {
+            remoteFileContent = body
+            remoteEtag = '"real-etag-v2"'
+            res.writeHead(201, {
+              ETag: remoteEtag,
+            })
+            res.end("Created")
+          })
+          return
+        }
+
+        res.writeHead(405)
+        res.end("Method Not Allowed")
+      })
+
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => resolve())
+      })
+      const addr = server.address() as AddressInfo
+      serverUrl = `http://127.0.0.1:${addr.port}/`
+    })
+
+    afterEach(async () => {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve())
+      })
+    })
+
+    it("successfully completes first sync and conditional update over real HTTP TCP wire", async () => {
+      const config: WebdavConfig = {
+        endpoint: serverUrl,
+        username: "testuser",
+        password: "testpassword",
+      }
+
+      await repo.createMany({
+        requestId: "req-wire-1",
+        items: [
+          {
+            id: "vocab-wire-1",
+            actionId: "act",
+            actionName: "act",
+            outputSchema: [],
+            result: {},
+            columns: [{ id: "term", name: "Term", position: 0, config: { type: "string" } }],
+            mappings: [],
+            cells: { term: "real-network-wire" },
+          },
+        ],
+      })
+
+      // Sync 1: Initial upload with If-None-Match: * over real HTTP socket
+      const syncResult1 = await syncWithWebdav(repo, config)
+      expect(syncResult1.ok).toBe(true)
+      expect(syncResult1.etag).toBe('"real-etag-v2"')
+      expect(remoteFileContent).not.toBeNull()
+      expect(remoteFileContent).toContain("real-network-wire")
+
+      // Sync 2: Secondary pass when remote and local are in sync (no upload needed)
+      const syncResult2 = await syncWithWebdav(repo, config)
+      expect(syncResult2.ok).toBe(true)
+      expect(syncResult2.remoteUploaded).toBe(false)
     })
   })
 })

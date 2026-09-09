@@ -459,4 +459,43 @@ describe("DictionaryPage", () => {
       )
     })
   })
+
+  it("disables confirm button in force overwrite dialog if remote summary fails to load", async () => {
+    getWebdavConfigMock.mockResolvedValue({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "myuser",
+      password: "mypassword",
+    })
+    getWebdavSyncStateMock.mockResolvedValue({
+      phase: "paused",
+      lastSuccessTime: null,
+      lastAttemptTime: 1700000000000,
+      nextRetryTime: null,
+      retryCount: 1,
+      pendingChangesCount: 1,
+      lastError: {
+        code: "CONDITION_NOT_SUPPORTED",
+        message: "Server does not support conditional headers",
+        retryable: false,
+      },
+      pausedReason: "CONDITION_NOT_SUPPORTED",
+    })
+    getRemoteWebdavSummaryMock.mockResolvedValue({
+      ok: false,
+      error: { code: "NETWORK_ERROR", message: "Failed to connect", retryable: false },
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("webdav-force-overwrite")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText("webdav-force-overwrite"))
+
+    await waitFor(() => {
+      const confirmBtn = screen.getByLabelText("confirm-force-overwrite")
+      expect(confirmBtn).toBeDisabled()
+    })
+  })
 })

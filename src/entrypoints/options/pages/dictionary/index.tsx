@@ -1240,7 +1240,7 @@ export function DictionaryPage() {
               size="sm"
               variant="destructive"
               onClick={handleConfirmForceOverwrite}
-              disabled={isSyncingWebdav}
+              disabled={isSyncingWebdav || isFetchingRemoteSummary || !remoteSummary}
               aria-label="confirm-force-overwrite"
             >
               {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
