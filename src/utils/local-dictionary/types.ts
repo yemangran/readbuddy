@@ -169,3 +169,55 @@ export interface RestoreConflictVersionInput {
 export interface ListConflictVersionsInput {
   id: string
 }
+
+export interface WebdavConfig {
+  endpoint: string
+  username: string
+  password: string
+}
+
+export type WebdavErrorCode =
+  | "AUTH_FAILED"
+  | "CORRUPTED_REMOTE"
+  | "UNSUPPORTED_VERSION"
+  | "INTEGRITY_CONFLICT"
+  | "BUDGET_EXCEEDED"
+  | "CONDITION_FAILED_MAX_RETRIES"
+  | "CONDITION_NOT_SUPPORTED"
+  | "PERMISSION_DENIED"
+  | "NETWORK_ERROR"
+  | "STORAGE_ERROR"
+
+export interface WebdavError {
+  code: WebdavErrorCode
+  message: string
+  retryable: boolean
+}
+
+export interface WebdavSyncStats {
+  addedCount: number
+  updatedCount: number
+  deletedCount: number
+  preservedCount: number
+  addedConflictCount: number
+}
+
+export interface WebdavSyncResult {
+  ok: boolean
+  remoteUploaded?: boolean
+  localUpdated?: boolean
+  stats?: WebdavSyncStats
+  etag?: string | null
+  error?: WebdavError
+}
+
+export interface ApplySyncMergeResult {
+  localUpdated: boolean
+  addedCount: number
+  updatedCount: number
+  deletedCount: number
+  preservedCount: number
+  addedConflictCount: number
+  mergedSnapshot: DictionarySnapshotV1
+  needsRemoteUpload: boolean
+}

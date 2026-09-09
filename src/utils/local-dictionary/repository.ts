@@ -1,4 +1,5 @@
 import type {
+  ApplySyncMergeResult,
   CommitImportInput,
   CommitImportOutput,
   CreateManyInput,
@@ -17,7 +18,12 @@ import type {
 import { sha256 } from "js-sha256"
 import { getRandomUUID } from "@/utils/crypto-polyfill"
 import { type LocalDictionaryDB } from "./db"
-import { canonicalStringify, getVersionIdentityKey, reconcileRecordSets } from "./reconciler"
+import {
+  canonicalStringify,
+  compareRecordVersions,
+  getVersionIdentityKey,
+  reconcileRecordSets,
+} from "./reconciler"
 import { exportDictionarySnapshot, toPortableRecord } from "./snapshot"
 
 function canonicalize(val: unknown): unknown {
@@ -1161,6 +1167,200 @@ export class LocalDictionaryRepository {
           code: "STORAGE_UNAVAILABLE",
           retryable: true,
           message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async applySyncMerge(
+    remoteSnapshot: DictionarySnapshotV1,
+  ): Promise<DictionaryReply<ApplySyncMergeResult>> {
+    try {
+      return await this.db.transaction(
+        "rw",
+        [this.db.vocabularies, this.db.conflictVersions, this.db.metadata, this.db.syncChanges],
+        async () => {
+          const metadata = await this.getMetadata()
+          let runningSequence = metadata.changeSequence
+          const now = Date.now()
+
+          // 1. Read all local vocabularies and conflicts
+          const localVocabs = await this.db.vocabularies.toArray()
+          const localConflicts = await this.db.conflictVersions.toArray()
+          const localPortable = localVocabs.map(toPortableRecord)
+          const localConflictsPortable = localConflicts.map(toPortableRecord)
+
+          // 2. Reconcile local and remote record sets
+          let reconciled: ReturnType<typeof reconcileRecordSets>
+          try {
+            reconciled = reconcileRecordSets(
+              localPortable,
+              localConflictsPortable,
+              remoteSnapshot.vocabularies,
+              remoteSnapshot.conflictVersions,
+            )
+          } catch (err: any) {
+            return {
+              ok: false,
+              error: {
+                code: "INVALID_DATA",
+                retryable: false,
+                message: err?.message ?? "Reconciliation integrity error",
+              },
+            }
+          }
+
+          const localMap = new Map<string, LocalDictionaryRecord>()
+          for (const v of localVocabs) {
+            localMap.set(v.id, v)
+          }
+
+          const localConflictMap = new Map<string, Set<string>>()
+          for (const c of localConflicts) {
+            const set = localConflictMap.get(c.id) ?? new Set()
+            set.add(getVersionIdentityKey(c))
+            localConflictMap.set(c.id, set)
+          }
+
+          let addedCount = 0
+          let updatedCount = 0
+          let deletedCount = 0
+          let preservedCount = 0
+          let addedConflictCount = 0
+          let localUpdated = false
+
+          for (const [id, winner] of reconciled.winners.entries()) {
+            const local = localMap.get(id)
+            const existingConflictKeys = localConflictMap.get(id) ?? new Set()
+            const mergedConflicts = reconciled.conflictsByRecordId.get(id) ?? []
+            const newConflicts = mergedConflicts.filter(
+              (c) => !existingConflictKeys.has(getVersionIdentityKey(c)),
+            )
+
+            if (newConflicts.length > 0) {
+              for (const c of newConflicts) {
+                await this.db.conflictVersions.put(c)
+              }
+              addedConflictCount += newConflicts.length
+              localUpdated = true
+            }
+
+            const winnerKey = getVersionIdentityKey(winner)
+            const localKey = local ? getVersionIdentityKey(local) : null
+
+            if (!local) {
+              runningSequence++
+              const localRevision = `${now}#${metadata.deviceId}#${runningSequence}`
+              await this.db.vocabularies.put({ ...winner, localRevision })
+              await this.db.syncChanges.add({
+                sequence: runningSequence,
+                entityId: id,
+                entityType: "vocabulary",
+                operation: winner.deletedAt ? "delete" : "create",
+                timestamp: now,
+                deviceId: metadata.deviceId,
+                version: { id, updatedAt: winner.updatedAt, deviceId: winner.deviceId },
+              })
+              if (winner.deletedAt) deletedCount++
+              else addedCount++
+              localUpdated = true
+            } else if (winnerKey !== localKey) {
+              runningSequence++
+              const localRevision = `${now}#${metadata.deviceId}#${runningSequence}`
+              await this.db.vocabularies.put({ ...winner, localRevision })
+              await this.db.syncChanges.add({
+                sequence: runningSequence,
+                entityId: id,
+                entityType: "vocabulary",
+                operation: winner.deletedAt ? "delete" : "update",
+                timestamp: now,
+                deviceId: metadata.deviceId,
+                version: { id, updatedAt: winner.updatedAt, deviceId: winner.deviceId },
+              })
+              if (winner.deletedAt) deletedCount++
+              else updatedCount++
+              localUpdated = true
+            } else if (newConflicts.length > 0) {
+              runningSequence++
+              await this.db.syncChanges.add({
+                sequence: runningSequence,
+                entityId: id,
+                entityType: "vocabulary",
+                operation: "update",
+                timestamp: now,
+                deviceId: metadata.deviceId,
+                version: { id, updatedAt: winner.updatedAt, deviceId: winner.deviceId },
+              })
+              preservedCount++
+              localUpdated = true
+            }
+          }
+
+          if (localUpdated) {
+            await this.db.metadata.put({ key: "changeSequence", value: runningSequence })
+          }
+
+          // Construct canonical mergedSnapshot
+          const mergedVocabularies: PortableDictionaryRecord[] = Array.from(
+            reconciled.winners.values(),
+          ).map(toPortableRecord)
+          mergedVocabularies.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+
+          const allMergedConflicts: PortableDictionaryRecord[] = []
+          for (const list of reconciled.conflictsByRecordId.values()) {
+            allMergedConflicts.push(...list.map(toPortableRecord))
+          }
+          allMergedConflicts.sort((a, b) => {
+            if (a.id !== b.id) return a.id < b.id ? -1 : 1
+            return compareRecordVersions(a, b)
+          })
+
+          const mergedSnapshot: DictionarySnapshotV1 = {
+            format: "readfrog-local",
+            version: 1,
+            updatedAt: Math.max(Date.now(), remoteSnapshot.updatedAt || 0),
+            vocabularies: mergedVocabularies,
+            conflictVersions: allMergedConflicts,
+          }
+
+          // Check if remote upload is needed
+          const remoteVocabCanon = canonicalStringify(remoteSnapshot.vocabularies || [])
+          const mergedVocabCanon = canonicalStringify(mergedVocabularies)
+          const remoteConflictsCanon = canonicalStringify(remoteSnapshot.conflictVersions || [])
+          const mergedConflictsCanon = canonicalStringify(allMergedConflicts)
+
+          const needsRemoteUpload =
+            remoteVocabCanon !== mergedVocabCanon || remoteConflictsCanon !== mergedConflictsCanon
+
+          return {
+            ok: true,
+            data: {
+              localUpdated,
+              addedCount,
+              updatedCount,
+              deletedCount,
+              preservedCount,
+              addedConflictCount,
+              mergedSnapshot,
+              needsRemoteUpload,
+            },
+            changeSequence: runningSequence,
+          }
+        },
+      )
+    } catch (error: any) {
+      if (error?.name === "QuotaExceededError") {
+        return {
+          ok: false,
+          error: { code: "QUOTA_EXCEEDED", retryable: false, message: error.message },
+        }
+      }
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error during sync merge",
         },
       }
     }

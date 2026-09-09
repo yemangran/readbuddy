@@ -11,6 +11,13 @@ import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/base-ui/card"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -31,17 +38,24 @@ import { toastManager } from "@/components/ui/base-ui/toast"
 import { getRandomUUID } from "@/utils/crypto-polyfill"
 import { i18n } from "@/utils/i18n"
 import {
+  clearWebdavConfig,
   commitDictionaryImport,
   deleteDictionaryRecord,
   exportDictionarySnapshot,
+  getWebdavConfig,
   listConflictVersions,
   listDictionaryRecords,
   previewDictionaryImport,
   restoreConflictVersionAsNew,
+  saveWebdavConfig,
+  syncWebdav,
+  testWebdavConnection,
   updateDictionaryCells,
   watchDictionaryChangeSignal,
 } from "@/utils/local-dictionary/client"
 import { parseAndValidateSnapshot } from "@/utils/local-dictionary/snapshot"
+import { requestWebdavHostPermission } from "@/utils/local-dictionary/webdav"
+import { cn } from "@/utils/styles/utils"
 import { queryClient } from "@/utils/tanstack-query"
 import { PageLayout } from "../../components/page-layout"
 
@@ -73,6 +87,26 @@ export function DictionaryPage() {
   const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+
+  // WebDAV state
+  const [webdavEndpoint, setWebdavEndpoint] = useState("")
+  const [webdavUsername, setWebdavUsername] = useState("")
+  const [webdavPassword, setWebdavPassword] = useState("")
+  const [isWebdavConfigured, setIsWebdavConfigured] = useState(false)
+  const [isTestingWebdav, setIsTestingWebdav] = useState(false)
+  const [isSyncingWebdav, setIsSyncingWebdav] = useState(false)
+  const [webdavError, setWebdavError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void getWebdavConfig().then((config) => {
+      if (config?.endpoint && config?.username) {
+        setWebdavEndpoint(config.endpoint)
+        setWebdavUsername(config.username)
+        setWebdavPassword(config.password || "")
+        setIsWebdavConfigured(true)
+      }
+    })
+  }, [])
 
   const { data, isPending } = useQuery({
     queryKey: ["local-dictionary-records", page, search],
@@ -320,12 +354,245 @@ export function DictionaryPage() {
     }
   }
 
+  const handleSaveWebdav = async () => {
+    setWebdavError(null)
+    const trimmedEndpoint = webdavEndpoint.trim()
+    const trimmedUser = webdavUsername.trim()
+    if (!trimmedEndpoint || !trimmedUser) return
+
+    try {
+      const hasPermission = await requestWebdavHostPermission(trimmedEndpoint)
+      if (!hasPermission) {
+        setWebdavError(i18n.t("options.dictionary.webdav.permissionDenied"))
+        toastManager.add({
+          type: "error",
+          title: i18n.t("options.dictionary.webdav.permissionDenied"),
+        })
+        return
+      }
+
+      await saveWebdavConfig({
+        endpoint: trimmedEndpoint,
+        username: trimmedUser,
+        password: webdavPassword,
+      })
+      setIsWebdavConfigured(true)
+      toastManager.add({
+        type: "success",
+        title: i18n.t("options.dictionary.webdav.saveSuccess"),
+      })
+    } catch (err: any) {
+      setWebdavError(err?.message || "Failed to save WebDAV settings")
+    }
+  }
+
+  const handleTestWebdav = async () => {
+    setIsTestingWebdav(true)
+    setWebdavError(null)
+    try {
+      const reply = await testWebdavConnection({
+        endpoint: webdavEndpoint.trim(),
+        username: webdavUsername.trim(),
+        password: webdavPassword,
+      })
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.webdav.connected"),
+        })
+      } else {
+        const msg =
+          reply.error?.code === "AUTH_FAILED"
+            ? i18n.t("options.dictionary.webdav.authFailed")
+            : reply.error?.message || "Connection failed"
+        setWebdavError(msg)
+        toastManager.add({
+          type: "error",
+          title: msg,
+        })
+      }
+    } finally {
+      setIsTestingWebdav(false)
+    }
+  }
+
+  const handleSyncWebdav = async () => {
+    setIsSyncingWebdav(true)
+    setWebdavError(null)
+    try {
+      const reply = await syncWebdav()
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.webdav.syncSuccess"),
+        })
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+      } else {
+        let msg = reply.error?.message || "Sync failed"
+        if (reply.error?.code === "AUTH_FAILED") {
+          msg = i18n.t("options.dictionary.webdav.authFailed")
+        } else if (reply.error?.code === "CORRUPTED_REMOTE") {
+          msg = i18n.t("options.dictionary.webdav.corruptedRemote")
+        } else if (reply.error?.code === "UNSUPPORTED_VERSION") {
+          msg = i18n.t("options.dictionary.webdav.unsupportedVersion")
+        } else if (reply.error?.code === "INTEGRITY_CONFLICT") {
+          msg = i18n.t("options.dictionary.webdav.integrityConflict")
+        } else if (reply.error?.code === "BUDGET_EXCEEDED") {
+          msg = i18n.t("options.dictionary.webdav.budgetExceeded")
+        } else if (reply.error?.code === "CONDITION_FAILED_MAX_RETRIES") {
+          msg = i18n.t("options.dictionary.webdav.conditionRetryExceeded")
+        }
+        setWebdavError(msg)
+        toastManager.add({
+          type: "error",
+          title: msg,
+        })
+      }
+    } finally {
+      setIsSyncingWebdav(false)
+    }
+  }
+
+  const handleDisconnectWebdav = async () => {
+    await clearWebdavConfig()
+    setWebdavEndpoint("")
+    setWebdavUsername("")
+    setWebdavPassword("")
+    setIsWebdavConfigured(false)
+    setWebdavError(null)
+    toastManager.add({
+      type: "success",
+      title: i18n.t("options.dictionary.webdav.disconnectSuccess"),
+    })
+  }
+
   return (
     <PageLayout
       title={i18n.t("options.dictionary.title")}
       description={i18n.t("options.dictionary.pageDescription")}
       innerClassName="flex flex-col gap-6"
     >
+      {/* WebDAV Synchronization Section */}
+      <Card className="border">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Icon icon="tabler:cloud-upload" className="size-5 text-primary" />
+              {i18n.t("options.dictionary.webdav.title")}
+              <Badge variant={isWebdavConfigured ? "default" : "secondary"} className="text-xs">
+                {isWebdavConfigured
+                  ? i18n.t("options.dictionary.webdav.connected")
+                  : i18n.t("options.dictionary.webdav.notConfigured")}
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {i18n.t("options.dictionary.webdav.description")}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            {isWebdavConfigured && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSyncWebdav}
+                  disabled={isSyncingWebdav}
+                  aria-label="webdav-sync-now"
+                >
+                  <Icon
+                    icon="tabler:refresh"
+                    className={cn("mr-1.5 size-4", isSyncingWebdav && "animate-spin")}
+                  />
+                  {isSyncingWebdav
+                    ? i18n.t("options.dictionary.webdav.syncing")
+                    : i18n.t("options.dictionary.webdav.syncNow")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleDisconnectWebdav}
+                  className="text-destructive hover:bg-destructive/10"
+                  aria-label="webdav-disconnect"
+                >
+                  {i18n.t("options.dictionary.webdav.disconnect")}
+                </Button>
+              </>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {i18n.t("options.dictionary.webdav.endpoint")}
+              </label>
+              <Input
+                placeholder={i18n.t("options.dictionary.webdav.endpointPlaceholder")}
+                value={webdavEndpoint}
+                onChange={(e) => setWebdavEndpoint(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {i18n.t("options.dictionary.webdav.username")}
+              </label>
+              <Input
+                placeholder="username"
+                value={webdavUsername}
+                onChange={(e) => setWebdavUsername(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {i18n.t("options.dictionary.webdav.password")}
+              </label>
+              <Input
+                type="password"
+                placeholder={isWebdavConfigured ? "••••••••" : "password"}
+                value={webdavPassword}
+                onChange={(e) => setWebdavPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {webdavError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
+              <div className="font-semibold">Error</div>
+              <div>{webdavError}</div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleTestWebdav}
+              disabled={isTestingWebdav || !webdavEndpoint || !webdavUsername}
+              aria-label="webdav-test-connection"
+            >
+              <Icon
+                icon="tabler:plug"
+                className={cn("mr-1.5 size-4", isTestingWebdav && "animate-spin")}
+              />
+              {isTestingWebdav
+                ? i18n.t("options.dictionary.webdav.testing")
+                : i18n.t("options.dictionary.webdav.testConnection")}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveWebdav}
+              disabled={
+                !webdavEndpoint || !webdavUsername || (!webdavPassword && !isWebdavConfigured)
+              }
+              aria-label="webdav-save-settings"
+            >
+              <Icon icon="tabler:device-floppy" className="mr-1.5 size-4" />
+              {i18n.t("options.dictionary.webdav.save")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Top Action Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="relative max-w-sm flex-1">

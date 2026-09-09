@@ -11,6 +11,9 @@ import {
   previewDictionaryImport,
   restoreConflictVersionAsNew,
   updateDictionaryCells,
+  getWebdavConfig,
+  saveWebdavConfig,
+  clearWebdavConfig,
 } from "@/utils/local-dictionary/client"
 import { setupLocalDictionaryMessageHandlers } from "../local-dictionary"
 import "fake-indexeddb/auto"
@@ -137,5 +140,24 @@ describe("Background Local Dictionary Messaging", () => {
       snapshotHash: previewRes.data.snapshotHash,
     })
     expect(commitRes.ok).toBe(true)
+
+    // 10. WebDAV config messaging
+    const initialConfig = await getWebdavConfig()
+    expect(initialConfig).toBeNull()
+
+    const saveRes = await saveWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "myuser",
+      password: "mypassword",
+    })
+    expect(saveRes.ok).toBe(true)
+
+    const savedConfig = await getWebdavConfig()
+    expect(savedConfig?.endpoint).toBe("https://dav.example.com/webdav/")
+    expect(savedConfig?.username).toBe("myuser")
+
+    const clearRes = await clearWebdavConfig()
+    expect(clearRes.ok).toBe(true)
+    expect(await getWebdavConfig()).toBeNull()
   })
 })

@@ -147,6 +147,31 @@ options:
       action: Source Action
       updatedAt: Updated
       cells: Content
+    webdav:
+      title: WebDAV Sync
+      description: Synchronize your local dictionary across multiple devices with generic WebDAV.
+      endpoint: Endpoint URL
+      endpointPlaceholder: https://dav.jianguoyun.com/dav/
+      username: Username
+      password: Password
+      save: Save & Connect
+      testConnection: Test Connection
+      syncNow: Sync Now
+      disconnect: Disconnect
+      connected: Connected
+      notConfigured: Not Configured
+      syncSuccess: Synchronization completed successfully
+      saveSuccess: WebDAV settings saved
+      disconnectSuccess: WebDAV disconnected
+      testing: Testing...
+      syncing: Syncing...
+      permissionDenied: Host permission denied by browser. Local dictionary remains intact.
+      authFailed: Authentication failed. Please verify endpoint, username, and password.
+      corruptedRemote: Remote data corrupted. Sync paused to protect your dictionary.
+      unsupportedVersion: Remote snapshot version is unsupported.
+      integrityConflict: Data integrity violation detected. Sync paused.
+      budgetExceeded: Snapshot exceeds 50MB size budget. Sync paused.
+      conditionRetryExceeded: "Concurrent upload conflict: retry budget exceeded."
   product:
     roadmap: Roadmap
   helpAndCommunity:

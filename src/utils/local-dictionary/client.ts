@@ -12,6 +12,9 @@ import type {
   PortableDictionaryRecord,
   RestoreConflictVersionInput,
   UpdateCellsInput,
+  WebdavConfig,
+  WebdavError,
+  WebdavSyncResult,
 } from "./types"
 import { storage } from "#imports"
 import { sendMessage } from "@/utils/message"
@@ -103,4 +106,28 @@ export function watchDictionaryChangeSignal(callback: () => void): () => void {
   return storage.watch<number>(DICTIONARY_CHANGE_SIGNAL_STORAGE_KEY, () => {
     callback()
   })
+}
+
+export async function getWebdavConfig(): Promise<WebdavConfig | null> {
+  return await sendMessage("dictionaryGetWebdavConfig")
+}
+
+export async function saveWebdavConfig(config: WebdavConfig): Promise<{ ok: boolean }> {
+  return await sendMessage("dictionarySaveWebdavConfig", config)
+}
+
+export async function clearWebdavConfig(): Promise<{ ok: boolean }> {
+  return await sendMessage("dictionaryClearWebdavConfig")
+}
+
+export async function testWebdavConnection(
+  config?: WebdavConfig,
+): Promise<{ ok: boolean; error?: WebdavError }> {
+  return await sendMessage("dictionaryTestWebdavConnection", config)
+}
+
+export async function syncWebdav(options?: {
+  forceUnconditional?: boolean
+}): Promise<WebdavSyncResult> {
+  return await sendMessage("dictionarySyncWebdav", options)
 }

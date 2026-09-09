@@ -19,6 +19,11 @@ const previewImportMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const commitImportMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const listConflictsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const restoreConflictMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const getWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const saveWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const clearWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const testWebdavConnectionMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const syncWebdavMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 
 vi.mock("file-saver", () => ({
   saveAs: vi.fn<() => void>(),
@@ -34,6 +39,11 @@ vi.mock("@/utils/local-dictionary/client", () => ({
   commitDictionaryImport: commitImportMock,
   listConflictVersions: listConflictsMock,
   restoreConflictVersionAsNew: restoreConflictMock,
+  getWebdavConfig: getWebdavConfigMock,
+  saveWebdavConfig: saveWebdavConfigMock,
+  clearWebdavConfig: clearWebdavConfigMock,
+  testWebdavConnection: testWebdavConnectionMock,
+  syncWebdav: syncWebdavMock,
 }))
 
 const mockRecords: LocalDictionaryRecord[] = [
@@ -82,6 +92,11 @@ describe("DictionaryPage", () => {
       data: [],
       changeSequence: 1,
     })
+    getWebdavConfigMock.mockResolvedValue(null)
+    saveWebdavConfigMock.mockResolvedValue({ ok: true })
+    clearWebdavConfigMock.mockResolvedValue({ ok: true })
+    testWebdavConnectionMock.mockResolvedValue({ ok: true })
+    syncWebdavMock.mockResolvedValue({ ok: true })
   })
 
   it("renders empty state when there are no records", async () => {
@@ -304,6 +319,40 @@ describe("DictionaryPage", () => {
 
     await waitFor(() => {
       expect(commitImportMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it("renders WebDAV section, allows configuration and testing connection", async () => {
+    getWebdavConfigMock.mockResolvedValue({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "myuser",
+      password: "mypassword",
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.title"))).toBeInTheDocument()
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
+    })
+
+    const testBtn = screen.getByLabelText("webdav-test-connection")
+    fireEvent.click(testBtn)
+
+    await waitFor(() => {
+      expect(testWebdavConnectionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: "https://dav.example.com/webdav/",
+          username: "myuser",
+        }),
+      )
+    })
+
+    const syncBtn = screen.getByLabelText("webdav-sync-now")
+    fireEvent.click(syncBtn)
+
+    await waitFor(() => {
+      expect(syncWebdavMock).toHaveBeenCalledTimes(1)
     })
   })
 })

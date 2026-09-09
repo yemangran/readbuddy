@@ -147,6 +147,31 @@ options:
       action: 来源动作
       updatedAt: 更新时间
       cells: 内容
+    webdav:
+      title: WebDAV 同步
+      description: 使用通用 WebDAV 服务在多设备间安全同步本地离线词典。
+      endpoint: 服务地址 (URL)
+      endpointPlaceholder: https://dav.jianguoyun.com/dav/
+      username: 用户名
+      password: 密码
+      save: 保存并连接
+      testConnection: 测试连接
+      syncNow: 立即同步
+      disconnect: 断开连接
+      connected: 已连接
+      notConfigured: 未配置
+      syncSuccess: 同步成功完成
+      saveSuccess: WebDAV 配置已保存
+      disconnectSuccess: 已断开 WebDAV 配置
+      testing: 测试中...
+      syncing: 同步中...
+      permissionDenied: 浏览器拒绝了服务地址权限申请，本地词典功能不受影响。
+      authFailed: 认证失败，请检查服务地址、用户名和密码。
+      corruptedRemote: 远端快照数据损坏或格式非法，已暂停同步以保护数据。
+      unsupportedVersion: 不支持的远端快照版本。
+      integrityConflict: 检测到数据完整性冲突，已暂停同步。
+      budgetExceeded: 快照文件超出 50MB 预算上限，已暂停同步。
+      conditionRetryExceeded: 并发上传条件冲突已达重试上限，请稍后重试。
   product:
     roadmap: 路线图
   helpAndCommunity:
