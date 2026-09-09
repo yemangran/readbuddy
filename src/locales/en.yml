@@ -173,6 +173,8 @@ options:
       budgetExceeded: Snapshot exceeds 50MB size budget. Sync paused.
       conditionRetryExceeded: "Concurrent upload conflict: retry budget exceeded."
       conditionNotSupported: "Remote WebDAV server does not support conditional headers (ETag / If-Match)."
+      networkError: Network request failed. Please check your network connection or server endpoint.
+      storageError: Local storage read/write error. Sync paused.
       status: Sync Status
       phaseIdle: Idle
       phaseSyncing: Syncing

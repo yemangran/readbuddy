@@ -431,6 +431,9 @@ describe("DictionaryPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(i18n.t("options.dictionary.webdav.phasePaused"))).toBeInTheDocument()
+      expect(
+        screen.getByText(i18n.t("options.dictionary.webdav.conditionNotSupported")),
+      ).toBeInTheDocument()
       expect(screen.getByLabelText("webdav-force-overwrite")).toBeInTheDocument()
     })
 

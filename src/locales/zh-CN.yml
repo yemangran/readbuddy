@@ -173,6 +173,8 @@ options:
       budgetExceeded: 快照文件超出 50MB 预算上限，已暂停同步。
       conditionRetryExceeded: 并发上传条件冲突已达重试上限，请稍后重试。
       conditionNotSupported: 远端 WebDAV 服务不支持条件请求 (ETag / If-Match)。
+      networkError: 网络请求失败，请检查网络连接或服务地址。
+      storageError: 本地存储读写异常，同步已暂停。
       status: 同步状态
       phaseIdle: 空闲
       phaseSyncing: 同步中

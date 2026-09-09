@@ -211,4 +211,94 @@ describe("WebdavSyncEngine", () => {
     expect(state.phase).toBe("error")
     expect(state.nextRetryTime).toBe(futureTime)
   })
+
+  it("does not auto-restart sync on SW startup if max retries exceeded", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    await saveStoredWebdavSyncState({
+      phase: "error",
+      retryCount: 6,
+      nextRetryTime: null,
+      lastError: { code: "NETWORK_ERROR", message: "offline", retryable: true },
+    })
+
+    const mockFetch = vi.fn<typeof fetch>()
+    const engine = new WebdavSyncEngine(() => repo, { fetchFn: mockFetch })
+    await engine.restoreAndCheckSchedule()
+
+    // Should NOT trigger sync
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it("disallows forceUnconditional unless previously paused with CONDITION_NOT_SUPPORTED", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    await repo.createMany({
+      requestId: "seed-1",
+      items: [
+        {
+          id: "item-1",
+          actionId: "act",
+          actionName: "act",
+          outputSchema: [],
+          result: {},
+          columns: [{ id: "word", name: "Word", position: 0, config: { type: "string" } }],
+          mappings: [],
+          cells: { word: "hello" },
+        },
+      ],
+    })
+
+    let capturedHeaders: HeadersInit | undefined
+    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
+      if (init?.method === "GET") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              format: "readfrog-local",
+              version: 1,
+              updatedAt: 1000,
+              vocabularies: [],
+              conflictVersions: [],
+            }),
+            { status: 200, headers: { etag: '"etag-1"' } },
+          ),
+        )
+      }
+      if (init?.method === "PUT") {
+        capturedHeaders = init.headers
+        return Promise.resolve(new Response("", { status: 200, headers: { etag: '"etag-2"' } }))
+      }
+      return Promise.resolve(new Response("", { status: 400 }))
+    })
+
+    const engine = new WebdavSyncEngine(() => repo, { fetchFn: mockFetch })
+
+    // When not paused for CONDITION_NOT_SUPPORTED, forceUnconditional is ignored
+    await engine.triggerSync({ reason: "manual", forceUnconditional: true })
+    expect((capturedHeaders as Record<string, string>)?.["If-Match"]).toBe('"etag-1"')
+
+    // Now set paused with CONDITION_NOT_SUPPORTED
+    await saveStoredWebdavSyncState({
+      phase: "paused",
+      pausedReason: "CONDITION_NOT_SUPPORTED",
+    })
+
+    capturedHeaders = undefined
+    await engine.triggerSync({
+      reason: "manual",
+      forceUnconditional: true,
+      resetPaused: true,
+    })
+    // Now forceUnconditional is respected (no If-Match)
+    expect((capturedHeaders as unknown as Record<string, string>)?.["If-Match"]).toBeUndefined()
+  })
 })

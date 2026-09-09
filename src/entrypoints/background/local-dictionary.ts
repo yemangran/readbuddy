@@ -8,7 +8,6 @@ import {
   getStoredWebdavConfig,
   getStoredWebdavSyncState,
   saveStoredWebdavConfig,
-  syncWithWebdav,
   testWebdavConnection,
 } from "@/utils/local-dictionary/webdav"
 import { logger } from "@/utils/logger"
@@ -28,7 +27,9 @@ export function getRepository(): LocalDictionaryRepository {
 
 export function getSyncEngine(): WebdavSyncEngine {
   if (!syncEngineInstance) {
-    syncEngineInstance = new WebdavSyncEngine(() => getRepository())
+    syncEngineInstance = new WebdavSyncEngine(() => getRepository(), {
+      onLocalUpdated: () => notifyChange(),
+    })
   }
   return syncEngineInstance
 }
@@ -178,9 +179,14 @@ export function setupLocalDictionaryMessageHandlers(): void {
   })
 
   onMessage("dictionarySyncWebdav", async (message) => {
-    const config = await getStoredWebdavConfig()
-    if (!config) {
-      return {
+    const engine = getSyncEngine()
+    const result = await engine.triggerSync({
+      reason: "manual",
+      forceUnconditional: message.data?.forceUnconditional,
+      resetPaused: true,
+    })
+    return (
+      result ?? {
         ok: false,
         error: {
           code: "AUTH_FAILED" as const,
@@ -188,13 +194,7 @@ export function setupLocalDictionaryMessageHandlers(): void {
           retryable: false,
         },
       }
-    }
-    const repo = getRepository()
-    const result = await syncWithWebdav(repo, config, message.data)
-    if (result.ok && result.localUpdated) {
-      await notifyChange()
-    }
-    return result
+    )
   })
 
   onMessage("dictionaryGetWebdavSyncState", async () => {

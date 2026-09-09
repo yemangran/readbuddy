@@ -131,7 +131,21 @@ export async function testWebdavConnection(
 export async function syncWebdav(options?: {
   forceUnconditional?: boolean
 }): Promise<WebdavSyncResult> {
-  return await sendMessage("dictionarySyncWebdav", options)
+  const res = await triggerWebdavSync({
+    reason: "manual",
+    forceUnconditional: options?.forceUnconditional,
+    resetPaused: true,
+  })
+  return (
+    res ?? {
+      ok: false,
+      error: {
+        code: "AUTH_FAILED",
+        message: "No WebDAV configuration found or sync skipped",
+        retryable: false,
+      },
+    }
+  )
 }
 
 export async function getWebdavSyncState(): Promise<WebdavSyncState> {

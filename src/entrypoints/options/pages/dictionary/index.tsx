@@ -5,6 +5,7 @@ import type {
   PortableDictionaryRecord,
   RemoteSnapshotSummary,
 } from "@/utils/local-dictionary/types"
+import type { WebdavErrorCode } from "@/utils/local-dictionary/types"
 import { Icon } from "@iconify/react"
 import { useQuery } from "@tanstack/react-query"
 import { saveAs } from "file-saver"
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/base-ui/table"
 import { toastManager } from "@/components/ui/base-ui/toast"
 import { getRandomUUID } from "@/utils/crypto-polyfill"
-import { i18n } from "@/utils/i18n"
+import { i18n, type I18nKey } from "@/utils/i18n"
 import {
   clearWebdavConfig,
   commitDictionaryImport,
@@ -64,6 +65,31 @@ import { queryClient } from "@/utils/tanstack-query"
 import { PageLayout } from "../../components/page-layout"
 
 const PAGE_SIZE = 15
+
+const WEBDAV_ERROR_I18N_KEYS: Record<WebdavErrorCode, I18nKey> = {
+  AUTH_FAILED: "options.dictionary.webdav.authFailed",
+  CORRUPTED_REMOTE: "options.dictionary.webdav.corruptedRemote",
+  UNSUPPORTED_VERSION: "options.dictionary.webdav.unsupportedVersion",
+  INTEGRITY_CONFLICT: "options.dictionary.webdav.integrityConflict",
+  BUDGET_EXCEEDED: "options.dictionary.webdav.budgetExceeded",
+  CONDITION_FAILED_MAX_RETRIES: "options.dictionary.webdav.conditionRetryExceeded",
+  CONDITION_NOT_SUPPORTED: "options.dictionary.webdav.conditionNotSupported",
+  PERMISSION_DENIED: "options.dictionary.webdav.permissionDenied",
+  STORAGE_ERROR: "options.dictionary.webdav.storageError",
+  NETWORK_ERROR: "options.dictionary.webdav.networkError",
+}
+
+function getWebdavErrorMessage(
+  error?: { code?: string; message?: string } | null,
+  fallback?: string,
+): string {
+  if (!error) return fallback || ""
+  if (error.code && error.code in WEBDAV_ERROR_I18N_KEYS) {
+    const key = WEBDAV_ERROR_I18N_KEYS[error.code as WebdavErrorCode]
+    return (i18n.t as (k: string) => string)(key)
+  }
+  return error.message || fallback || "Sync failed"
+}
 
 export function DictionaryPage() {
   const [page, setPage] = useState(1)
@@ -175,6 +201,16 @@ export function DictionaryPage() {
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-conflicts"] })
     })
+  }, [])
+
+  useEffect(() => {
+    const handleOnline = () => {
+      void triggerWebdavSync({ reason: "online" })
+    }
+    window.addEventListener("online", handleOnline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+    }
   }, [])
 
   const records = data?.records ?? []
@@ -434,10 +470,7 @@ export function DictionaryPage() {
           title: i18n.t("options.dictionary.webdav.connected"),
         })
       } else {
-        const msg =
-          reply.error?.code === "AUTH_FAILED"
-            ? i18n.t("options.dictionary.webdav.authFailed")
-            : reply.error?.message || "Connection failed"
+        const msg = getWebdavErrorMessage(reply.error, "Connection failed")
         setWebdavError(msg)
         toastManager.add({
           type: "error",
@@ -469,22 +502,7 @@ export function DictionaryPage() {
         })
         void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
       } else if (reply && !reply.ok) {
-        let msg = reply.error?.message || "Sync failed"
-        if (reply.error?.code === "AUTH_FAILED") {
-          msg = i18n.t("options.dictionary.webdav.authFailed")
-        } else if (reply.error?.code === "CORRUPTED_REMOTE") {
-          msg = i18n.t("options.dictionary.webdav.corruptedRemote")
-        } else if (reply.error?.code === "UNSUPPORTED_VERSION") {
-          msg = i18n.t("options.dictionary.webdav.unsupportedVersion")
-        } else if (reply.error?.code === "INTEGRITY_CONFLICT") {
-          msg = i18n.t("options.dictionary.webdav.integrityConflict")
-        } else if (reply.error?.code === "BUDGET_EXCEEDED") {
-          msg = i18n.t("options.dictionary.webdav.budgetExceeded")
-        } else if (reply.error?.code === "CONDITION_FAILED_MAX_RETRIES") {
-          msg = i18n.t("options.dictionary.webdav.conditionRetryExceeded")
-        } else if (reply.error?.code === "CONDITION_NOT_SUPPORTED") {
-          msg = i18n.t("options.dictionary.webdav.conditionNotSupported")
-        }
+        const msg = getWebdavErrorMessage(reply.error, "Sync failed")
         setWebdavError(msg)
         toastManager.add({
           type: "error",
@@ -683,7 +701,11 @@ export function DictionaryPage() {
               {(syncState.phase === "paused" || syncState.phase === "error") && (
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <div className="text-destructive">
-                    {syncState.lastError?.message || syncState.pausedReason}
+                    {getWebdavErrorMessage(
+                      syncState.lastError ||
+                        (syncState.pausedReason ? { code: syncState.pausedReason } : null),
+                      syncState.lastError?.message || syncState.pausedReason || undefined,
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {syncState.pausedReason === "CONDITION_NOT_SUPPORTED" && (
