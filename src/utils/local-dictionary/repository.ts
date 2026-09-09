@@ -1365,4 +1365,12 @@ export class LocalDictionaryRepository {
       }
     }
   }
+
+  async getPendingSyncChangesCount(): Promise<number> {
+    try {
+      return await this.db.syncChanges.count()
+    } catch {
+      return 0
+    }
+  }
 }

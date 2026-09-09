@@ -27,7 +27,10 @@ import { setupEdgeTTSMessageHandlers } from "./edge-tts"
 import { setupHostedAiStatusHandler } from "./hosted-ai-status"
 import { setupIframeInjection } from "./iframe-injection"
 import { setupLLMGenerateTextMessageHandlers } from "./llm-generate-text"
-import { setupLocalDictionaryMessageHandlers } from "./local-dictionary"
+import {
+  setupLocalDictionaryMessageHandlers,
+  setupLocalDictionarySyncEngine,
+} from "./local-dictionary"
 import { initMockData } from "./mock-data"
 import { newUserGuide } from "./new-user-guide"
 import { setupNotebasePendingSaveProcessor } from "./notebase-pending-save"
@@ -127,6 +130,7 @@ export default defineBackground({
     // Synchronous: all translation and summary handlers register in the first turn of
     // the SW so wake-triggering messages are never dropped during init.
     setupLocalDictionaryMessageHandlers()
+    setupLocalDictionarySyncEngine()
     setupPageTranslationHandlers()
     setupSubtitlesTranslationHandlers()
     setupVideoSummaryHandlers()

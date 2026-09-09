@@ -172,6 +172,26 @@ options:
       integrityConflict: 检测到数据完整性冲突，已暂停同步。
       budgetExceeded: 快照文件超出 50MB 预算上限，已暂停同步。
       conditionRetryExceeded: 并发上传条件冲突已达重试上限，请稍后重试。
+      conditionNotSupported: 远端 WebDAV 服务不支持条件请求 (ETag / If-Match)。
+      status: 同步状态
+      phaseIdle: 空闲
+      phaseSyncing: 同步中
+      phasePaused: 已暂停
+      phaseError: 同步异常
+      lastSuccess: 最近成功
+      neverSynced: 从未同步
+      nextRetry: 下次重试
+      pendingChanges: 待同步变更
+      retryNow: 立即重试
+      forceOverwriteTitle: 远端服务不支持条件请求
+      forceOverwriteDesc: 该 WebDAV 服务不支持条件请求头。直接上传可能会覆盖其他设备的并发修改。只有在您确认无其他设备冲突时，才建议手动覆盖。
+      forceOverwriteConfirm: 强制覆盖远端
+      remoteSummaryTitle: 远端快照摘要
+      remoteRecords: 词条数
+      remoteConflicts: 冲突保留数
+      remoteUpdatedAt: 远端更新时间
+      remoteNotExists: 远端文件尚不存在
+
   product:
     roadmap: 路线图
   helpAndCommunity:

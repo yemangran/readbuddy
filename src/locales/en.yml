@@ -172,6 +172,26 @@ options:
       integrityConflict: Data integrity violation detected. Sync paused.
       budgetExceeded: Snapshot exceeds 50MB size budget. Sync paused.
       conditionRetryExceeded: "Concurrent upload conflict: retry budget exceeded."
+      conditionNotSupported: "Remote WebDAV server does not support conditional headers (ETag / If-Match)."
+      status: Sync Status
+      phaseIdle: Idle
+      phaseSyncing: Syncing
+      phasePaused: Paused
+      phaseError: Error
+      lastSuccess: Last Success
+      neverSynced: Never
+      nextRetry: Next Retry
+      pendingChanges: Pending Changes
+      retryNow: Retry Now
+      forceOverwriteTitle: Server does not support conditional requests
+      forceOverwriteDesc: This WebDAV server does not support conditional headers. Overwriting directly may silently overwrite changes from another device. Only continue if you are sure there are no conflicting edits.
+      forceOverwriteConfirm: Force Overwrite Remote
+      remoteSummaryTitle: Remote Snapshot Summary
+      remoteRecords: Records
+      remoteConflicts: Retained Conflicts
+      remoteUpdatedAt: Remote Updated At
+      remoteNotExists: Remote file does not exist yet
+
   product:
     roadmap: Roadmap
   helpAndCommunity:

@@ -10,11 +10,13 @@ import type {
   ListOutput,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
+  RemoteSnapshotSummary,
   RestoreConflictVersionInput,
   UpdateCellsInput,
   WebdavConfig,
   WebdavError,
   WebdavSyncResult,
+  WebdavSyncState,
 } from "./types"
 import { storage } from "#imports"
 import { sendMessage } from "@/utils/message"
@@ -130,4 +132,30 @@ export async function syncWebdav(options?: {
   forceUnconditional?: boolean
 }): Promise<WebdavSyncResult> {
   return await sendMessage("dictionarySyncWebdav", options)
+}
+
+export async function getWebdavSyncState(): Promise<WebdavSyncState> {
+  return await sendMessage("dictionaryGetWebdavSyncState")
+}
+
+export async function triggerWebdavSync(options?: {
+  forceUnconditional?: boolean
+  resetPaused?: boolean
+  reason?: "debounce" | "startup" | "online" | "alarm" | "manual" | "retry"
+}): Promise<WebdavSyncResult | null> {
+  return await sendMessage("dictionaryTriggerWebdavSync", options)
+}
+
+export async function getRemoteWebdavSummary(): Promise<
+  { ok: true; summary: RemoteSnapshotSummary } | { ok: false; error: WebdavError }
+> {
+  return await sendMessage("dictionaryGetRemoteWebdavSummary")
+}
+
+export function watchWebdavSyncState(
+  callback: (state: WebdavSyncState | null) => void,
+): () => void {
+  return storage.watch<WebdavSyncState>("local:webdavSyncState", (newState) => {
+    callback(newState)
+  })
 }

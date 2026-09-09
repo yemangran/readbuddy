@@ -1,4 +1,11 @@
-import type { DictionarySnapshotV1, WebdavConfig, WebdavError, WebdavSyncResult } from "./types"
+import type {
+  DictionarySnapshotV1,
+  RemoteSnapshotSummary,
+  WebdavConfig,
+  WebdavError,
+  WebdavSyncResult,
+  WebdavSyncState,
+} from "./types"
 import { browser, storage } from "#imports"
 import { logger } from "@/utils/logger"
 import { type LocalDictionaryRepository } from "./repository"
@@ -9,7 +16,47 @@ import {
 } from "./snapshot"
 
 export const WEBDAV_CONFIG_STORAGE_KEY = "local:webdavConfig"
+export const WEBDAV_SYNC_STATE_STORAGE_KEY = "local:webdavSyncState"
 export const MAX_CONDITIONAL_RETRIES = 3
+
+export const INITIAL_WEBDAV_SYNC_STATE: WebdavSyncState = {
+  phase: "idle",
+  lastSuccessTime: null,
+  lastAttemptTime: null,
+  nextRetryTime: null,
+  retryCount: 0,
+  pendingChangesCount: 0,
+  lastError: null,
+  pausedReason: null,
+}
+
+export async function getStoredWebdavSyncState(): Promise<WebdavSyncState> {
+  try {
+    const state = await storage.getItem<WebdavSyncState>(WEBDAV_SYNC_STATE_STORAGE_KEY)
+    if (state && typeof state === "object") {
+      return {
+        ...INITIAL_WEBDAV_SYNC_STATE,
+        ...state,
+      }
+    }
+    return { ...INITIAL_WEBDAV_SYNC_STATE }
+  } catch (error) {
+    logger.warn("[WebDAV] Failed to read stored WebDAV sync state", error)
+    return { ...INITIAL_WEBDAV_SYNC_STATE }
+  }
+}
+
+export async function saveStoredWebdavSyncState(
+  state: Partial<WebdavSyncState>,
+): Promise<WebdavSyncState> {
+  const current = await getStoredWebdavSyncState()
+  const updated: WebdavSyncState = {
+    ...current,
+    ...state,
+  }
+  await storage.setItem<WebdavSyncState>(WEBDAV_SYNC_STATE_STORAGE_KEY, updated)
+  return updated
+}
 
 export function normalizeWebdavEndpoint(endpoint: string): string {
   const trimmed = endpoint.trim()
@@ -351,12 +398,14 @@ export async function syncWithWebdav(
       "Content-Type": "application/json; charset=utf-8",
     }
 
-    if (remoteExists) {
-      if (remoteEtag) {
-        putHeaders["If-Match"] = remoteEtag
+    if (!options?.forceUnconditional) {
+      if (remoteExists) {
+        if (remoteEtag) {
+          putHeaders["If-Match"] = remoteEtag
+        }
+      } else {
+        putHeaders["If-None-Match"] = "*"
       }
-    } else {
-      putHeaders["If-None-Match"] = "*"
     }
 
     let putRes: Response
@@ -453,5 +502,101 @@ export async function syncWithWebdav(
       message: `Concurrency condition failed: exceeded retry limit of ${maxRetries}`,
       retryable: true,
     },
+  }
+}
+
+export async function fetchRemoteSnapshotSummary(
+  config: WebdavConfig,
+  fetchFn: typeof fetch = globalThis.fetch,
+): Promise<{ ok: true; summary: RemoteSnapshotSummary } | { ok: false; error: WebdavError }> {
+  let fileUrl: string
+  try {
+    fileUrl = getWebdavFileUrl(config.endpoint)
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: {
+        code: "NETWORK_ERROR",
+        message: err?.message || "Invalid WebDAV endpoint URL",
+        retryable: false,
+      },
+    }
+  }
+
+  const authHeader = getWebdavAuthHeader(config.username, config.password)
+
+  try {
+    const res = await fetchFn(fileUrl, {
+      method: "GET",
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json, text/plain, */*",
+      },
+    })
+
+    if (res.status === 404) {
+      return {
+        ok: true,
+        summary: {
+          exists: false,
+        },
+      }
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      return {
+        ok: false,
+        error: {
+          code: "AUTH_FAILED",
+          message: "Authentication failed. Invalid username or password.",
+          retryable: false,
+        },
+      }
+    }
+
+    if (res.status !== 200) {
+      return {
+        ok: false,
+        error: {
+          code: "NETWORK_ERROR",
+          message: `Server returned HTTP ${res.status}`,
+          retryable: true,
+        },
+      }
+    }
+
+    const etag = res.headers.get("etag") || res.headers.get("ETag")
+    const text = await res.text()
+    const validation = parseAndValidateSnapshot(text)
+    if (!validation.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "CORRUPTED_REMOTE",
+          message: validation.error,
+          retryable: false,
+        },
+      }
+    }
+
+    return {
+      ok: true,
+      summary: {
+        exists: true,
+        etag,
+        updatedAt: validation.snapshot.updatedAt,
+        recordCount: validation.snapshot.vocabularies.length,
+        conflictCount: validation.snapshot.conflictVersions.length,
+      },
+    }
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: {
+        code: "NETWORK_ERROR",
+        message: err?.message || "Failed to fetch remote snapshot summary",
+        retryable: true,
+      },
+    }
   }
 }

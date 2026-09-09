@@ -24,6 +24,10 @@ const saveWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const clearWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const testWebdavConnectionMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const syncWebdavMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const getWebdavSyncStateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const triggerWebdavSyncMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const getRemoteWebdavSummaryMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const watchWebdavSyncStateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 
 vi.mock("file-saver", () => ({
   saveAs: vi.fn<() => void>(),
@@ -44,6 +48,10 @@ vi.mock("@/utils/local-dictionary/client", () => ({
   clearWebdavConfig: clearWebdavConfigMock,
   testWebdavConnection: testWebdavConnectionMock,
   syncWebdav: syncWebdavMock,
+  getWebdavSyncState: getWebdavSyncStateMock,
+  triggerWebdavSync: triggerWebdavSyncMock,
+  getRemoteWebdavSummary: getRemoteWebdavSummaryMock,
+  watchWebdavSyncState: watchWebdavSyncStateMock,
 }))
 
 const mockRecords: LocalDictionaryRecord[] = [
@@ -97,6 +105,22 @@ describe("DictionaryPage", () => {
     clearWebdavConfigMock.mockResolvedValue({ ok: true })
     testWebdavConnectionMock.mockResolvedValue({ ok: true })
     syncWebdavMock.mockResolvedValue({ ok: true })
+    getWebdavSyncStateMock.mockResolvedValue({
+      phase: "idle",
+      lastSuccessTime: null,
+      lastAttemptTime: null,
+      nextRetryTime: null,
+      retryCount: 0,
+      pendingChangesCount: 0,
+      lastError: null,
+      pausedReason: null,
+    })
+    triggerWebdavSyncMock.mockResolvedValue({ ok: true })
+    getRemoteWebdavSummaryMock.mockResolvedValue({
+      ok: true,
+      summary: { exists: true, recordCount: 5, conflictCount: 0, updatedAt: 1000 },
+    })
+    watchWebdavSyncStateMock.mockReturnValue(() => {})
   })
 
   it("renders empty state when there are no records", async () => {
@@ -352,7 +376,84 @@ describe("DictionaryPage", () => {
     fireEvent.click(syncBtn)
 
     await waitFor(() => {
-      expect(syncWebdavMock).toHaveBeenCalledTimes(1)
+      expect(triggerWebdavSyncMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it("displays sync status dashboard when configured", async () => {
+    getWebdavConfigMock.mockResolvedValue({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "myuser",
+      password: "mypassword",
+    })
+    getWebdavSyncStateMock.mockResolvedValue({
+      phase: "syncing",
+      lastSuccessTime: 1700000000000,
+      lastAttemptTime: 1700000001000,
+      nextRetryTime: null,
+      retryCount: 0,
+      pendingChangesCount: 3,
+      lastError: null,
+      pausedReason: null,
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.status"))).toBeInTheDocument()
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.phaseSyncing"))).toBeInTheDocument()
+      expect(screen.getByText("3")).toBeInTheDocument()
+    })
+  })
+
+  it("handles CONDITION_NOT_SUPPORTED with force overwrite confirmation dialog", async () => {
+    getWebdavConfigMock.mockResolvedValue({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "myuser",
+      password: "mypassword",
+    })
+    getWebdavSyncStateMock.mockResolvedValue({
+      phase: "paused",
+      lastSuccessTime: null,
+      lastAttemptTime: 1700000000000,
+      nextRetryTime: null,
+      retryCount: 1,
+      pendingChangesCount: 1,
+      lastError: {
+        code: "CONDITION_NOT_SUPPORTED",
+        message: "Server does not support conditional headers",
+        retryable: false,
+      },
+      pausedReason: "CONDITION_NOT_SUPPORTED",
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.phasePaused"))).toBeInTheDocument()
+      expect(screen.getByLabelText("webdav-force-overwrite")).toBeInTheDocument()
+    })
+
+    const overwriteBtn = screen.getByLabelText("webdav-force-overwrite")
+    fireEvent.click(overwriteBtn)
+
+    await waitFor(() => {
+      expect(getRemoteWebdavSummaryMock).toHaveBeenCalledTimes(1)
+      expect(
+        screen.getByText(i18n.t("options.dictionary.webdav.forceOverwriteTitle")),
+      ).toBeInTheDocument()
+    })
+
+    const confirmBtn = screen.getByLabelText("confirm-force-overwrite")
+    fireEvent.click(confirmBtn)
+
+    await waitFor(() => {
+      expect(triggerWebdavSyncMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          forceUnconditional: true,
+          resetPaused: true,
+        }),
+      )
     })
   })
 })

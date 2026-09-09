@@ -11,9 +11,11 @@ import {
   previewDictionaryImport,
   restoreConflictVersionAsNew,
   updateDictionaryCells,
-  getWebdavConfig,
-  saveWebdavConfig,
   clearWebdavConfig,
+  getRemoteWebdavSummary,
+  getWebdavConfig,
+  getWebdavSyncState,
+  saveWebdavConfig,
 } from "@/utils/local-dictionary/client"
 import { setupLocalDictionaryMessageHandlers } from "../local-dictionary"
 import "fake-indexeddb/auto"
@@ -159,5 +161,17 @@ describe("Background Local Dictionary Messaging", () => {
     const clearRes = await clearWebdavConfig()
     expect(clearRes.ok).toBe(true)
     expect(await getWebdavConfig()).toBeNull()
+
+    // 11. WebDAV sync state messaging
+    const syncState = await getWebdavSyncState()
+    expect(syncState).toBeDefined()
+    expect(syncState.phase).toBe("idle")
+
+    // 12. Remote summary when not configured
+    const summaryRes = await getRemoteWebdavSummary()
+    expect(summaryRes).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "AUTH_FAILED" }),
+    })
   })
 })

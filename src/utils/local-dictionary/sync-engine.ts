@@ -1,0 +1,306 @@
+import type { LocalDictionaryRepository } from "./repository"
+import type { WebdavErrorCode, WebdavSyncResult, WebdavSyncState } from "./types"
+import { browser } from "#imports"
+import { logger } from "@/utils/logger"
+import {
+  getStoredWebdavConfig,
+  getStoredWebdavSyncState,
+  saveStoredWebdavSyncState,
+  syncWithWebdav,
+} from "./webdav"
+
+export const WEBDAV_SYNC_ALARM_NAME = "readfrog-webdav-sync"
+export const DEFAULT_DEBOUNCE_MS = 1500
+export const INITIAL_BACKOFF_MS = 2000 // 2s
+export const MAX_BACKOFF_MS = 60000 // 60s
+export const MAX_AUTO_RETRIES = 5
+
+export const UNRECOVERABLE_ERROR_CODES: Set<WebdavErrorCode> = new Set([
+  "AUTH_FAILED",
+  "CORRUPTED_REMOTE",
+  "UNSUPPORTED_VERSION",
+  "INTEGRITY_CONFLICT",
+  "BUDGET_EXCEEDED",
+  "CONDITION_NOT_SUPPORTED",
+  "PERMISSION_DENIED",
+])
+
+export function calculateExponentialBackoff(
+  retryCount: number,
+  baseMs: number = INITIAL_BACKOFF_MS,
+  maxMs: number = MAX_BACKOFF_MS,
+): number {
+  const backoff = baseMs * Math.pow(2, Math.max(0, retryCount))
+  return Math.min(backoff, maxMs)
+}
+
+export class WebdavSyncEngine {
+  private isRunning = false
+  private hasPendingSync = false
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null
+  private backoffTimer: ReturnType<typeof setTimeout> | null = null
+
+  constructor(
+    private readonly getRepository: () => LocalDictionaryRepository,
+    private readonly options?: {
+      debounceMs?: number
+      baseBackoffMs?: number
+      maxBackoffMs?: number
+      maxAutoRetries?: number
+      fetchFn?: typeof fetch
+      onStateChange?: (state: WebdavSyncState) => void
+    },
+  ) {}
+
+  /**
+   * Called when local database changes occur (debounced auto sync)
+   */
+  scheduleDebouncedSync(delayMs: number = this.options?.debounceMs ?? DEFAULT_DEBOUNCE_MS): void {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+    }
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = null
+      void this.triggerSync({ reason: "debounce" })
+    }, delayMs)
+  }
+
+  /**
+   * Main entry point to trigger a sync task.
+   */
+  async triggerSync(triggerOptions?: {
+    reason?: "debounce" | "startup" | "online" | "alarm" | "manual" | "retry"
+    forceUnconditional?: boolean
+    resetPaused?: boolean
+  }): Promise<WebdavSyncResult | null> {
+    const config = await getStoredWebdavConfig()
+    if (!config) {
+      logger.info("[WebdavSyncEngine] Skipping sync: no WebDAV configuration")
+      return null
+    }
+
+    // Mutex: If a sync is already running, mark pending and return
+    if (this.isRunning) {
+      this.hasPendingSync = true
+      return null
+    }
+
+    this.isRunning = true
+    const currentState = await getStoredWebdavSyncState()
+
+    // If currently paused, only manual sync or explicit reset can unpause
+    if (currentState.phase === "paused") {
+      if (!triggerOptions?.resetPaused && triggerOptions?.reason !== "manual") {
+        logger.info(
+          `[WebdavSyncEngine] Skipping sync: engine is paused (${currentState.pausedReason})`,
+        )
+        this.isRunning = false
+        return null
+      }
+    }
+
+    // Clear any active timers
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+      this.debounceTimer = null
+    }
+    if (this.backoffTimer) {
+      clearTimeout(this.backoffTimer)
+      this.backoffTimer = null
+    }
+
+    const repo = this.getRepository()
+    let pendingCount = 0
+    try {
+      pendingCount = await repo.getPendingSyncChangesCount()
+    } catch {
+      // ignore
+    }
+
+    // Update state to syncing
+    const syncingState = await saveStoredWebdavSyncState({
+      phase: "syncing",
+      lastAttemptTime: Date.now(),
+      pendingChangesCount: pendingCount,
+      pausedReason:
+        triggerOptions?.resetPaused || triggerOptions?.reason === "manual"
+          ? null
+          : currentState.pausedReason,
+      lastError:
+        triggerOptions?.resetPaused || triggerOptions?.reason === "manual"
+          ? null
+          : currentState.lastError,
+    })
+    this.options?.onStateChange?.(syncingState)
+
+    let result: WebdavSyncResult
+    try {
+      result = await syncWithWebdav(
+        repo,
+        config,
+        { forceUnconditional: triggerOptions?.forceUnconditional },
+        this.options?.fetchFn,
+      )
+    } catch (err: any) {
+      result = {
+        ok: false,
+        error: {
+          code: "NETWORK_ERROR",
+          message: err?.message || "Unexpected sync error",
+          retryable: true,
+        },
+      }
+    } finally {
+      this.isRunning = false
+    }
+
+    // Refresh pending changes count
+    try {
+      pendingCount = await repo.getPendingSyncChangesCount()
+    } catch {
+      // ignore
+    }
+
+    if (result.ok) {
+      // Sync succeeded! Reset backoff and errors
+      const successState = await saveStoredWebdavSyncState({
+        phase: "idle",
+        lastSuccessTime: Date.now(),
+        nextRetryTime: null,
+        retryCount: 0,
+        pendingChangesCount: pendingCount,
+        lastError: null,
+        pausedReason: null,
+      })
+      this.options?.onStateChange?.(successState)
+
+      // Cancel any browser alarm
+      try {
+        if (browser?.alarms?.clear) {
+          await browser.alarms.clear(WEBDAV_SYNC_ALARM_NAME)
+        }
+      } catch {
+        // ignore
+      }
+
+      // If pending changes occurred while running, trigger another pass
+      if (this.hasPendingSync) {
+        this.hasPendingSync = false
+        void this.triggerSync({ reason: "debounce" })
+      }
+
+      return result
+    }
+
+    // Sync failed: check error
+    const err = result.error!
+    const isUnrecoverable = UNRECOVERABLE_ERROR_CODES.has(err.code)
+
+    if (isUnrecoverable) {
+      // Unrecoverable / paused error (auth failed, corrupted, unsupported version, etc.)
+      const pausedState = await saveStoredWebdavSyncState({
+        phase: "paused",
+        pausedReason: err.code,
+        lastError: err,
+        nextRetryTime: null,
+        pendingChangesCount: pendingCount,
+      })
+      this.options?.onStateChange?.(pausedState)
+      try {
+        if (browser?.alarms?.clear) {
+          await browser.alarms.clear(WEBDAV_SYNC_ALARM_NAME)
+        }
+      } catch {
+        // ignore
+      }
+      return result
+    }
+
+    // Recoverable error: retry with exponential backoff
+    const nextRetryCount = currentState.retryCount + 1
+    const maxRetries = this.options?.maxAutoRetries ?? MAX_AUTO_RETRIES
+
+    if (nextRetryCount > maxRetries) {
+      // Max auto retries reached: report error
+      const errorState = await saveStoredWebdavSyncState({
+        phase: "error",
+        lastError: err,
+        pausedReason: err.code,
+        nextRetryTime: null,
+        retryCount: nextRetryCount,
+        pendingChangesCount: pendingCount,
+      })
+      this.options?.onStateChange?.(errorState)
+      return result
+    }
+
+    const backoffMs = calculateExponentialBackoff(
+      nextRetryCount,
+      this.options?.baseBackoffMs ?? INITIAL_BACKOFF_MS,
+      this.options?.maxBackoffMs ?? MAX_BACKOFF_MS,
+    )
+    const nextRetryTime = Date.now() + backoffMs
+
+    const retryState = await saveStoredWebdavSyncState({
+      phase: "error",
+      lastError: err,
+      retryCount: nextRetryCount,
+      nextRetryTime,
+      pendingChangesCount: pendingCount,
+    })
+    this.options?.onStateChange?.(retryState)
+
+    // Schedule timer
+    this.backoffTimer = setTimeout(() => {
+      this.backoffTimer = null
+      void this.triggerSync({ reason: "retry" })
+    }, backoffMs)
+
+    // Also register browser alarm for cross-Service-Worker recovery
+    try {
+      if (browser?.alarms?.create) {
+        const delayInMinutes = Math.max(0.1, backoffMs / (60 * 1000))
+        void browser.alarms.create(WEBDAV_SYNC_ALARM_NAME, {
+          delayInMinutes,
+        })
+      }
+    } catch {
+      // ignore
+    }
+
+    return result
+  }
+
+  /**
+   * Restores state upon Service Worker start or network recovery
+   */
+  async restoreAndCheckSchedule(): Promise<void> {
+    const config = await getStoredWebdavConfig()
+    if (!config) return
+
+    const state = await getStoredWebdavSyncState()
+
+    // If was syncing when worker died, reset to idle/error so it doesn't stay stuck
+    if (state.phase === "syncing") {
+      await saveStoredWebdavSyncState({ phase: "idle" })
+    }
+
+    if (state.phase === "paused") {
+      return
+    }
+
+    if (state.nextRetryTime && state.nextRetryTime > Date.now()) {
+      // Still within backoff window: schedule remaining timer
+      const remainingMs = Math.max(100, state.nextRetryTime - Date.now())
+      if (this.backoffTimer) clearTimeout(this.backoffTimer)
+      this.backoffTimer = setTimeout(() => {
+        this.backoffTimer = null
+        void this.triggerSync({ reason: "retry" })
+      }, remainingMs)
+      return
+    }
+
+    // Otherwise, trigger startup sync
+    void this.triggerSync({ reason: "startup" })
+  }
+}

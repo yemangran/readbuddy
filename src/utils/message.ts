@@ -34,10 +34,12 @@ import type {
   LocalDictionaryRecord,
   PortableDictionaryRecord,
   RestoreConflictVersionInput,
+  RemoteSnapshotSummary,
   UpdateCellsInput,
   WebdavConfig,
   WebdavError,
   WebdavSyncResult,
+  WebdavSyncState,
 } from "@/utils/local-dictionary/types"
 import type { PromptableProviderRef, SerializableProviderRef } from "@/utils/providers/provider-ref"
 import type { EdgeTTSVoice } from "@/utils/server/edge-tts/types"
@@ -223,6 +225,15 @@ interface ProtocolMap {
     data?: WebdavConfig,
   ) => Promise<{ ok: boolean; error?: WebdavError }>
   dictionarySyncWebdav: (data?: { forceUnconditional?: boolean }) => Promise<WebdavSyncResult>
+  dictionaryGetWebdavSyncState: () => Promise<WebdavSyncState>
+  dictionaryTriggerWebdavSync: (data?: {
+    forceUnconditional?: boolean
+    resetPaused?: boolean
+    reason?: "debounce" | "startup" | "online" | "alarm" | "manual" | "retry"
+  }) => Promise<WebdavSyncResult | null>
+  dictionaryGetRemoteWebdavSummary: () => Promise<
+    { ok: true; summary: RemoteSnapshotSummary } | { ok: false; error: WebdavError }
+  >
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>()

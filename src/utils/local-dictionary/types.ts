@@ -221,3 +221,24 @@ export interface ApplySyncMergeResult {
   mergedSnapshot: DictionarySnapshotV1
   needsRemoteUpload: boolean
 }
+
+export type WebdavSyncPhase = "idle" | "syncing" | "paused" | "error"
+
+export interface WebdavSyncState {
+  phase: WebdavSyncPhase
+  lastSuccessTime: number | null
+  lastAttemptTime: number | null
+  nextRetryTime: number | null
+  retryCount: number
+  pendingChangesCount: number
+  lastError: WebdavError | null
+  pausedReason: WebdavErrorCode | null
+}
+
+export interface RemoteSnapshotSummary {
+  exists: boolean
+  updatedAt?: number
+  recordCount?: number
+  conflictCount?: number
+  etag?: string | null
+}

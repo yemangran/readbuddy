@@ -3,6 +3,7 @@ import type {
   ImportPreviewResult,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
+  RemoteSnapshotSummary,
 } from "@/utils/local-dictionary/types"
 import { Icon } from "@iconify/react"
 import { useQuery } from "@tanstack/react-query"
@@ -42,16 +43,19 @@ import {
   commitDictionaryImport,
   deleteDictionaryRecord,
   exportDictionarySnapshot,
+  getRemoteWebdavSummary,
   getWebdavConfig,
+  getWebdavSyncState,
   listConflictVersions,
   listDictionaryRecords,
   previewDictionaryImport,
   restoreConflictVersionAsNew,
   saveWebdavConfig,
-  syncWebdav,
   testWebdavConnection,
+  triggerWebdavSync,
   updateDictionaryCells,
   watchDictionaryChangeSignal,
+  watchWebdavSyncState,
 } from "@/utils/local-dictionary/client"
 import { parseAndValidateSnapshot } from "@/utils/local-dictionary/snapshot"
 import { requestWebdavHostPermission } from "@/utils/local-dictionary/webdav"
@@ -96,6 +100,35 @@ export function DictionaryPage() {
   const [isTestingWebdav, setIsTestingWebdav] = useState(false)
   const [isSyncingWebdav, setIsSyncingWebdav] = useState(false)
   const [webdavError, setWebdavError] = useState<string | null>(null)
+  const [isForceOverwriteDialogOpen, setIsForceOverwriteDialogOpen] = useState(false)
+  const [isFetchingRemoteSummary, setIsFetchingRemoteSummary] = useState(false)
+  const [remoteSummary, setRemoteSummary] = useState<RemoteSnapshotSummary | null>(null)
+
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
+
+  const { data: syncState } = useQuery({
+    queryKey: ["local-dictionary-webdav-sync-state"],
+    queryFn: async () => {
+      return await getWebdavSyncState()
+    },
+    refetchInterval: 2000,
+  })
+
+  useEffect(() => {
+    if (!syncState?.nextRetryTime) {
+      return undefined
+    }
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [syncState?.nextRetryTime])
+
+  useEffect(() => {
+    return watchWebdavSyncState(() => {
+      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-webdav-sync-state"] })
+    })
+  }, [])
 
   useEffect(() => {
     void getWebdavConfig().then((config) => {
@@ -416,18 +449,26 @@ export function DictionaryPage() {
     }
   }
 
-  const handleSyncWebdav = async () => {
+  const handleSyncWebdav = async (options?: {
+    forceUnconditional?: boolean
+    resetPaused?: boolean
+  }) => {
     setIsSyncingWebdav(true)
     setWebdavError(null)
     try {
-      const reply = await syncWebdav()
-      if (reply.ok) {
+      const reply = await triggerWebdavSync({
+        reason: "manual",
+        forceUnconditional: options?.forceUnconditional,
+        resetPaused: options?.resetPaused ?? true,
+      })
+      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-webdav-sync-state"] })
+      if (reply?.ok) {
         toastManager.add({
           type: "success",
           title: i18n.t("options.dictionary.webdav.syncSuccess"),
         })
         void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
-      } else {
+      } else if (reply && !reply.ok) {
         let msg = reply.error?.message || "Sync failed"
         if (reply.error?.code === "AUTH_FAILED") {
           msg = i18n.t("options.dictionary.webdav.authFailed")
@@ -441,6 +482,8 @@ export function DictionaryPage() {
           msg = i18n.t("options.dictionary.webdav.budgetExceeded")
         } else if (reply.error?.code === "CONDITION_FAILED_MAX_RETRIES") {
           msg = i18n.t("options.dictionary.webdav.conditionRetryExceeded")
+        } else if (reply.error?.code === "CONDITION_NOT_SUPPORTED") {
+          msg = i18n.t("options.dictionary.webdav.conditionNotSupported")
         }
         setWebdavError(msg)
         toastManager.add({
@@ -451,6 +494,30 @@ export function DictionaryPage() {
     } finally {
       setIsSyncingWebdav(false)
     }
+  }
+
+  const handleOpenForceOverwrite = async () => {
+    setIsFetchingRemoteSummary(true)
+    setIsForceOverwriteDialogOpen(true)
+    setRemoteSummary(null)
+    try {
+      const res = await getRemoteWebdavSummary()
+      if (res.ok) {
+        setRemoteSummary(res.summary)
+      } else {
+        toastManager.add({
+          type: "error",
+          title: res.error.message || "Failed to inspect remote snapshot",
+        })
+      }
+    } finally {
+      setIsFetchingRemoteSummary(false)
+    }
+  }
+
+  const handleConfirmForceOverwrite = async () => {
+    setIsForceOverwriteDialogOpen(false)
+    await handleSyncWebdav({ forceUnconditional: true, resetPaused: true })
   }
 
   const handleDisconnectWebdav = async () => {
@@ -495,7 +562,7 @@ export function DictionaryPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={handleSyncWebdav}
+                  onClick={() => handleSyncWebdav()}
                   disabled={isSyncingWebdav}
                   aria-label="webdav-sync-now"
                 >
@@ -554,6 +621,97 @@ export function DictionaryPage() {
               />
             </div>
           </div>
+
+          {isWebdavConfigured && syncState && (
+            <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs">
+              <div className="flex items-center justify-between font-semibold text-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Icon icon="tabler:activity" className="size-4 text-primary" />
+                  {i18n.t("options.dictionary.webdav.status")}
+                </span>
+                <Badge
+                  variant={
+                    syncState.phase === "syncing"
+                      ? "default"
+                      : syncState.phase === "paused"
+                        ? "destructive"
+                        : syncState.phase === "error"
+                          ? "outline"
+                          : "secondary"
+                  }
+                  className="text-xs uppercase"
+                >
+                  {syncState.phase === "syncing" &&
+                    i18n.t("options.dictionary.webdav.phaseSyncing")}
+                  {syncState.phase === "paused" && i18n.t("options.dictionary.webdav.phasePaused")}
+                  {syncState.phase === "error" && i18n.t("options.dictionary.webdav.phaseError")}
+                  {syncState.phase === "idle" && i18n.t("options.dictionary.webdav.phaseIdle")}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground sm:grid-cols-4">
+                <div>
+                  <span>{i18n.t("options.dictionary.webdav.lastSuccess")}: </span>
+                  <span className="font-medium text-foreground">
+                    {syncState.lastSuccessTime
+                      ? new Date(syncState.lastSuccessTime).toLocaleTimeString()
+                      : i18n.t("options.dictionary.webdav.neverSynced")}
+                  </span>
+                </div>
+                <div>
+                  <span>{i18n.t("options.dictionary.webdav.pendingChanges")}: </span>
+                  <span className="font-medium text-foreground">
+                    {syncState.pendingChangesCount ?? 0}
+                  </span>
+                </div>
+                <div>
+                  <span>{i18n.t("options.dictionary.webdav.nextRetry")}: </span>
+                  <span className="font-medium text-foreground">
+                    {syncState.nextRetryTime && syncState.nextRetryTime > currentTime
+                      ? `${Math.ceil((syncState.nextRetryTime - currentTime) / 1000)}s`
+                      : "-"}
+                  </span>
+                </div>
+                {syncState.retryCount > 0 && (
+                  <div>
+                    <span>Retries: </span>
+                    <span className="font-medium text-foreground">{syncState.retryCount}</span>
+                  </div>
+                )}
+              </div>
+
+              {(syncState.phase === "paused" || syncState.phase === "error") && (
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="text-destructive">
+                    {syncState.lastError?.message || syncState.pausedReason}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {syncState.pausedReason === "CONDITION_NOT_SUPPORTED" && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleOpenForceOverwrite}
+                        disabled={isSyncingWebdav}
+                        aria-label="webdav-force-overwrite"
+                      >
+                        {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSyncWebdav({ resetPaused: true })}
+                      disabled={isSyncingWebdav}
+                      aria-label="webdav-retry-sync"
+                    >
+                      <Icon icon="tabler:reload" className="mr-1 size-3.5" />
+                      {i18n.t("options.dictionary.webdav.retryNow")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {webdavError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
@@ -985,6 +1143,85 @@ export function DictionaryPage() {
               }
             >
               {i18n.t("options.dictionary.confirmImport")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Force Overwrite Confirmation Dialog */}
+      <Dialog open={isForceOverwriteDialogOpen} onOpenChange={setIsForceOverwriteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Icon icon="tabler:alert-triangle" className="size-5" />
+              {i18n.t("options.dictionary.webdav.forceOverwriteTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {i18n.t("options.dictionary.webdav.forceOverwriteDesc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-3 text-xs">
+            <div className="font-semibold text-foreground">
+              {i18n.t("options.dictionary.webdav.remoteSummaryTitle")}
+            </div>
+            {isFetchingRemoteSummary ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Icon icon="tabler:loader-2" className="size-4 animate-spin" />
+                <span>Loading...</span>
+              </div>
+            ) : remoteSummary ? (
+              remoteSummary.exists ? (
+                <div className="grid grid-cols-2 gap-2 rounded border bg-muted/40 p-2.5">
+                  <div>
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.webdav.remoteRecords")}:{" "}
+                    </span>
+                    <span className="font-medium">{remoteSummary.recordCount ?? 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      {i18n.t("options.dictionary.webdav.remoteConflicts")}:{" "}
+                    </span>
+                    <span className="font-medium">{remoteSummary.conflictCount ?? 0}</span>
+                  </div>
+                  {remoteSummary.updatedAt && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">
+                        {i18n.t("options.dictionary.webdav.remoteUpdatedAt")}:{" "}
+                      </span>
+                      <span className="font-medium">
+                        {new Date(remoteSummary.updatedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-muted-foreground">
+                  {i18n.t("options.dictionary.webdav.remoteNotExists")}
+                </div>
+              )
+            ) : (
+              <div className="text-muted-foreground">No remote summary available</div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsForceOverwriteDialogOpen(false)}
+            >
+              {i18n.t("options.dictionary.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleConfirmForceOverwrite}
+              disabled={isSyncingWebdav}
+              aria-label="confirm-force-overwrite"
+            >
+              {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
