@@ -12,20 +12,22 @@ export function SaveToLocalDictionaryButton({
   isRunning: boolean
   result: Record<string, unknown> | null
 }) {
-  const { save, isSaving } = useSaveToLocalDictionary()
+  const { save, isSaving, isSaved } = useSaveToLocalDictionary(result)
 
   const handleClick = () => {
-    if (!result) return
+    if (!result || isSaved || isSaving) return
     void save({ action, result })
   }
 
-  const isDisabled = isRunning || !result || isSaving
+  const isDisabled = isRunning || !result || isSaving || isSaved
 
   return (
     <Button type="button" size="sm" variant="outline" disabled={isDisabled} onClick={handleClick}>
       {isSaving
         ? i18n.t("action.saveToLocalDictionarySaving")
-        : i18n.t("action.saveToLocalDictionary")}
+        : isSaved
+          ? i18n.t("action.saveToLocalDictionarySaved")
+          : i18n.t("action.saveToLocalDictionary")}
     </Button>
   )
 }

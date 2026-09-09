@@ -123,10 +123,26 @@ export function DictionaryPage() {
     if (!editingRecord) return
     setIsSavingEdit(true)
     try {
+      const normalizedCells: Record<string, string | number | null> = {}
+      for (const col of editingRecord.columns) {
+        const val = editCells[col.id]
+        if (val === undefined || val === null || val === "") {
+          normalizedCells[col.id] = null
+        } else if (
+          col.config?.type === "number" ||
+          typeof editingRecord.cells[col.id] === "number"
+        ) {
+          const num = Number(val)
+          normalizedCells[col.id] = Number.isNaN(num) ? val : num
+        } else {
+          normalizedCells[col.id] = val
+        }
+      }
+
       const reply = await updateDictionaryCells({
         requestId: getRandomUUID(),
         id: editingRecord.id,
-        cells: editCells,
+        cells: normalizedCells,
         expectedRevision: editingRecord.localRevision,
       })
 
@@ -498,6 +514,7 @@ export function DictionaryPage() {
               <div key={col.id} className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-foreground">{col.name}</label>
                 <Input
+                  type={col.config?.type === "number" ? "number" : "text"}
                   value={String(editCells[col.id] ?? "")}
                   onChange={(e) =>
                     setEditCells((prev) => ({

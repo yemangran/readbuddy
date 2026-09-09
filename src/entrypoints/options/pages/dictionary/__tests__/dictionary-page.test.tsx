@@ -183,6 +183,67 @@ describe("DictionaryPage", () => {
     })
   })
 
+  it("opens edit modal and preserves numeric type when updating cells", async () => {
+    const recordWithNumber: LocalDictionaryRecord = {
+      id: "rec-num-1",
+      createdAt: 1000,
+      updatedAt: 2000,
+      deviceId: "dev-1",
+      localRevision: "rev-1",
+      actionId: "custom-action",
+      actionName: "Analysis",
+      outputSchema: [],
+      result: {},
+      columns: [
+        { id: "c-term", name: "Term", position: 0 },
+        { id: "c-count", name: "Count", position: 1, config: { type: "number" } },
+      ],
+      mappings: [],
+      cells: {
+        "c-term": "frog",
+        "c-count": 42,
+      },
+    }
+
+    listRecordsMock.mockResolvedValue({
+      ok: true,
+      data: { records: [recordWithNumber], total: 1, page: 1, pageSize: 15 },
+      changeSequence: 1,
+    })
+
+    updateCellsMock.mockResolvedValue({
+      ok: true,
+      data: recordWithNumber,
+      changeSequence: 2,
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("frog")).toBeInTheDocument()
+    })
+
+    const editBtn = screen.getByLabelText("edit-record")
+    fireEvent.click(editBtn)
+
+    expect(screen.getByText(i18n.t("options.dictionary.editTitle"))).toBeInTheDocument()
+
+    const countInput = screen.getByDisplayValue("42")
+    fireEvent.change(countInput, { target: { value: "99" } })
+
+    const saveBtn = screen.getByText(i18n.t("options.dictionary.save"))
+    fireEvent.click(saveBtn)
+
+    await waitFor(() => {
+      expect(updateCellsMock).toHaveBeenCalledTimes(1)
+    })
+
+    const callArgs = updateCellsMock.mock.calls[0]?.[0]
+    expect(callArgs.cells["c-count"]).toBe(99)
+    expect(typeof callArgs.cells["c-count"]).toBe("number")
+    expect(callArgs.cells["c-term"]).toBe("frog")
+  })
+
   it("handles import preview and confirmation", async () => {
     previewImportMock.mockResolvedValue({
       ok: true,

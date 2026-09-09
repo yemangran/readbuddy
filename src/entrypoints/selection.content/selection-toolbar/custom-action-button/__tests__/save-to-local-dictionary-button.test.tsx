@@ -138,4 +138,45 @@ describe("SaveToLocalDictionaryButton", () => {
     expect(callArgs.items[0].actionId).toBe("custom-grammar")
     expect(callArgs.items[0].cells["field-rule"]).toBe("Subjunctive mood")
   })
+
+  it("shows saved state and prevents duplicate saves on multiple clicks", async () => {
+    const { rerender } = render(
+      <SaveToLocalDictionaryButton
+        action={mockDictionaryAction}
+        isRunning={false}
+        result={{ Term: "hello", Definition: "a greeting" }}
+      />,
+    )
+
+    const button = screen.getByRole("button", { name: i18n.t("action.saveToLocalDictionary") })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(createDictionaryRecordsMock).toHaveBeenCalledTimes(1)
+    })
+
+    // Button should now show saved state and be disabled
+    const savedButton = screen.getByRole("button", {
+      name: i18n.t("action.saveToLocalDictionarySaved"),
+    })
+    expect(savedButton).toBeDisabled()
+
+    // Second click should be ignored
+    fireEvent.click(savedButton)
+    expect(createDictionaryRecordsMock).toHaveBeenCalledTimes(1)
+
+    // When result changes, button should re-enable and show initial text
+    rerender(
+      <SaveToLocalDictionaryButton
+        action={mockDictionaryAction}
+        isRunning={false}
+        result={{ Term: "world", Definition: "the earth" }}
+      />,
+    )
+
+    const newButton = screen.getByRole("button", {
+      name: i18n.t("action.saveToLocalDictionary"),
+    })
+    expect(newButton).toBeEnabled()
+  })
 })

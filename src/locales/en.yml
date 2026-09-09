@@ -1281,6 +1281,7 @@ action:
   customizeCustomAction: Customize $1 action
   saveToLocalDictionary: Save to Local
   saveToLocalDictionarySaving: Saving...
+  saveToLocalDictionarySaved: Saved
   saveToLocalDictionarySuccess: Saved to local dictionary
   saveToLocalDictionaryFailed: Failed to save to local dictionary
   saveToNotebase: Save to Notebase

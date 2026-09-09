@@ -54,8 +54,15 @@ export function buildLocalDictionaryItem(
   }
 }
 
-export function useSaveToLocalDictionary() {
+export function useSaveToLocalDictionary(currentResult?: Record<string, unknown> | null) {
   const [isSaving, setIsSaving] = useState(false)
+  const [prevResult, setPrevResult] = useState(currentResult)
+  const [isSaved, setIsSaved] = useState(false)
+
+  if (currentResult !== prevResult) {
+    setPrevResult(currentResult)
+    setIsSaved(false)
+  }
 
   const save = async ({
     action,
@@ -64,6 +71,7 @@ export function useSaveToLocalDictionary() {
     action: SelectionToolbarCustomAction
     result: Record<string, unknown>
   }): Promise<boolean> => {
+    if (isSaving || isSaved) return false
     setIsSaving(true)
     try {
       const item = buildLocalDictionaryItem(action, result)
@@ -74,6 +82,7 @@ export function useSaveToLocalDictionary() {
       })
 
       if (reply.ok) {
+        setIsSaved(true)
         toastManager.add({
           type: "success",
           title: i18n.t("action.saveToLocalDictionarySuccess"),
@@ -99,5 +108,5 @@ export function useSaveToLocalDictionary() {
     }
   }
 
-  return { save, isSaving }
+  return { save, isSaving, isSaved }
 }

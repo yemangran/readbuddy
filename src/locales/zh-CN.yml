@@ -1281,6 +1281,7 @@ action:
   customizeCustomAction: 定制“$1”动作
   saveToLocalDictionary: 保存到本地
   saveToLocalDictionarySaving: 保存中...
+  saveToLocalDictionarySaved: 已保存
   saveToLocalDictionarySuccess: 已保存到本地词典
   saveToLocalDictionaryFailed: 保存到本地词典失败
   saveToNotebase: 保存到笔记库
