@@ -30,7 +30,7 @@ import {
   fetchSubtitlesSummary,
 } from "@/utils/subtitles/processor/translator"
 import { downloadSubtitlesAsSrt } from "@/utils/subtitles/srt"
-import { showAiSubtitlesWallToast, showSubtitlesErrorToast } from "@/utils/subtitles/toast"
+import { showSubtitlesErrorToast } from "@/utils/subtitles/toast"
 import { requestVideoSummary, VIDEO_SUMMARY_QUERY_SCOPE } from "@/utils/subtitles/video-summary"
 import { queryClient } from "@/utils/tanstack-query"
 import {
@@ -62,25 +62,17 @@ const TOGGLE_SOURCE_SURFACE: Record<SubtitlesToggleSource, AnalyticsSurface> = {
 
 type SubtitlesFetcherFactories = {
   native: () => SubtitlesFetcher
-  ai?: () => SubtitlesFetcher
-}
-
-const LOADING_MESSAGE: Record<SubtitlesSource, string | undefined> = {
-  [SUBTITLES_SOURCE.NATIVE]: undefined,
-  [SUBTITLES_SOURCE.AI]: i18n.t("subtitles.loadingAiSubtitles"),
 }
 
 export interface SubtitlesProvidersAdapter {
   readonly embedded: boolean | undefined
   readonly containerShrinkRatio: ((container: HTMLElement) => number | null) | undefined
-  readonly supportsAiSubtitles: boolean
   getControlsConfig: () => ControlsConfig | undefined
   readonly supportsSidebar: boolean
   generateVideoSummary: (config: Config, videoId?: string | null) => Promise<string | null>
   hasSubtitlesAvailable: () => Promise<boolean>
   toggleSubtitlesManually: (enabled: boolean) => void
   toggleSubtitlesByShortcut: (enabled: boolean) => void
-  requestAiSubtitles: () => Promise<void>
   downloadSourceSubtitles: () => Promise<void>
   downloadTranslatedSubtitles: () => Promise<void>
 }
@@ -131,10 +123,6 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
     const currentVideoId = this.config.getVideoId?.() ?? null
     const knownVideoId = this.navigationVideoId ?? this.sessionVideoId ?? this.sourceVideoId
     return knownVideoId !== null && currentVideoId !== knownVideoId
-  }
-
-  get supportsAiSubtitles(): boolean {
-    return !!this.fetchers.ai
   }
 
   constructor({
@@ -591,19 +579,11 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
     }
   }
 
-  requestAiSubtitles = async (): Promise<void> => {
-    if (await this.config.isLiveContent?.()) {
-      showAiSubtitlesWallToast(i18n.t("subtitles.errors.aiLiveReplayUnsupported"))
-      return
-    }
-    return this.switchSubtitlesFetcher(SUBTITLES_SOURCE.AI)
-  }
-
   private async switchSubtitlesFetcher(
     next: SubtitlesSource,
     analyticsContext?: FeatureUsageContext,
   ): Promise<void> {
-    const make = this.fetchers[next]
+    const make = this.fetchers[next as keyof SubtitlesFetcherFactories]
     if (!make) {
       return
     }
@@ -622,11 +602,6 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
     this.subtitlesScheduler?.start()
     this.subtitlesScheduler?.show()
     this.hideNativeSubtitles()
-
-    const message = LOADING_MESSAGE[next]
-    if (message) {
-      this.subtitlesScheduler?.setState("loading", { message })
-    }
 
     const succeeded = await this.startTranslation(analyticsContext)
     if (operationId !== this.switchOperationId) {
@@ -751,7 +726,7 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
       this.sessionVideoId = currentVideoId
       this.subtitlesScheduler?.reset()
 
-      this.subtitlesScheduler?.setState("loading", { message: LOADING_MESSAGE[this.source] })
+      this.subtitlesScheduler?.setState("loading")
 
       await this.getOrLoadSourceSubtitles()
       this.sessionSubtitles = this.sourceSubtitles
@@ -788,17 +763,8 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       if (error instanceof ToastSubtitlesError) {
-        // The loading state has no auto-hide of its own (unlike "error"), so
-        // the toast branch has to clear it — otherwise the "Loading AI
-        // subtitles" pill stays on the player forever after a wall.
         this.subtitlesScheduler?.setState("idle")
-        // Only the AI request has a control on screen to point at; the source
-        // is still AI here because reverting to native happens after this.
-        if (this.source === SUBTITLES_SOURCE.AI) {
-          showAiSubtitlesWallToast(errorMessage, error.action)
-        } else {
-          showSubtitlesErrorToast(errorMessage, error.action)
-        }
+        showSubtitlesErrorToast(errorMessage, error.action)
       } else {
         this.subtitlesScheduler?.setState("error", {
           message: this.config.silentErrors ? "" : errorMessage,
