@@ -42,7 +42,6 @@ import {
   subtitlesPositionAtom,
   subtitlesSettingsPanelOpenAtom,
   subtitlesSettingsPanelViewAtom,
-  subtitlesSourceAtom,
   subtitlesStore,
 } from "./atoms"
 import { renderSubtitlesTranslateButton } from "./renderer/render-translate-button"
@@ -83,7 +82,6 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
   private fetchers: SubtitlesFetcherFactories
   private source: SubtitlesSource = SUBTITLES_SOURCE.NATIVE
   private fetcher: SubtitlesFetcher
-  private switchOperationId = 0
   private navigationReinitTimeoutId: ReturnType<typeof setTimeout> | null = null
   private hasPendingNavigationReset = false
   private trackChangeRefreshPromise: Promise<void> | null = null
@@ -255,7 +253,6 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
   }
 
   private resetForNavigation() {
-    this.switchOperationId++
     this.prepareSummaryForNavigation()
     // Keyed by video id already; this only stops them accumulating.
     queryClient.removeQueries({ queryKey: VIDEO_SUMMARY_QUERY_SCOPE })
@@ -268,7 +265,6 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
     // A pending old fetch may still mutate its own cache after cleanup.
     this.source = SUBTITLES_SOURCE.NATIVE
     this.fetcher = this.fetchers.native()
-    subtitlesStore.set(subtitlesSourceAtom, SUBTITLES_SOURCE.NATIVE)
     subtitlesStore.set(subtitlesSettingsPanelOpenAtom, false)
     subtitlesStore.set(subtitlesSettingsPanelViewAtom, ROOT_VIEW)
     this.showNativeSubtitles()
@@ -588,12 +584,9 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
       return
     }
 
-    const operationId = ++this.switchOperationId
-
     if (next !== this.source) {
       this.fetcher.cleanup()
       this.source = next
-      subtitlesStore.set(subtitlesSourceAtom, next)
       this.fetcher = make()
       this.clearSourceCache()
       this.clearRuntimeSession()
@@ -603,23 +596,7 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
     this.subtitlesScheduler?.show()
     this.hideNativeSubtitles()
 
-    const succeeded = await this.startTranslation(analyticsContext)
-    if (operationId !== this.switchOperationId) {
-      return
-    }
-    if (!succeeded && next !== SUBTITLES_SOURCE.NATIVE) {
-      this.revertToNativeSource()
-    }
-  }
-
-  private revertToNativeSource() {
-    this.fetcher.cleanup()
-    this.source = SUBTITLES_SOURCE.NATIVE
-    this.fetcher = this.fetchers.native()
-    subtitlesStore.set(subtitlesSourceAtom, SUBTITLES_SOURCE.NATIVE)
-    this.clearSourceCache()
-    this.clearRuntimeSession()
-    this.showNativeSubtitles()
+    await this.startTranslation(analyticsContext)
   }
 
   private async refreshSourceTrackIfNeeded(): Promise<void> {

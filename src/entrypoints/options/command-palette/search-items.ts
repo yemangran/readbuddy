@@ -442,13 +442,6 @@ export const SEARCH_ITEMS: SearchItem[] = [
     pageKey: "options.videoSubtitles.title",
   },
   {
-    sectionId: "subtitles-ai-quota",
-    route: "/video-subtitles",
-    titleKey: "options.videoSubtitles.aiQuota.title",
-    descriptionKey: "options.videoSubtitles.aiQuota.description",
-    pageKey: "options.videoSubtitles.title",
-  },
-  {
     // Its own page, drilled into from the Video Subtitles page's Subtitle style section.
     sectionId: "subtitles-style",
     route: "/video-subtitles/style",

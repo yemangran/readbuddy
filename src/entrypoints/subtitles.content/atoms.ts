@@ -1,10 +1,9 @@
 import type { ViewId } from "./ui/subtitles-settings-panel/views"
 import type { SectionId } from "./ui/subtitles-sidebar/sections"
-import type { SubtitlesSource } from "@/utils/constants/subtitles"
 import type { StateData, SubtitlesFragment, SubtitlesState } from "@/utils/subtitles/types"
 import { atom, createStore } from "jotai"
 import { configFieldsAtomMap } from "@/utils/atoms/config"
-import { DEFAULT_SUBTITLE_POSITION, SUBTITLES_SOURCE } from "@/utils/constants/subtitles"
+import { DEFAULT_SUBTITLE_POSITION } from "@/utils/constants/subtitles"
 import { hasRenderableSubtitleByMode, isAwaitingTranslation } from "@/utils/subtitles/display-rules"
 import { ROOT_VIEW } from "./ui/subtitles-settings-panel/views"
 import { DEFAULT_SECTION_ID } from "./ui/subtitles-sidebar/sections"
@@ -51,8 +50,6 @@ export const displaySubtitleAtom = atom((get): SubtitlesFragment | null => {
 export const subtitlesStateAtom = atom<StateData | null>(null)
 
 export const subtitlesVisibleAtom = atom<boolean>(false)
-
-export const subtitlesSourceAtom = atom<SubtitlesSource>(SUBTITLES_SOURCE.NATIVE)
 
 export const subtitlesSettingsPanelOpenAtom = atom<boolean>(false)
 
