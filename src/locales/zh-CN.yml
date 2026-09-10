@@ -164,10 +164,13 @@ options:
     createdAt: 创建时间
     definition: 释义
     sentence: 例句
+    pronounce: 朗读
     columns:
       action: 来源动作
       updatedAt: 更新时间
-      cells: 内容
+      cells: 词条与释义
+      sourceAndTime: 来源与时间
+      actions: 操作
     webdav:
       title: WebDAV 同步
       description: 使用通用 WebDAV 服务在多设备间安全同步本地离线词典。

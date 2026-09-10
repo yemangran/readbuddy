@@ -167,7 +167,38 @@ describe("DictionaryPage", () => {
       expect(screen.getByText("frog")).toBeInTheDocument()
       expect(screen.getByText("an amphibian")).toBeInTheDocument()
       expect(screen.getByText("Dictionary")).toBeInTheDocument()
+      expect(screen.getByLabelText("pronounce-frog")).toBeInTheDocument()
     })
+  })
+
+  it("handles word pronunciation button click", async () => {
+    const speakMock = vi.fn<() => void>()
+    const cancelMock = vi.fn<() => void>()
+    class MockUtterance {
+      text: string
+      lang = ""
+      constructor(text: string) {
+        this.text = text
+      }
+    }
+    vi.stubGlobal("SpeechSynthesisUtterance", MockUtterance)
+    vi.stubGlobal("speechSynthesis", {
+      speak: speakMock,
+      cancel: cancelMock,
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("pronounce-frog")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText("pronounce-frog"))
+
+    expect(cancelMock).toHaveBeenCalledTimes(1)
+    expect(speakMock).toHaveBeenCalledTimes(1)
+
+    vi.unstubAllGlobals()
   })
 
   it("handles export snapshot button click", async () => {

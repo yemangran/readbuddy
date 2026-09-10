@@ -154,6 +154,19 @@ function extractRecordFields(record: LocalDictionaryRecord): ExtractedRecordFiel
   }
 }
 
+function playWordPronunciation(text: string, e?: React.MouseEvent) {
+  e?.stopPropagation()
+  if (!text || typeof window === "undefined" || !("speechSynthesis" in window)) return
+  try {
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = "en-US"
+    window.speechSynthesis.speak(utterance)
+  } catch (err) {
+    console.error("Speech synthesis failed:", err)
+  }
+}
+
 export function DictionaryPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
@@ -650,63 +663,135 @@ export function DictionaryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[45%]">
+                <TableHead className="w-[60%]">
                   {i18n.t("options.dictionary.columns.cells")}
                 </TableHead>
-                <TableHead className="w-[20%]">
-                  {i18n.t("options.dictionary.columns.action")}
+                <TableHead className="w-[22%]">
+                  {i18n.t("options.dictionary.columns.sourceAndTime")}
                 </TableHead>
-                <TableHead className="w-[20%]">
-                  {i18n.t("options.dictionary.columns.updatedAt")}
-                </TableHead>
-                <TableHead className="w-[15%] text-right">
-                  {i18n.t("options.dictionary.edit")}
+                <TableHead className="w-[18%] text-right">
+                  {i18n.t("options.dictionary.columns.actions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {records.map((record, index) => {
-                const cellEntries = Object.entries(record.cells).filter(
-                  ([, val]) => val !== null && val !== undefined && val !== "",
-                )
+                const fields = extractRecordFields(record)
 
                 return (
                   <TableRow
                     key={record.id}
                     index={index}
                     onClick={() => setViewingRecord(record)}
-                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                    className="group cursor-pointer transition-colors hover:bg-muted/40"
                   >
-                    <TableCell className="py-3 align-top">
-                      <div className="space-y-1">
-                        {cellEntries.slice(0, 3).map(([colId, val]) => {
-                          const col = record.columns.find((c) => c.id === colId)
-                          const label = col?.name || colId
-                          return (
-                            <div key={colId} className="text-xs">
-                              <span className="mr-1 font-semibold text-muted-foreground">
-                                {label}:
-                              </span>
-                              <span className="text-foreground">{String(val)}</span>
-                            </div>
-                          )
-                        })}
-                        {cellEntries.length > 3 && (
-                          <span className="text-[11px] text-muted-foreground">
-                            +{cellEntries.length - 3} more fields
+                    {/* Left Column: Rich Word Card */}
+                    <TableCell className="py-3.5 pr-4 align-top">
+                      <div className="flex flex-col gap-2">
+                        {/* Word header: Term, Phonetic, Audio, POS, Difficulty */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
+                            {fields.term}
                           </span>
+
+                          {fields.phonetic && (
+                            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                              {fields.phonetic}
+                            </span>
+                          )}
+
+                          {fields.term && (
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="size-6 p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                              title={i18n.t("options.dictionary.pronounce")}
+                              aria-label={`pronounce-${fields.term}`}
+                              onClick={(e) => playWordPronunciation(fields.term, e)}
+                            >
+                              <Icon icon="tabler:volume" className="size-3.5" />
+                            </Button>
+                          )}
+
+                          {fields.partOfSpeech && (
+                            <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+                              {fields.partOfSpeech}
+                            </Badge>
+                          )}
+
+                          {fields.difficulty && (
+                            <Badge
+                              variant="outline"
+                              className="border-primary/30 px-1.5 py-0 text-[10px] font-semibold text-primary"
+                            >
+                              {fields.difficulty}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Definition */}
+                        {fields.definition && (
+                          <div className="line-clamp-2 text-sm leading-relaxed font-medium text-foreground/90">
+                            {fields.definition}
+                          </div>
+                        )}
+
+                        {/* Sentence quote */}
+                        {fields.sentence && (
+                          <div className="border-l-2 border-primary/40 pl-2.5 text-xs text-muted-foreground">
+                            <span className="font-serif text-foreground/80 italic">
+                              "{fields.sentence}"
+                            </span>
+                            {fields.sentenceTranslation && (
+                              <span className="ml-2 text-muted-foreground/80">
+                                ({fields.sentenceTranslation})
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Extra metadata fields as tags */}
+                        {fields.otherFields.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            {fields.otherFields.map((f) => (
+                              <span
+                                key={f.id}
+                                className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                              >
+                                <span className="font-medium">{f.label}:</span>
+                                <span className="max-w-[140px] truncate text-foreground/80">
+                                  {f.value}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="py-3 align-top">
-                      <Badge variant="secondary" className="text-xs">
-                        {record.actionName}
-                      </Badge>
+
+                    {/* Middle Column: Source Action & Update Time */}
+                    <TableCell className="py-3.5 align-top">
+                      <div className="flex flex-col gap-1.5">
+                        <div>
+                          <Badge variant="secondary" className="text-xs font-normal">
+                            {record.actionName || record.actionId}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Icon icon="tabler:clock" className="size-3.5 shrink-0 opacity-70" />
+                          <span>{new Date(record.updatedAt).toLocaleDateString()}</span>
+                          <span className="text-[10px] opacity-75">
+                            {new Date(record.updatedAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="py-3 align-top text-xs text-muted-foreground">
-                      {new Date(record.updatedAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="py-3 text-right align-top">
+
+                    {/* Right Column: Actions */}
+                    <TableCell className="py-3.5 text-right align-top">
                       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
@@ -1192,57 +1277,92 @@ export function DictionaryPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[45%]">
+                    <TableHead className="w-[55%]">
                       {i18n.t("options.dictionary.columns.cells")}
                     </TableHead>
-                    <TableHead className="w-[20%]">
-                      {i18n.t("options.dictionary.columns.action")}
+                    <TableHead className="w-[25%]">
+                      {i18n.t("options.dictionary.columns.sourceAndTime")}
                     </TableHead>
-                    <TableHead className="w-[20%]">
-                      {i18n.t("options.dictionary.deletedAt")}
-                    </TableHead>
-                    <TableHead className="w-[15%] text-right">
-                      {i18n.t("options.dictionary.edit")}
+                    <TableHead className="w-[20%] text-right">
+                      {i18n.t("options.dictionary.columns.actions")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {trashData.records.map((record) => {
-                    const cellEntries = Object.entries(record.cells).filter(
-                      ([, val]) => val !== null && val !== undefined && val !== "",
-                    )
+                    const fields = extractRecordFields(record)
                     return (
-                      <TableRow key={record.id}>
-                        <TableCell className="align-top">
-                          <div className="flex flex-col gap-1 text-xs">
-                            {cellEntries.slice(0, 3).map(([key, value]) => {
-                              const colDef = record.columns.find((c) => c.id === key)
-                              const label = colDef ? colDef.name : key
-                              return (
-                                <div key={key} className="flex items-start gap-1">
-                                  <span className="shrink-0 font-medium text-muted-foreground">
-                                    {label}:
-                                  </span>
-                                  <span className="line-clamp-2 text-foreground">
-                                    {String(value)}
-                                  </span>
-                                </div>
-                              )
-                            })}
-                            {cellEntries.length > 3 && (
-                              <span className="text-[10px] text-muted-foreground">
-                                +{cellEntries.length - 3} more
+                      <TableRow key={record.id} className="hover:bg-muted/40">
+                        {/* Left: Rich word card in trash */}
+                        <TableCell className="py-3 pr-3 align-top">
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-sm font-semibold tracking-tight text-foreground">
+                                {fields.term}
                               </span>
+                              {fields.phonetic && (
+                                <span className="py-0.2 rounded bg-muted px-1.5 font-mono text-[11px] text-muted-foreground">
+                                  {fields.phonetic}
+                                </span>
+                              )}
+                              {fields.partOfSpeech && (
+                                <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                                  {fields.partOfSpeech}
+                                </Badge>
+                              )}
+                              {fields.difficulty && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-primary/30 px-1 py-0 text-[10px] font-semibold text-primary"
+                                >
+                                  {fields.difficulty}
+                                </Badge>
+                              )}
+                            </div>
+
+                            {fields.definition && (
+                              <div className="line-clamp-2 text-xs font-medium text-foreground/80">
+                                {fields.definition}
+                              </div>
+                            )}
+
+                            {fields.sentence && (
+                              <div className="border-l border-primary/40 pl-2 text-[11px] text-muted-foreground">
+                                <span className="font-serif italic">"{fields.sentence}"</span>
+                              </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="align-top text-xs text-muted-foreground">
-                          {record.actionName || record.actionId}
+
+                        {/* Middle: Source and Deleted At */}
+                        <TableCell className="py-3 align-top">
+                          <div className="flex flex-col gap-1 text-xs">
+                            <div>
+                              <Badge variant="secondary" className="text-[11px] font-normal">
+                                {record.actionName || record.actionId}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Icon icon="tabler:trash" className="size-3 shrink-0 opacity-70" />
+                              <span>
+                                {record.deletedAt
+                                  ? new Date(record.deletedAt).toLocaleDateString()
+                                  : "-"}
+                              </span>
+                              {record.deletedAt && (
+                                <span className="text-[10px] opacity-75">
+                                  {new Date(record.deletedAt).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </TableCell>
-                        <TableCell className="align-top text-xs text-muted-foreground">
-                          {record.deletedAt ? new Date(record.deletedAt).toLocaleString() : "-"}
-                        </TableCell>
-                        <TableCell className="text-right align-top">
+
+                        {/* Right: Actions */}
+                        <TableCell className="py-3 text-right align-top">
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               size="xs"
@@ -1270,6 +1390,7 @@ export function DictionaryPage() {
                               className="text-destructive hover:bg-destructive/10"
                               onClick={() => setPurgingRecord(record)}
                               aria-label={`purge-record-${record.id}`}
+                              title={i18n.t("options.dictionary.purge")}
                             >
                               <Icon icon="tabler:trash-x" className="size-3.5" />
                             </Button>

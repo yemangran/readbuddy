@@ -164,10 +164,13 @@ options:
     createdAt: Created
     definition: Definition
     sentence: Sentence
+    pronounce: Pronounce
     columns:
       action: Source Action
       updatedAt: Updated
-      cells: Content
+      cells: Term & Definition
+      sourceAndTime: Source & Time
+      actions: Actions
     webdav:
       title: WebDAV Sync
       description: Synchronize your local dictionary across multiple devices with generic WebDAV.
