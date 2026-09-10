@@ -53,7 +53,6 @@ function BuiltInDictionaryEditor({ action }: { action: SelectionToolbarCustomAct
             <ActionEditor.SystemPromptField readOnly />
             <ActionEditor.PromptField readOnly />
             <ActionEditor.OutputSchema.ReadOnly />
-            <ActionEditor.NotebaseConnectionField />
           </EntityEditor.Body>
         </EntityEditor.Root>
       </ActionEditor.Form>
@@ -73,7 +72,6 @@ function EditableActionEditor({ action }: { action: SelectionToolbarCustomAction
             <ActionEditor.SystemPromptField />
             <ActionEditor.PromptField />
             <ActionEditor.OutputSchema.Editable />
-            <ActionEditor.NotebaseConnectionField />
           </EntityEditor.Body>
           <EntityEditor.Footer>
             <ActionEditor.DuplicateButton />

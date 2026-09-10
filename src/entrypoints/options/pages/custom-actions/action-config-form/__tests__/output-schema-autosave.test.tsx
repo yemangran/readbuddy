@@ -19,7 +19,6 @@ import { selectedCustomActionIdAtom } from "../../atoms"
 // Keep remote discovery/auth out of this test. The schema editor, parent form,
 // validation, autosave controller, entity writer and navigation are all real.
 vi.mock("../provider-field", () => ({ ProviderField: () => null }))
-vi.mock("../notebase-connection-field", () => ({ NotebaseConnectionField: () => null }))
 
 function createAction(): SelectionToolbarCustomAction {
   return {

@@ -35,7 +35,6 @@ import { selectedCustomActionIdAtom } from "../atoms"
 import { formOpts, useAppForm } from "./form"
 import { IconField as IconFormField } from "./icon-field"
 import { NameField as NameFormField } from "./name-field"
-import { NotebaseConnectionField as NotebaseConnectionFormField } from "./notebase-connection-field"
 import {
   OutputSchemaField as EditableOutputSchemaFormField,
   ReadOnlyOutputSchemaField,
@@ -289,11 +288,6 @@ function ReadOnlyOutputSchema() {
   return <ReadOnlyOutputSchemaField outputSchema={action.outputSchema} />
 }
 
-function NotebaseConnectionField() {
-  const { form } = useActionEditor().state
-  return <NotebaseConnectionFormField form={form} />
-}
-
 function DuplicateButton() {
   const { duplicate } = useActionEditor().actions
   return (
@@ -369,7 +363,6 @@ export const ActionEditor = {
     Editable: EditableOutputSchema,
     ReadOnly: ReadOnlyOutputSchema,
   },
-  NotebaseConnectionField,
   CustomizeButton,
   DuplicateButton,
   DeleteButton,

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { isLLMProviderConfig } from "@/types/config/provider"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
 import { buildFeatureProviderPatch } from "@/utils/constants/feature-providers"
+import { isSystemProviderSelectorItem } from "@/utils/providers/provider-display"
 import { getSelectableProvidersForCapability } from "@/utils/providers/provider-registry"
 import {
   computeLanguageDetectionFallbackAfterDeletion,
@@ -92,7 +93,7 @@ describe("feature providers", () => {
         DEFAULT_CONFIG.providersConfig,
       )
 
-      expect(providers.every((p) => p.kind !== "system")).toBe(true)
+      expect(providers.every((p) => !isSystemProviderSelectorItem(p))).toBe(true)
       expect(providers).toEqual(
         DEFAULT_CONFIG.providersConfig.filter((p) => p.enabled && isLLMProviderConfig(p)),
       )

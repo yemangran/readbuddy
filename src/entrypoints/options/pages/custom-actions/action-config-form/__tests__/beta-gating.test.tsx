@@ -47,12 +47,6 @@ vi.mock("../output-schema-field", () => ({
   ReadOnlyOutputSchemaField: () => <div>ReadOnlyOutputSchemaField</div>,
 }))
 
-vi.mock("../notebase-connection-field", () => ({
-  NotebaseConnectionField: () => (
-    <div>{i18n.t("options.selectionToolbar.customActions.form.notebase.title")}</div>
-  ),
-}))
-
 function seedConfig(store: ReturnType<typeof createStore>, config: SeedConfig) {
   void fakeBrowser.storage.local.set({ config })
   store.set(configAtom, config)
@@ -140,48 +134,6 @@ describe("customActionConfigForm notebase availability", () => {
         i18n.t("options.selectionToolbar.customActions.form.customizeTooltip"),
       ),
     )
-  })
-
-  it("shows the notebase connection field when beta experience is disabled", () => {
-    const store = createStore()
-    const config = cloneConfig(DEFAULT_CONFIG)
-
-    config.betaExperience.enabled = false
-    config.selectionToolbar.customActions = [
-      {
-        id: "action-1",
-        name: "Summarize",
-        icon: "tabler:sparkles",
-        providerId: config.providersConfig[0]!.id,
-        systemPrompt: "You are helpful.",
-        prompt: "Summarize the selected text.",
-        outputSchema: [],
-        notebaseConnection: {
-          notebaseId: "table-1",
-          notebaseNameSnapshot: "Articles",
-          connectedAccount: {
-            id: "user-1",
-            name: "Reader",
-            email: "reader@example.com",
-            image: null,
-          },
-          mappings: [],
-        },
-      },
-    ]
-
-    seedConfig(store, config)
-    void store.set(selectedCustomActionIdAtom, "action-1")
-
-    render(
-      <Provider store={store}>
-        <CustomActionConfigForm />
-      </Provider>,
-    )
-
-    expect(
-      screen.getByText(i18n.t("options.selectionToolbar.customActions.form.notebase.title")),
-    ).toBeInTheDocument()
   })
 
   it("duplicates a custom action with its mutable state and connection", async () => {
