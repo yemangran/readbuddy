@@ -2,6 +2,7 @@ import type { Config } from "@/types/config/config"
 import type {
   SelectionToolbarBuiltInActionState,
   SelectionToolbarCustomAction,
+  SelectionToolbarCustomActionOutputField,
 } from "@/types/config/selection-toolbar"
 import { createDefaultDictionaryAction } from "@/utils/constants/config"
 import { BUILT_IN_DICTIONARY_ACTION_ID } from "@/utils/constants/custom-action"
@@ -115,4 +116,16 @@ export function duplicateSelectionToolbarAction(
     id: getRandomUUID(),
     name: getUniqueName(action.name, new Set(allActions.map((candidate) => candidate.name))),
   }
+}
+
+export function getOutputSchemaFingerprint(
+  outputSchema: SelectionToolbarCustomActionOutputField[],
+) {
+  return JSON.stringify(
+    outputSchema.map((field) => ({
+      id: field.id,
+      name: field.name,
+      type: field.type,
+    })),
+  )
 }

@@ -18,9 +18,9 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock(
-  "@/entrypoints/selection.content/selection-toolbar/custom-action-button/use-save-to-notebase",
+  "@/entrypoints/selection.content/selection-toolbar/custom-action-button/use-save-to-local-dictionary",
   () => ({
-    useSaveToNotebase: () => ({ save: mocks.save, isSaving: false }),
+    useSaveToLocalDictionary: () => ({ saveMany: mocks.save, isSaving: false }),
   }),
 )
 
@@ -119,7 +119,7 @@ function clickSave() {
 describe("NoteSuggestionCard", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.save.mockResolvedValue("saved")
+    mocks.save.mockResolvedValue(true)
   })
 
   it("saves through the same action after it is disabled", async () => {
@@ -134,8 +134,6 @@ describe("NoteSuggestionCard", () => {
     expect(mocks.save).toHaveBeenCalledWith({
       action: liveAction,
       results: [{ Term: "ephemeral", Definition: "lasting a very short time" }],
-      analyticsSource: "note_suggestion",
-      analyticsProvider: { provider: "openai", backend_kind: "llm" },
     })
     expect(mocks.toastAdd).not.toHaveBeenCalled()
   })

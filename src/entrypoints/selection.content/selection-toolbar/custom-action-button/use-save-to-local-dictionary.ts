@@ -64,21 +64,21 @@ export function useSaveToLocalDictionary(currentResult?: Record<string, unknown>
     setIsSaved(false)
   }
 
-  const save = async ({
+  const saveMany = async ({
     action,
-    result,
+    results,
   }: {
     action: SelectionToolbarCustomAction
-    result: Record<string, unknown>
+    results: Record<string, unknown>[]
   }): Promise<boolean> => {
-    if (isSaving || isSaved) return false
+    if (isSaving || results.length === 0) return false
     setIsSaving(true)
     try {
-      const item = buildLocalDictionaryItem(action, result)
+      const items = results.map((res) => buildLocalDictionaryItem(action, res))
       const requestId = getRandomUUID()
       const reply = await createDictionaryRecords({
         requestId,
-        items: [item],
+        items,
       })
 
       if (reply.ok) {
@@ -108,5 +108,16 @@ export function useSaveToLocalDictionary(currentResult?: Record<string, unknown>
     }
   }
 
-  return { save, isSaving, isSaved }
+  const save = async ({
+    action,
+    result,
+  }: {
+    action: SelectionToolbarCustomAction
+    result: Record<string, unknown>
+  }): Promise<boolean> => {
+    if (isSaving || isSaved) return false
+    return saveMany({ action, results: [result] })
+  }
+
+  return { save, saveMany, isSaving, isSaved }
 }
