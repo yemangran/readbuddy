@@ -2,10 +2,7 @@ import type { GeneratedI18nStructure } from "#i18n"
 import type { ProviderConfig, ProvidersConfig } from "@/types/config/provider"
 import type { Theme } from "@/types/config/theme"
 import type { FeatureKey } from "@/utils/constants/feature-providers"
-import type {
-  ProviderSelectorOption,
-  SystemProviderSelectorItem,
-} from "@/utils/providers/provider-display"
+import type { ProviderSelectorOption } from "@/utils/providers/provider-display"
 import readFrogLogo from "@/assets/providers/read-frog-provider.png?url&no-inline"
 import { isLLMProviderConfig, isTranslateProviderConfig } from "@/types/config/provider"
 import {
@@ -126,15 +123,6 @@ function getSystemProviderName(def: SystemProviderDef): string {
   return i18n.t(def.nameKey as never) || def.fallbackName
 }
 
-function createSystemProviderSelectorItem(def: SystemProviderDef): SystemProviderSelectorItem {
-  return {
-    kind: "system",
-    id: def.id,
-    name: getSystemProviderName(def),
-    logo: def.logo,
-  }
-}
-
 function createSystemProviderRef(def: SystemProviderDef): SystemProviderRef {
   return {
     kind: "system",
@@ -223,16 +211,12 @@ export function getSelectableProvidersForCapability(
   capability: ProviderCapability,
   providersConfig: ProvidersConfig,
 ): ProviderSelectorOption[] {
-  const systemProviders = getSystemProviderDefs()
-    .filter((def) => def.capabilities.includes(capability))
-    .map(createSystemProviderSelectorItem)
-
   const localProviders = providersConfig.filter(
     (provider) =>
       provider.enabled && isLocalProviderConfigCompatibleWithCapability(capability, provider),
   )
 
-  return [...systemProviders, ...localProviders]
+  return localProviders
 }
 
 export function resolveProviderRefForCapability<C extends ProviderCapability>(

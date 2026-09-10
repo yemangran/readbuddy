@@ -1666,8 +1666,7 @@ describe("selection toolbar requests", () => {
       expect(streamBackgroundStructuredObjectMock).toHaveBeenCalledTimes(1)
     })
     expect(streamBackgroundStructuredObjectMock.mock.calls[0]?.[0]).toMatchObject({
-      providerId: "read-frog-free-ai",
-      modelTier: "normal",
+      providerId: "openai-default",
       requestId: expect.stringMatching(/^[0-9a-f-]{36}$/i),
     })
 

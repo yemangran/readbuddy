@@ -1,13 +1,10 @@
 import type { ProviderConfig } from "@/types/config/provider"
 import type { HostedAiStatus, HostedAiTierStatus } from "@/utils/hosted-ai/types"
 import { describe, expect, it } from "vitest"
+import { isLLMProviderConfig } from "@/types/config/provider"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
 import { buildFeatureProviderPatch } from "@/utils/constants/feature-providers"
-import { isSystemProviderSelectorItem } from "@/utils/providers/provider-display"
-import {
-  BUILT_IN_AI_PROVIDER_LOGO,
-  getSelectableProvidersForCapability,
-} from "@/utils/providers/provider-registry"
+import { getSelectableProvidersForCapability } from "@/utils/providers/provider-registry"
 import {
   computeLanguageDetectionFallbackAfterDeletion,
   computeProviderFallbacksAfterDeletion,
@@ -89,28 +86,16 @@ describe("feature providers", () => {
   })
 
   describe("getSelectableProvidersForCapability", () => {
-    it("marks registry-backed system providers for selector grouping", () => {
-      const providers = getSelectableProvidersForCapability("customAction", [])
+    it("returns only enabled compatible local providers without built-in AI", () => {
+      const providers = getSelectableProvidersForCapability(
+        "customAction",
+        DEFAULT_CONFIG.providersConfig,
+      )
 
-      expect(providers).toEqual([
-        expect.objectContaining({
-          kind: "system",
-          id: "read-frog-free-ai",
-          logo: expect.any(Function),
-        }),
-        expect.objectContaining({
-          kind: "system",
-          id: "read-frog-advance-ai",
-          logo: expect.any(Function),
-        }),
-      ])
-
-      const builtInAiProvider = providers[0]
-      expect(builtInAiProvider && isSystemProviderSelectorItem(builtInAiProvider)).toBe(true)
-      if (!builtInAiProvider || !isSystemProviderSelectorItem(builtInAiProvider)) {
-        throw new Error("Built-in AI provider selector item was not returned")
-      }
-      expect(builtInAiProvider.logo("light")).toBe(BUILT_IN_AI_PROVIDER_LOGO)
+      expect(providers.every((p) => p.kind !== "system")).toBe(true)
+      expect(providers).toEqual(
+        DEFAULT_CONFIG.providersConfig.filter((p) => p.enabled && isLLMProviderConfig(p)),
+      )
     })
   })
 

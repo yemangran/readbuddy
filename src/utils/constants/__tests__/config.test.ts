@@ -131,7 +131,7 @@ describe("dEFAULT_CONFIG", () => {
     )
     expect(config.selectionToolbar.builtInActions.dictionary).toEqual({
       enabled: true,
-      providerId: "read-frog-free-ai",
+      providerId: "openai-default",
     })
     expect(config.selectionToolbar.customActions).toEqual([])
     expect(createDefaultDictionaryAction()).toEqual(
