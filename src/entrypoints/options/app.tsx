@@ -84,6 +84,11 @@ const ConfigBackupPage = lazy(() =>
     default: module.ConfigBackupPage,
   })),
 )
+const WebdavSyncPage = lazy(() =>
+  import("./pages/preference/webdav-sync").then((module) => ({
+    default: module.WebdavSyncPage,
+  })),
+)
 const ExtensionActivationPage = lazy(() =>
   import("./pages/preference/extension-activation/activation-page").then((module) => ({
     default: module.ExtensionActivationPage,
@@ -126,6 +131,7 @@ const ROUTE_COMPONENTS: Record<RoutePath, ComponentType> = {
   "/tts": TextToSpeechPage,
   "/help-and-community": HelpAndCommunityPage,
   "/preference/config-backup": ConfigBackupPage,
+  "/preference/webdav-sync": WebdavSyncPage,
   "/preference/extension-activation": ExtensionActivationPage,
   "/page-translation/custom-css": CustomCssPage,
   "/page-translation/prompts": PersonalizedPromptsPage,

@@ -158,6 +158,12 @@ options:
     purgeAllConfirmTitle: 确定清空回收站？
     purgeAllConfirmDescription: 将彻底删除回收站中的所有词条，并在下次同步时从远端完全移除，无法撤销。
     deletedAt: 删除时间
+    viewDetail: 查看详情
+    detailTitle: 词典记录详情
+    syncSettings: 同步设置
+    createdAt: 创建时间
+    definition: 释义
+    sentence: 例句
     columns:
       action: 来源动作
       updatedAt: 更新时间

@@ -32,6 +32,16 @@ const triggerWebdavSyncMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const getRemoteWebdavSummaryMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const watchWebdavSyncStateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 
+const navigateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>("react-router")
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  }
+})
+
 vi.mock("file-saver", () => ({
   saveAs: vi.fn<() => void>(),
 }))
@@ -359,156 +369,33 @@ describe("DictionaryPage", () => {
     })
   })
 
-  it("renders WebDAV section, allows configuration and testing connection", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-
+  it("navigates to webdav sync settings when sync settings button is clicked", async () => {
     renderWithQuery(<DictionaryPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(i18n.t("options.dictionary.webdav.title"))).toBeInTheDocument()
-      expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
+      expect(screen.getByLabelText("open-webdav-sync-settings")).toBeInTheDocument()
     })
 
-    const testBtn = screen.getByLabelText("webdav-test-connection")
-    fireEvent.click(testBtn)
-
-    await waitFor(() => {
-      expect(testWebdavConnectionMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          endpoint: "https://dav.example.com/webdav/",
-          username: "myuser",
-        }),
-      )
-    })
-
-    const syncBtn = screen.getByLabelText("webdav-sync-now")
+    const syncBtn = screen.getByLabelText("open-webdav-sync-settings")
     fireEvent.click(syncBtn)
 
-    await waitFor(() => {
-      expect(triggerWebdavSyncMock).toHaveBeenCalledTimes(1)
-    })
+    expect(navigateMock).toHaveBeenCalledWith("/preference/webdav-sync")
   })
 
-  it("displays sync status dashboard when configured", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-    getWebdavSyncStateMock.mockResolvedValue({
-      phase: "syncing",
-      lastSuccessTime: 1700000000000,
-      lastAttemptTime: 1700000001000,
-      nextRetryTime: null,
-      retryCount: 0,
-      pendingChangesCount: 3,
-      lastError: null,
-      pausedReason: null,
-    })
-
+  it("opens word detail modal when row or view button is clicked", async () => {
     renderWithQuery(<DictionaryPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(i18n.t("options.dictionary.webdav.status"))).toBeInTheDocument()
-      expect(screen.getByText(i18n.t("options.dictionary.webdav.phaseSyncing"))).toBeInTheDocument()
-      expect(screen.getByText("3")).toBeInTheDocument()
-    })
-  })
-
-  it("handles CONDITION_NOT_SUPPORTED with force overwrite confirmation dialog", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-    getWebdavSyncStateMock.mockResolvedValue({
-      phase: "paused",
-      lastSuccessTime: null,
-      lastAttemptTime: 1700000000000,
-      nextRetryTime: null,
-      retryCount: 1,
-      pendingChangesCount: 1,
-      lastError: {
-        code: "CONDITION_NOT_SUPPORTED",
-        message: "Server does not support conditional headers",
-        retryable: false,
-      },
-      pausedReason: "CONDITION_NOT_SUPPORTED",
+      expect(screen.getByText("frog")).toBeInTheDocument()
+      expect(screen.getByLabelText("view-record-detail")).toBeInTheDocument()
     })
 
-    renderWithQuery(<DictionaryPage />)
+    const viewBtn = screen.getByLabelText("view-record-detail")
+    fireEvent.click(viewBtn)
 
     await waitFor(() => {
-      expect(screen.getByText(i18n.t("options.dictionary.webdav.phasePaused"))).toBeInTheDocument()
-      expect(
-        screen.getByText(i18n.t("options.dictionary.webdav.conditionNotSupported")),
-      ).toBeInTheDocument()
-      expect(screen.getByLabelText("webdav-force-overwrite")).toBeInTheDocument()
-    })
-
-    const overwriteBtn = screen.getByLabelText("webdav-force-overwrite")
-    fireEvent.click(overwriteBtn)
-
-    await waitFor(() => {
-      expect(getRemoteWebdavSummaryMock).toHaveBeenCalledTimes(1)
-      expect(
-        screen.getByText(i18n.t("options.dictionary.webdav.forceOverwriteTitle")),
-      ).toBeInTheDocument()
-    })
-
-    const confirmBtn = screen.getByLabelText("confirm-force-overwrite")
-    fireEvent.click(confirmBtn)
-
-    await waitFor(() => {
-      expect(triggerWebdavSyncMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          forceUnconditional: true,
-          resetPaused: true,
-        }),
-      )
-    })
-  })
-
-  it("disables confirm button in force overwrite dialog if remote summary fails to load", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-    getWebdavSyncStateMock.mockResolvedValue({
-      phase: "paused",
-      lastSuccessTime: null,
-      lastAttemptTime: 1700000000000,
-      nextRetryTime: null,
-      retryCount: 1,
-      pendingChangesCount: 1,
-      lastError: {
-        code: "CONDITION_NOT_SUPPORTED",
-        message: "Server does not support conditional headers",
-        retryable: false,
-      },
-      pausedReason: "CONDITION_NOT_SUPPORTED",
-    })
-    getRemoteWebdavSummaryMock.mockResolvedValue({
-      ok: false,
-      error: { code: "NETWORK_ERROR", message: "Failed to connect", retryable: false },
-    })
-
-    renderWithQuery(<DictionaryPage />)
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("webdav-force-overwrite")).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByLabelText("webdav-force-overwrite"))
-
-    await waitFor(() => {
-      const confirmBtn = screen.getByLabelText("confirm-force-overwrite")
-      expect(confirmBtn).toBeDisabled()
+      const defs = screen.getAllByText("an amphibian")
+      expect(defs.length).toBeGreaterThan(1)
     })
   })
 

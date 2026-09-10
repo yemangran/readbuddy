@@ -12,6 +12,11 @@ export function ConfigManagementSection() {
       <GoogleDriveSyncConfigItem />
       <ManualConfigSyncConfigItems />
       <ConfigNavItem
+        to="/preference/webdav-sync"
+        title={i18n.t("options.dictionary.webdav.title")}
+        description={i18n.t("options.dictionary.webdav.description")}
+      />
+      <ConfigNavItem
         to="/preference/config-backup"
         title={i18n.t("options.preference.config.backup.title")}
         description={i18n.t("options.preference.config.backup.description", [MAX_BACKUPS_COUNT])}

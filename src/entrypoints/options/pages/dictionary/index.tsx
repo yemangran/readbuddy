@@ -3,22 +3,14 @@ import type {
   ImportPreviewResult,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
-  RemoteSnapshotSummary,
 } from "@/utils/local-dictionary/types"
-import type { WebdavErrorCode } from "@/utils/local-dictionary/types"
 import { Icon } from "@iconify/react"
 import { useQuery } from "@tanstack/react-query"
 import { saveAs } from "file-saver"
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/base-ui/card"
 import {
   Dialog,
   DialogContent,
@@ -38,15 +30,11 @@ import {
 } from "@/components/ui/base-ui/table"
 import { toastManager } from "@/components/ui/base-ui/toast"
 import { getRandomUUID } from "@/utils/crypto-polyfill"
-import { i18n, type I18nKey } from "@/utils/i18n"
+import { i18n } from "@/utils/i18n"
 import {
-  clearWebdavConfig,
   commitDictionaryImport,
   deleteDictionaryRecord,
   exportDictionarySnapshot,
-  getRemoteWebdavSummary,
-  getWebdavConfig,
-  getWebdavSyncState,
   listConflictVersions,
   listDictionaryRecords,
   previewDictionaryImport,
@@ -54,44 +42,116 @@ import {
   purgeDictionaryRecord,
   restoreConflictVersionAsNew,
   restoreDeletedDictionaryRecord,
-  saveWebdavConfig,
-  testWebdavConnection,
-  triggerWebdavSync,
   updateDictionaryCells,
   watchDictionaryChangeSignal,
-  watchWebdavSyncState,
 } from "@/utils/local-dictionary/client"
 import { parseAndValidateSnapshot } from "@/utils/local-dictionary/snapshot"
-import { requestWebdavHostPermission } from "@/utils/local-dictionary/webdav"
 import { cn } from "@/utils/styles/utils"
 import { queryClient } from "@/utils/tanstack-query"
 import { PageLayout } from "../../components/page-layout"
 
 const PAGE_SIZE = 15
 
-const WEBDAV_ERROR_I18N_KEYS: Record<WebdavErrorCode, I18nKey> = {
-  AUTH_FAILED: "options.dictionary.webdav.authFailed",
-  CORRUPTED_REMOTE: "options.dictionary.webdav.corruptedRemote",
-  UNSUPPORTED_VERSION: "options.dictionary.webdav.unsupportedVersion",
-  INTEGRITY_CONFLICT: "options.dictionary.webdav.integrityConflict",
-  BUDGET_EXCEEDED: "options.dictionary.webdav.budgetExceeded",
-  CONDITION_FAILED_MAX_RETRIES: "options.dictionary.webdav.conditionRetryExceeded",
-  CONDITION_NOT_SUPPORTED: "options.dictionary.webdav.conditionNotSupported",
-  PERMISSION_DENIED: "options.dictionary.webdav.permissionDenied",
-  STORAGE_ERROR: "options.dictionary.webdav.storageError",
-  NETWORK_ERROR: "options.dictionary.webdav.networkError",
+interface ExtractedRecordFields {
+  term: string
+  phonetic: string
+  partOfSpeech: string
+  definition: string
+  sentence: string
+  sentenceTranslation: string
+  difficulty: string
+  otherFields: Array<{ id: string; label: string; value: string }>
 }
 
-function getWebdavErrorMessage(
-  error?: { code?: string; message?: string } | null,
-  fallback?: string,
-): string {
-  if (!error) return fallback || ""
-  if (error.code && error.code in WEBDAV_ERROR_I18N_KEYS) {
-    const key = WEBDAV_ERROR_I18N_KEYS[error.code as WebdavErrorCode]
-    return (i18n.t as (k: string) => string)(key)
+function extractRecordFields(record: LocalDictionaryRecord): ExtractedRecordFields {
+  let term = ""
+  let phonetic = ""
+  let partOfSpeech = ""
+  let definition = ""
+  let sentence = ""
+  let sentenceTranslation = ""
+  let difficulty = ""
+  const otherFields: Array<{ id: string; label: string; value: string }> = []
+
+  for (const col of record.columns) {
+    const rawVal = record.cells[col.id]
+    if (rawVal === null || rawVal === undefined || rawVal === "") continue
+    const valStr = String(rawVal)
+    const keyLower = (col.name || col.id).toLowerCase()
+
+    if (
+      keyLower.includes("term") ||
+      keyLower.includes("词条") ||
+      keyLower.includes("word") ||
+      keyLower.includes("单词")
+    ) {
+      if (!term) term = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else if (keyLower.includes("phonetic") || keyLower.includes("音标")) {
+      if (!phonetic) phonetic = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else if (
+      keyLower.includes("partofspeech") ||
+      keyLower.includes("pos") ||
+      keyLower.includes("词性")
+    ) {
+      if (!partOfSpeech) partOfSpeech = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else if (
+      keyLower.includes("definition") ||
+      keyLower.includes("释义") ||
+      keyLower.includes("meaning")
+    ) {
+      if (!definition) definition = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else if (
+      keyLower.includes("sentencetranslation") ||
+      keyLower.includes("句子翻译") ||
+      keyLower.includes("例句翻译")
+    ) {
+      if (!sentenceTranslation) sentenceTranslation = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else if (
+      keyLower.includes("sentence") ||
+      keyLower.includes("句子") ||
+      keyLower.includes("例句")
+    ) {
+      if (!sentence) sentence = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else if (
+      keyLower.includes("difficulty") ||
+      keyLower.includes("难度") ||
+      keyLower.includes("cefr") ||
+      keyLower.includes("level")
+    ) {
+      if (!difficulty) difficulty = valStr
+      else otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    } else {
+      otherFields.push({ id: col.id, label: col.name || col.id, value: valStr })
+    }
   }
-  return error.message || fallback || "Sync failed"
+
+  // Fallback: if no term found, use the first non-empty cell
+  if (!term) {
+    for (const col of record.columns) {
+      const val = record.cells[col.id]
+      if (val !== null && val !== undefined && val !== "") {
+        term = String(val)
+        break
+      }
+    }
+  }
+
+  return {
+    term,
+    phonetic,
+    partOfSpeech,
+    definition,
+    sentence,
+    sentenceTranslation,
+    difficulty,
+    otherFields,
+  }
 }
 
 export function DictionaryPage() {
@@ -106,6 +166,11 @@ export function DictionaryPage() {
   // Delete dialog state
   const [deletingRecord, setDeletingRecord] = useState<LocalDictionaryRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const navigate = useNavigate()
+
+  // Viewing detail dialog state
+  const [viewingRecord, setViewingRecord] = useState<LocalDictionaryRecord | null>(null)
 
   // History & conflicts dialog state
   const [historyRecord, setHistoryRecord] = useState<LocalDictionaryRecord | null>(null)
@@ -129,55 +194,6 @@ export function DictionaryPage() {
   const [importPreview, setImportPreview] = useState<ImportPreviewResult | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
-
-  // WebDAV state
-  const [webdavEndpoint, setWebdavEndpoint] = useState("")
-  const [webdavUsername, setWebdavUsername] = useState("")
-  const [webdavPassword, setWebdavPassword] = useState("")
-  const [isWebdavConfigured, setIsWebdavConfigured] = useState(false)
-  const [isTestingWebdav, setIsTestingWebdav] = useState(false)
-  const [isSyncingWebdav, setIsSyncingWebdav] = useState(false)
-  const [webdavError, setWebdavError] = useState<string | null>(null)
-  const [isForceOverwriteDialogOpen, setIsForceOverwriteDialogOpen] = useState(false)
-  const [isFetchingRemoteSummary, setIsFetchingRemoteSummary] = useState(false)
-  const [remoteSummary, setRemoteSummary] = useState<RemoteSnapshotSummary | null>(null)
-
-  const [currentTime, setCurrentTime] = useState(() => Date.now())
-
-  const { data: syncState } = useQuery({
-    queryKey: ["local-dictionary-webdav-sync-state"],
-    queryFn: async () => {
-      return await getWebdavSyncState()
-    },
-    refetchInterval: 2000,
-  })
-
-  useEffect(() => {
-    if (!syncState?.nextRetryTime) {
-      return undefined
-    }
-    const timer = setInterval(() => {
-      setCurrentTime(Date.now())
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [syncState?.nextRetryTime])
-
-  useEffect(() => {
-    return watchWebdavSyncState(() => {
-      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-webdav-sync-state"] })
-    })
-  }, [])
-
-  useEffect(() => {
-    void getWebdavConfig().then((config) => {
-      if (config?.endpoint && config?.username) {
-        setWebdavEndpoint(config.endpoint)
-        setWebdavUsername(config.username)
-        setWebdavPassword(config.password || "")
-        setIsWebdavConfigured(true)
-      }
-    })
-  }, [])
 
   const { data, isPending } = useQuery({
     queryKey: ["local-dictionary-records", page, search],
@@ -229,16 +245,6 @@ export function DictionaryPage() {
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-trash"] })
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-conflicts"] })
     })
-  }, [])
-
-  useEffect(() => {
-    const handleOnline = () => {
-      void triggerWebdavSync({ reason: "online" })
-    }
-    window.addEventListener("online", handleOnline)
-    return () => {
-      window.removeEventListener("online", handleOnline)
-    }
   }, [])
 
   const records = data?.records ?? []
@@ -526,356 +532,12 @@ export function DictionaryPage() {
     }
   }
 
-  const handleSaveWebdav = async () => {
-    setWebdavError(null)
-    const trimmedEndpoint = webdavEndpoint.trim()
-    const trimmedUser = webdavUsername.trim()
-    if (!trimmedEndpoint || !trimmedUser) return
-
-    try {
-      const hasPermission = await requestWebdavHostPermission(trimmedEndpoint)
-      if (!hasPermission) {
-        setWebdavError(i18n.t("options.dictionary.webdav.permissionDenied"))
-        toastManager.add({
-          type: "error",
-          title: i18n.t("options.dictionary.webdav.permissionDenied"),
-        })
-        return
-      }
-
-      await saveWebdavConfig({
-        endpoint: trimmedEndpoint,
-        username: trimmedUser,
-        password: webdavPassword,
-      })
-      setIsWebdavConfigured(true)
-      toastManager.add({
-        type: "success",
-        title: i18n.t("options.dictionary.webdav.saveSuccess"),
-      })
-    } catch (err: any) {
-      setWebdavError(err?.message || "Failed to save WebDAV settings")
-    }
-  }
-
-  const handleTestWebdav = async () => {
-    setIsTestingWebdav(true)
-    setWebdavError(null)
-    try {
-      const reply = await testWebdavConnection({
-        endpoint: webdavEndpoint.trim(),
-        username: webdavUsername.trim(),
-        password: webdavPassword,
-      })
-      if (reply.ok) {
-        toastManager.add({
-          type: "success",
-          title: i18n.t("options.dictionary.webdav.connected"),
-        })
-      } else {
-        const msg = getWebdavErrorMessage(reply.error, "Connection failed")
-        setWebdavError(msg)
-        toastManager.add({
-          type: "error",
-          title: msg,
-        })
-      }
-    } finally {
-      setIsTestingWebdav(false)
-    }
-  }
-
-  const handleSyncWebdav = async (options?: {
-    forceUnconditional?: boolean
-    resetPaused?: boolean
-  }) => {
-    setIsSyncingWebdav(true)
-    setWebdavError(null)
-    try {
-      const reply = await triggerWebdavSync({
-        reason: "manual",
-        forceUnconditional: options?.forceUnconditional,
-        resetPaused: options?.resetPaused ?? true,
-      })
-      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-webdav-sync-state"] })
-      if (reply?.ok) {
-        toastManager.add({
-          type: "success",
-          title: i18n.t("options.dictionary.webdav.syncSuccess"),
-        })
-        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
-      } else if (reply && !reply.ok) {
-        const msg = getWebdavErrorMessage(reply.error, "Sync failed")
-        setWebdavError(msg)
-        toastManager.add({
-          type: "error",
-          title: msg,
-        })
-      }
-    } finally {
-      setIsSyncingWebdav(false)
-    }
-  }
-
-  const handleOpenForceOverwrite = async () => {
-    setIsFetchingRemoteSummary(true)
-    setIsForceOverwriteDialogOpen(true)
-    setRemoteSummary(null)
-    try {
-      const res = await getRemoteWebdavSummary()
-      if (res.ok) {
-        setRemoteSummary(res.summary)
-      } else {
-        toastManager.add({
-          type: "error",
-          title: res.error.message || "Failed to inspect remote snapshot",
-        })
-      }
-    } finally {
-      setIsFetchingRemoteSummary(false)
-    }
-  }
-
-  const handleConfirmForceOverwrite = async () => {
-    setIsForceOverwriteDialogOpen(false)
-    await handleSyncWebdav({ forceUnconditional: true, resetPaused: true })
-  }
-
-  const handleDisconnectWebdav = async () => {
-    await clearWebdavConfig()
-    setWebdavEndpoint("")
-    setWebdavUsername("")
-    setWebdavPassword("")
-    setIsWebdavConfigured(false)
-    setWebdavError(null)
-    toastManager.add({
-      type: "success",
-      title: i18n.t("options.dictionary.webdav.disconnectSuccess"),
-    })
-  }
-
   return (
     <PageLayout
       title={i18n.t("options.dictionary.title")}
       description={i18n.t("options.dictionary.pageDescription")}
       innerClassName="flex flex-col gap-6"
     >
-      {/* WebDAV Synchronization Section */}
-      <Card className="border">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Icon icon="tabler:cloud-upload" className="size-5 text-primary" />
-              {i18n.t("options.dictionary.webdav.title")}
-              <Badge variant={isWebdavConfigured ? "default" : "secondary"} className="text-xs">
-                {isWebdavConfigured
-                  ? i18n.t("options.dictionary.webdav.connected")
-                  : i18n.t("options.dictionary.webdav.notConfigured")}
-              </Badge>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {i18n.t("options.dictionary.webdav.description")}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            {isWebdavConfigured && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleSyncWebdav()}
-                  disabled={isSyncingWebdav}
-                  aria-label="webdav-sync-now"
-                >
-                  <Icon
-                    icon="tabler:refresh"
-                    className={cn("mr-1.5 size-4", isSyncingWebdav && "animate-spin")}
-                  />
-                  {isSyncingWebdav
-                    ? i18n.t("options.dictionary.webdav.syncing")
-                    : i18n.t("options.dictionary.webdav.syncNow")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleDisconnectWebdav}
-                  className="text-destructive hover:bg-destructive/10"
-                  aria-label="webdav-disconnect"
-                >
-                  {i18n.t("options.dictionary.webdav.disconnect")}
-                </Button>
-              </>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                {i18n.t("options.dictionary.webdav.endpoint")}
-              </label>
-              <Input
-                placeholder={i18n.t("options.dictionary.webdav.endpointPlaceholder")}
-                value={webdavEndpoint}
-                onChange={(e) => setWebdavEndpoint(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                {i18n.t("options.dictionary.webdav.username")}
-              </label>
-              <Input
-                placeholder="username"
-                value={webdavUsername}
-                onChange={(e) => setWebdavUsername(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                {i18n.t("options.dictionary.webdav.password")}
-              </label>
-              <Input
-                type="password"
-                placeholder={isWebdavConfigured ? "••••••••" : "password"}
-                value={webdavPassword}
-                onChange={(e) => setWebdavPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {isWebdavConfigured && syncState && (
-            <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs">
-              <div className="flex items-center justify-between font-semibold text-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Icon icon="tabler:activity" className="size-4 text-primary" />
-                  {i18n.t("options.dictionary.webdav.status")}
-                </span>
-                <Badge
-                  variant={
-                    syncState.phase === "syncing"
-                      ? "default"
-                      : syncState.phase === "paused"
-                        ? "destructive"
-                        : syncState.phase === "error"
-                          ? "outline"
-                          : "secondary"
-                  }
-                  className="text-xs uppercase"
-                >
-                  {syncState.phase === "syncing" &&
-                    i18n.t("options.dictionary.webdav.phaseSyncing")}
-                  {syncState.phase === "paused" && i18n.t("options.dictionary.webdav.phasePaused")}
-                  {syncState.phase === "error" && i18n.t("options.dictionary.webdav.phaseError")}
-                  {syncState.phase === "idle" && i18n.t("options.dictionary.webdav.phaseIdle")}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-muted-foreground sm:grid-cols-4">
-                <div>
-                  <span>{i18n.t("options.dictionary.webdav.lastSuccess")}: </span>
-                  <span className="font-medium text-foreground">
-                    {syncState.lastSuccessTime
-                      ? new Date(syncState.lastSuccessTime).toLocaleTimeString()
-                      : i18n.t("options.dictionary.webdav.neverSynced")}
-                  </span>
-                </div>
-                <div>
-                  <span>{i18n.t("options.dictionary.webdav.pendingChanges")}: </span>
-                  <span className="font-medium text-foreground">
-                    {syncState.pendingChangesCount ?? 0}
-                  </span>
-                </div>
-                <div>
-                  <span>{i18n.t("options.dictionary.webdav.nextRetry")}: </span>
-                  <span className="font-medium text-foreground">
-                    {syncState.nextRetryTime && syncState.nextRetryTime > currentTime
-                      ? `${Math.ceil((syncState.nextRetryTime - currentTime) / 1000)}s`
-                      : "-"}
-                  </span>
-                </div>
-                {syncState.retryCount > 0 && (
-                  <div>
-                    <span>Retries: </span>
-                    <span className="font-medium text-foreground">{syncState.retryCount}</span>
-                  </div>
-                )}
-              </div>
-
-              {(syncState.phase === "paused" || syncState.phase === "error") && (
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                  <div className="text-destructive">
-                    {getWebdavErrorMessage(
-                      syncState.lastError ||
-                        (syncState.pausedReason ? { code: syncState.pausedReason } : null),
-                      syncState.lastError?.message || syncState.pausedReason || undefined,
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {syncState.pausedReason === "CONDITION_NOT_SUPPORTED" && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleOpenForceOverwrite}
-                        disabled={isSyncingWebdav}
-                        aria-label="webdav-force-overwrite"
-                      >
-                        {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleSyncWebdav({ resetPaused: true })}
-                      disabled={isSyncingWebdav}
-                      aria-label="webdav-retry-sync"
-                    >
-                      <Icon icon="tabler:reload" className="mr-1 size-3.5" />
-                      {i18n.t("options.dictionary.webdav.retryNow")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {webdavError && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
-              <div className="font-semibold">Error</div>
-              <div>{webdavError}</div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleTestWebdav}
-              disabled={isTestingWebdav || !webdavEndpoint || !webdavUsername}
-              aria-label="webdav-test-connection"
-            >
-              <Icon
-                icon="tabler:plug"
-                className={cn("mr-1.5 size-4", isTestingWebdav && "animate-spin")}
-              />
-              {isTestingWebdav
-                ? i18n.t("options.dictionary.webdav.testing")
-                : i18n.t("options.dictionary.webdav.testConnection")}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveWebdav}
-              disabled={
-                !webdavEndpoint || !webdavUsername || (!webdavPassword && !isWebdavConfigured)
-              }
-              aria-label="webdav-save-settings"
-            >
-              <Icon icon="tabler:device-floppy" className="mr-1.5 size-4" />
-              {i18n.t("options.dictionary.webdav.save")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Top Action Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="relative max-w-sm flex-1">
@@ -889,6 +551,15 @@ export function DictionaryPage() {
           />
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/preference/webdav-sync")}
+            aria-label="open-webdav-sync-settings"
+          >
+            <Icon icon="tabler:cloud-cog" className="mr-1.5 size-4" />
+            {i18n.t("options.dictionary.syncSettings")}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -970,7 +641,12 @@ export function DictionaryPage() {
                 )
 
                 return (
-                  <TableRow key={record.id} index={index}>
+                  <TableRow
+                    key={record.id}
+                    index={index}
+                    onClick={() => setViewingRecord(record)}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                  >
                     <TableCell className="py-3 align-top">
                       <div className="space-y-1">
                         {cellEntries.slice(0, 3).map(([colId, val]) => {
@@ -1001,13 +677,28 @@ export function DictionaryPage() {
                       {new Date(record.updatedAt).toLocaleString()}
                     </TableCell>
                     <TableCell className="py-3 text-right align-top">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          aria-label="view-record-detail"
+                          title={i18n.t("options.dictionary.viewDetail")}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setViewingRecord(record)
+                          }}
+                        >
+                          <Icon icon="tabler:eye" className="size-3.5" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="xs"
                           aria-label="history-record"
                           title={i18n.t("options.dictionary.history")}
-                          onClick={() => setHistoryRecord(record)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setHistoryRecord(record)
+                          }}
                         >
                           <Icon icon="tabler:history" className="size-3.5" />
                         </Button>
@@ -1016,7 +707,10 @@ export function DictionaryPage() {
                           size="xs"
                           aria-label="edit-record"
                           title={i18n.t("options.dictionary.edit")}
-                          onClick={() => handleOpenEdit(record)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenEdit(record)
+                          }}
                         >
                           <Icon icon="tabler:edit" className="size-3.5" />
                         </Button>
@@ -1026,7 +720,10 @@ export function DictionaryPage() {
                           aria-label="delete-record"
                           title={i18n.t("options.dictionary.delete")}
                           className="text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeletingRecord(record)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeletingRecord(record)
+                          }}
                         >
                           <Icon icon="tabler:trash" className="size-3.5" />
                         </Button>
@@ -1290,82 +987,134 @@ export function DictionaryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Force Overwrite Confirmation Dialog */}
-      <Dialog open={isForceOverwriteDialogOpen} onOpenChange={setIsForceOverwriteDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Icon icon="tabler:alert-triangle" className="size-5" />
-              {i18n.t("options.dictionary.webdav.forceOverwriteTitle")}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              {i18n.t("options.dictionary.webdav.forceOverwriteDesc")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 py-3 text-xs">
-            <div className="font-semibold text-foreground">
-              {i18n.t("options.dictionary.webdav.remoteSummaryTitle")}
-            </div>
-            {isFetchingRemoteSummary ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Icon icon="tabler:loader-2" className="size-4 animate-spin" />
-                <span>Loading...</span>
-              </div>
-            ) : remoteSummary ? (
-              remoteSummary.exists ? (
-                <div className="grid grid-cols-2 gap-2 rounded border bg-muted/40 p-2.5">
-                  <div>
-                    <span className="text-muted-foreground">
-                      {i18n.t("options.dictionary.webdav.remoteRecords")}:{" "}
-                    </span>
-                    <span className="font-medium">{remoteSummary.recordCount ?? 0}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">
-                      {i18n.t("options.dictionary.webdav.remoteConflicts")}:{" "}
-                    </span>
-                    <span className="font-medium">{remoteSummary.conflictCount ?? 0}</span>
-                  </div>
-                  {remoteSummary.updatedAt && (
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">
-                        {i18n.t("options.dictionary.webdav.remoteUpdatedAt")}:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {new Date(remoteSummary.updatedAt).toLocaleString()}
-                      </span>
+      {/* View Record Detail Dialog */}
+      <Dialog
+        open={Boolean(viewingRecord)}
+        onOpenChange={(open) => !open && setViewingRecord(null)}
+      >
+        <DialogContent className="max-w-xl">
+          {viewingRecord &&
+            (() => {
+              const fields = extractRecordFields(viewingRecord)
+              return (
+                <>
+                  <DialogHeader>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                        {fields.term || i18n.t("options.dictionary.detailTitle")}
+                      </DialogTitle>
+                      {fields.phonetic && (
+                        <span className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-muted-foreground">
+                          {fields.phonetic}
+                        </span>
+                      )}
+                      {fields.partOfSpeech && (
+                        <Badge variant="secondary" className="text-xs">
+                          {fields.partOfSpeech}
+                        </Badge>
+                      )}
+                      {fields.difficulty && (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/40 text-xs font-semibold text-primary"
+                        >
+                          {fields.difficulty}
+                        </Badge>
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-muted-foreground">
-                  {i18n.t("options.dictionary.webdav.remoteNotExists")}
-                </div>
-              )
-            ) : (
-              <div className="text-muted-foreground">No remote summary available</div>
-            )}
-          </div>
+                    <DialogDescription className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
+                      <span>
+                        {i18n.t("options.dictionary.columns.action")}:{" "}
+                        {viewingRecord.actionName || viewingRecord.actionId}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        {i18n.t("options.dictionary.columns.updatedAt")}:{" "}
+                        {new Date(viewingRecord.updatedAt).toLocaleString()}
+                      </span>
+                    </DialogDescription>
+                  </DialogHeader>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsForceOverwriteDialogOpen(false)}
-            >
-              {i18n.t("options.dictionary.cancel")}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleConfirmForceOverwrite}
-              disabled={isSyncingWebdav || isFetchingRemoteSummary || !remoteSummary}
-              aria-label="confirm-force-overwrite"
-            >
-              {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
-            </Button>
-          </DialogFooter>
+                  <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto py-2 text-sm">
+                    {/* Definition */}
+                    {fields.definition && (
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                        <div className="mb-1 text-xs font-semibold text-primary">
+                          {i18n.t("options.dictionary.definition")}
+                        </div>
+                        <div className="leading-relaxed text-foreground">{fields.definition}</div>
+                      </div>
+                    )}
+
+                    {/* Sentence & Translation */}
+                    {fields.sentence && (
+                      <div className="rounded-lg border bg-muted/40 p-3">
+                        <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                          {i18n.t("options.dictionary.sentence")}
+                        </div>
+                        <div className="font-serif leading-relaxed text-foreground italic">
+                          "{fields.sentence}"
+                        </div>
+                        {fields.sentenceTranslation && (
+                          <div className="mt-1.5 border-t border-border/50 pt-1.5 text-xs text-muted-foreground">
+                            {fields.sentenceTranslation}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Other fields */}
+                    {fields.otherFields.length > 0 && (
+                      <div className="space-y-2 rounded-lg border p-3 text-xs">
+                        {fields.otherFields.map((f) => (
+                          <div key={f.id} className="flex items-start gap-2">
+                            <span className="shrink-0 font-medium text-muted-foreground">
+                              {f.label}:
+                            </span>
+                            <span className="text-foreground">{f.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter className="flex items-center justify-between sm:justify-between">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const rec = viewingRecord
+                          setViewingRecord(null)
+                          handleOpenEdit(rec)
+                        }}
+                        aria-label="detail-edit-record"
+                      >
+                        <Icon icon="tabler:edit" className="mr-1.5 size-4" />
+                        {i18n.t("options.dictionary.edit")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          const rec = viewingRecord
+                          setViewingRecord(null)
+                          setDeletingRecord(rec)
+                        }}
+                        aria-label="detail-delete-record"
+                      >
+                        <Icon icon="tabler:trash" className="mr-1.5 size-4" />
+                        {i18n.t("options.dictionary.delete")}
+                      </Button>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setViewingRecord(null)}>
+                      {i18n.t("options.dictionary.cancel")}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )
+            })()}
         </DialogContent>
       </Dialog>
 

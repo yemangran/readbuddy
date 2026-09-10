@@ -17,6 +17,7 @@ export const ROUTE_DEFS = [
   // Detail pages drilled into from a `ConfigNavItem`. They own no sidebar entry — the
   // sidebar lists its links itself — but route exactly like any other page.
   { path: "/preference/config-backup" },
+  { path: "/preference/webdav-sync" },
   { path: "/preference/extension-activation" },
   { path: "/page-translation/custom-css" },
   { path: "/page-translation/prompts" },

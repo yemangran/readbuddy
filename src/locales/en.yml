@@ -158,6 +158,12 @@ options:
     purgeAllConfirmTitle: Empty Recycle Bin?
     purgeAllConfirmDescription: This will permanently delete all records in the recycle bin and remove them completely from remote sync on the next sync. This cannot be undone.
     deletedAt: Deleted At
+    viewDetail: View Details
+    detailTitle: Dictionary Record Details
+    syncSettings: Sync Settings
+    createdAt: Created
+    definition: Definition
+    sentence: Sentence
     columns:
       action: Source Action
       updatedAt: Updated
