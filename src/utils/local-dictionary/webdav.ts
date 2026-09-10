@@ -67,7 +67,30 @@ export function normalizeWebdavEndpoint(endpoint: string): string {
   if (!["http:", "https:"].includes(url.protocol)) {
     throw new Error(`Unsupported protocol: ${url.protocol}`)
   }
+  // Jianguoyun root path (/dav or /dav/) cannot host bare files directly.
+  // Auto-append dedicated app directory /readfrog/
+  if (url.hostname === "dav.jianguoyun.com") {
+    const cleanPath = url.pathname.replace(/\/+$/, "")
+    if (cleanPath === "/dav" || cleanPath === "") {
+      url.pathname = "/dav/readfrog/"
+    }
+  }
   return url.toString()
+}
+
+export function getWebdavParentCollectionUrl(fileUrl: string): string | null {
+  try {
+    const url = new URL(fileUrl)
+    const segments = url.pathname.split("/").filter(Boolean)
+    if (segments.length <= 1) {
+      return null
+    }
+    segments.pop()
+    url.pathname = `/${segments.join("/")}/`
+    return url.toString()
+  } catch {
+    return null
+  }
 }
 
 export function getWebdavFileUrl(endpoint: string): string {
@@ -224,6 +247,7 @@ export async function syncWithWebdav(
   const authHeader = getWebdavAuthHeader(config.username, config.password)
   const maxRetries = options?.maxRetries ?? MAX_CONDITIONAL_RETRIES
   let attempt = 0
+  let createdParentCollection = false
 
   while (attempt < maxRetries) {
     attempt++
@@ -479,6 +503,55 @@ export async function syncWithWebdav(
           deletedCount,
           preservedCount,
           addedConflictCount,
+        },
+      }
+    }
+
+    if ((putRes.status === 404 || putRes.status === 409) && !createdParentCollection) {
+      const parentUrl = getWebdavParentCollectionUrl(fileUrl)
+      if (parentUrl) {
+        createdParentCollection = true
+        logger.info(
+          `[WebDAV] Parent collection missing (HTTP ${putRes.status}), attempting MKCOL: ${parentUrl}`,
+        )
+        try {
+          const mkcolRes = await fetchFn(parentUrl, {
+            method: "MKCOL",
+            headers: {
+              Authorization: authHeader,
+            },
+          })
+          if (mkcolRes.status === 201 || mkcolRes.status === 405 || mkcolRes.status === 200) {
+            logger.info("[WebDAV] MKCOL parent collection succeeded, retrying upload...")
+            attempt-- // Do not consume an attempt for collection creation
+            continue
+          }
+        } catch (mkcolErr) {
+          logger.warn("[WebDAV] Failed to execute MKCOL on parent collection", mkcolErr)
+        }
+      }
+    }
+
+    if (putRes.status === 404) {
+      let bodySnippet = ""
+      try {
+        bodySnippet = await putRes.text()
+      } catch {
+        // ignore
+      }
+      const isJianguoyun = fileUrl.includes("dav.jianguoyun.com")
+      const errorMsg =
+        isJianguoyun || bodySnippet.includes("ObjectNotFound")
+          ? "WebDAV 目标目录不存在（坚果云根目录不支持直接放置文件，请在服务地址中包含同步文件夹如 /dav/readfrog/）"
+          : "WebDAV server returned HTTP 404 on upload: parent collection does not exist"
+
+      return {
+        ok: false,
+        localUpdated,
+        error: {
+          code: "NETWORK_ERROR",
+          message: errorMsg,
+          retryable: false,
         },
       }
     }
