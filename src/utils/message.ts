@@ -33,7 +33,9 @@ import type {
   ListOutput,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
+  PurgeInput,
   RestoreConflictVersionInput,
+  RestoreDeletedInput,
   RemoteSnapshotSummary,
   UpdateCellsInput,
   WebdavConfig,
@@ -212,6 +214,11 @@ interface ProtocolMap {
   dictionaryRestoreAsNew: (
     data: RestoreConflictVersionInput,
   ) => Promise<DictionaryReply<LocalDictionaryRecord>>
+  dictionaryRestoreDeleted: (
+    data: RestoreDeletedInput,
+  ) => Promise<DictionaryReply<LocalDictionaryRecord>>
+  dictionaryPurge: (data: PurgeInput) => Promise<DictionaryReply<{ id: string; purged: boolean }>>
+  dictionaryPurgeAllDeleted: () => Promise<DictionaryReply<{ purgedCount: number }>>
   dictionaryExportSnapshot: () => Promise<DictionaryReply<string>>
   dictionaryPreviewImport: (
     data: DictionarySnapshotV1,

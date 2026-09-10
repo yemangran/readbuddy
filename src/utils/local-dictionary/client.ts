@@ -10,8 +10,10 @@ import type {
   ListOutput,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
+  PurgeInput,
   RemoteSnapshotSummary,
   RestoreConflictVersionInput,
+  RestoreDeletedInput,
   UpdateCellsInput,
   WebdavConfig,
   WebdavError,
@@ -90,6 +92,24 @@ export async function restoreConflictVersionAsNew(
 
 export async function exportDictionarySnapshot(): Promise<DictionaryReply<string>> {
   return await sendWithRetry(() => sendMessage("dictionaryExportSnapshot"))
+}
+
+export async function restoreDeletedDictionaryRecord(
+  input: RestoreDeletedInput,
+): Promise<DictionaryReply<LocalDictionaryRecord>> {
+  return await sendWithRetry(() => sendMessage("dictionaryRestoreDeleted", input))
+}
+
+export async function purgeDictionaryRecord(
+  input: PurgeInput,
+): Promise<DictionaryReply<{ id: string; purged: boolean }>> {
+  return await sendWithRetry(() => sendMessage("dictionaryPurge", input))
+}
+
+export async function purgeAllDeletedDictionaryRecords(): Promise<
+  DictionaryReply<{ purgedCount: number }>
+> {
+  return await sendWithRetry(() => sendMessage("dictionaryPurgeAllDeleted"))
 }
 
 export async function previewDictionaryImport(

@@ -482,4 +482,134 @@ describe("LocalDictionaryRepository", () => {
     expect(previewAgain.data.addedCount).toBe(0)
     expect(previewAgain.data.unchangedCount).toBe(1)
   })
+
+  it("supports listing deleted records, restoring them, and purging permanently", async () => {
+    // 1. Create two records
+    await repository.createMany({
+      requestId: "req-create-trash",
+      items: [
+        {
+          id: "vocab-trash-1",
+          actionId: "dict",
+          actionName: "Dict",
+          outputSchema: [makeField("col-1", "Term")],
+          result: { Term: "word1" },
+          columns: [{ id: "col-1", name: "Term", position: 0 }],
+          mappings: [],
+          cells: { "col-1": "word1" },
+        },
+        {
+          id: "vocab-trash-2",
+          actionId: "dict",
+          actionName: "Dict",
+          outputSchema: [makeField("col-1", "Term")],
+          result: { Term: "word2" },
+          columns: [{ id: "col-1", name: "Term", position: 0 }],
+          mappings: [],
+          cells: { "col-1": "word2" },
+        },
+      ],
+    })
+
+    // 2. Soft delete vocab-trash-1
+    const get1 = await repository.get("vocab-trash-1")
+    expect(get1.ok).toBe(true)
+    if (!get1.ok) throw new Error("vocab-trash-1 not found")
+
+    const delRes = await repository.delete({
+      requestId: "req-del-1",
+      id: "vocab-trash-1",
+      expectedRevision: get1.data.localRevision,
+    })
+    expect(delRes.ok).toBe(true)
+
+    // Active list should only have vocab-trash-2
+    const activeList = await repository.list({ page: 1, pageSize: 10 })
+    expect(activeList.ok).toBe(true)
+    if (!activeList.ok) throw new Error("activeList failed")
+    expect(activeList.data.total).toBe(1)
+    expect(activeList.data.records[0]?.id).toBe("vocab-trash-2")
+
+    // Recycle bin list should have vocab-trash-1
+    const trashList = await repository.list({ page: 1, pageSize: 10, deletedOnly: true })
+    expect(trashList.ok).toBe(true)
+    if (!trashList.ok) throw new Error("trashList failed")
+    expect(trashList.data.total).toBe(1)
+    expect(trashList.data.records[0]?.id).toBe("vocab-trash-1")
+    expect(trashList.data.records[0]?.deletedAt).toBeDefined()
+
+    // 3. Restore vocab-trash-1
+    const restoreRes = await repository.restoreDeleted({
+      requestId: "req-restore-1",
+      id: "vocab-trash-1",
+    })
+    expect(restoreRes.ok).toBe(true)
+    if (!restoreRes.ok) throw new Error("restoreRes failed")
+    expect(restoreRes.data.deletedAt).toBeUndefined()
+
+    // Active list should now have both
+    const activeListAfterRestore = await repository.list({ page: 1, pageSize: 10 })
+    expect(activeListAfterRestore.ok).toBe(true)
+    if (!activeListAfterRestore.ok) throw new Error("activeListAfterRestore failed")
+    expect(activeListAfterRestore.data.total).toBe(2)
+
+    // Recycle bin should now be empty
+    const trashListAfterRestore = await repository.list({
+      page: 1,
+      pageSize: 10,
+      deletedOnly: true,
+    })
+    expect(trashListAfterRestore.ok).toBe(true)
+    if (!trashListAfterRestore.ok) throw new Error("trashListAfterRestore failed")
+    expect(trashListAfterRestore.data.total).toBe(0)
+
+    // 4. Soft delete both again and purge single
+    const g1 = (await repository.get("vocab-trash-1")) as any
+    const g2 = (await repository.get("vocab-trash-2")) as any
+    await repository.delete({
+      requestId: "req-del-1b",
+      id: "vocab-trash-1",
+      expectedRevision: g1.data.localRevision,
+    })
+    await repository.delete({
+      requestId: "req-del-2b",
+      id: "vocab-trash-2",
+      expectedRevision: g2.data.localRevision,
+    })
+
+    const purgeSingleRes = await repository.purge({
+      requestId: "req-purge-1",
+      id: "vocab-trash-1",
+    })
+    expect(purgeSingleRes.ok).toBe(true)
+
+    // vocab-trash-1 should be physically gone
+    const getPurged = await repository.get("vocab-trash-1")
+    expect(getPurged.ok).toBe(false)
+
+    // Recycle bin should only have vocab-trash-2
+    const trashListAfterPurge = await repository.list({ page: 1, pageSize: 10, deletedOnly: true })
+    expect(trashListAfterPurge.ok).toBe(true)
+    if (!trashListAfterPurge.ok) throw new Error("trashListAfterPurge failed")
+    expect(trashListAfterPurge.data.total).toBe(1)
+    expect(trashListAfterPurge.data.records[0]?.id).toBe("vocab-trash-2")
+
+    // 5. Purge all deleted
+    const purgeAllRes = await repository.purgeAllDeleted()
+    expect(purgeAllRes.ok).toBe(true)
+    if (!purgeAllRes.ok) throw new Error("purgeAllRes failed")
+    expect(purgeAllRes.data.purgedCount).toBe(1)
+
+    const trashListFinal = await repository.list({ page: 1, pageSize: 10, deletedOnly: true })
+    expect(trashListFinal.ok).toBe(true)
+    if (!trashListFinal.ok) throw new Error("trashListFinal failed")
+    expect(trashListFinal.data.total).toBe(0)
+
+    // Snapshot export should have 0 vocabularies
+    const snapshotExport = await repository.exportSnapshot()
+    expect(snapshotExport.ok).toBe(true)
+    if (!snapshotExport.ok) throw new Error("snapshotExport failed")
+    const parsed = JSON.parse(snapshotExport.data)
+    expect(parsed.vocabularies.length).toBe(0)
+  })
 })

@@ -50,7 +50,10 @@ import {
   listConflictVersions,
   listDictionaryRecords,
   previewDictionaryImport,
+  purgeAllDeletedDictionaryRecords,
+  purgeDictionaryRecord,
   restoreConflictVersionAsNew,
+  restoreDeletedDictionaryRecord,
   saveWebdavConfig,
   testWebdavConnection,
   triggerWebdavSync,
@@ -107,6 +110,15 @@ export function DictionaryPage() {
   // History & conflicts dialog state
   const [historyRecord, setHistoryRecord] = useState<LocalDictionaryRecord | null>(null)
   const [isRestoring, setIsRestoring] = useState(false)
+
+  // Recycle bin state
+  const [isTrashOpen, setIsTrashOpen] = useState(false)
+  const [trashPage, setTrashPage] = useState(1)
+  const [isRestoringTrashId, setIsRestoringTrashId] = useState<string | null>(null)
+  const [purgingRecord, setPurgingRecord] = useState<LocalDictionaryRecord | null>(null)
+  const [isPurging, setIsPurging] = useState(false)
+  const [isPurgeAllDialogOpen, setIsPurgeAllDialogOpen] = useState(false)
+  const [isPurgingAll, setIsPurgingAll] = useState(false)
 
   // Snapshot Export state
   const [isExporting, setIsExporting] = useState(false)
@@ -182,6 +194,21 @@ export function DictionaryPage() {
     },
   })
 
+  const { data: trashData, isPending: isLoadingTrash } = useQuery({
+    queryKey: ["local-dictionary-trash", trashPage],
+    queryFn: async () => {
+      const reply = await listDictionaryRecords({
+        page: trashPage,
+        pageSize: PAGE_SIZE,
+        deletedOnly: true,
+      })
+      if (!reply.ok) {
+        throw new Error(reply.error.message || "Failed to load recycle bin records")
+      }
+      return reply.data
+    },
+  })
+
   const historyRecordId = historyRecord?.id
   const { data: conflictVersions, isPending: isLoadingConflicts } = useQuery({
     queryKey: ["local-dictionary-conflicts", historyRecordId],
@@ -199,6 +226,7 @@ export function DictionaryPage() {
   useEffect(() => {
     return watchDictionaryChangeSignal(() => {
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-trash"] })
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-conflicts"] })
     })
   }, [])
@@ -420,6 +448,81 @@ export function DictionaryPage() {
       }
     } finally {
       setIsRestoring(false)
+    }
+  }
+
+  const handleRestoreDeletedRecord = async (record: LocalDictionaryRecord) => {
+    setIsRestoringTrashId(record.id)
+    try {
+      const reply = await restoreDeletedDictionaryRecord({
+        requestId: getRandomUUID(),
+        id: record.id,
+      })
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.restoreTrashSuccess"),
+        })
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-trash"] })
+      } else {
+        toastManager.add({
+          type: "error",
+          title: reply.error.message || "Failed to restore record",
+        })
+      }
+    } finally {
+      setIsRestoringTrashId(null)
+    }
+  }
+
+  const handleConfirmPurgeRecord = async () => {
+    if (!purgingRecord) return
+    setIsPurging(true)
+    try {
+      const reply = await purgeDictionaryRecord({
+        requestId: getRandomUUID(),
+        id: purgingRecord.id,
+      })
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.purgeSuccess"),
+        })
+        setPurgingRecord(null)
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-trash"] })
+      } else {
+        toastManager.add({
+          type: "error",
+          title: reply.error.message || "Failed to purge record",
+        })
+      }
+    } finally {
+      setIsPurging(false)
+    }
+  }
+
+  const handleConfirmPurgeAll = async () => {
+    setIsPurgingAll(true)
+    try {
+      const reply = await purgeAllDeletedDictionaryRecords()
+      if (reply.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.purgeAllSuccess"),
+        })
+        setIsPurgeAllDialogOpen(false)
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
+        void queryClient.invalidateQueries({ queryKey: ["local-dictionary-trash"] })
+      } else {
+        toastManager.add({
+          type: "error",
+          title: reply.error.message || "Failed to purge all deleted records",
+        })
+      }
+    } finally {
+      setIsPurgingAll(false)
     }
   }
 
@@ -786,6 +889,23 @@ export function DictionaryPage() {
           />
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setTrashPage(1)
+              setIsTrashOpen(true)
+            }}
+            aria-label="open-trash"
+          >
+            <Icon icon="tabler:trash" className="mr-1.5 size-4" />
+            {i18n.t("options.dictionary.trash")}
+            {(trashData?.total ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-[10px] leading-tight">
+                {trashData?.total}
+              </Badge>
+            )}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -1244,6 +1364,242 @@ export function DictionaryPage() {
               aria-label="confirm-force-overwrite"
             >
               {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recycle Bin Dialog */}
+      <Dialog open={isTrashOpen} onOpenChange={setIsTrashOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between pr-6">
+              <DialogTitle className="flex items-center gap-2">
+                <Icon icon="tabler:trash" className="size-5 text-muted-foreground" />
+                {i18n.t("options.dictionary.trashTitle")}
+              </DialogTitle>
+              {(trashData?.total ?? 0) > 0 && (
+                <Button
+                  size="xs"
+                  variant="destructive"
+                  onClick={() => setIsPurgeAllDialogOpen(true)}
+                  disabled={isPurgingAll}
+                  aria-label="empty-trash-btn"
+                >
+                  <Icon icon="tabler:trash-x" className="mr-1 size-3.5" />
+                  {i18n.t("options.dictionary.purgeAll")}
+                </Button>
+              )}
+            </div>
+            <DialogDescription className="text-xs">
+              {i18n.t("options.dictionary.trashDescription")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto py-2">
+            {isLoadingTrash ? (
+              <div className="flex items-center justify-center p-8 text-muted-foreground">
+                <Icon icon="tabler:loader-2" className="mr-2 size-5 animate-spin" />
+                <span>Loading...</span>
+              </div>
+            ) : !trashData?.records.length ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center">
+                <Icon icon="tabler:trash-off" className="mb-2 size-8 text-muted-foreground/60" />
+                <p className="text-sm font-medium text-foreground">
+                  {i18n.t("options.dictionary.trashEmpty")}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[45%]">
+                      {i18n.t("options.dictionary.columns.cells")}
+                    </TableHead>
+                    <TableHead className="w-[20%]">
+                      {i18n.t("options.dictionary.columns.action")}
+                    </TableHead>
+                    <TableHead className="w-[20%]">
+                      {i18n.t("options.dictionary.deletedAt")}
+                    </TableHead>
+                    <TableHead className="w-[15%] text-right">
+                      {i18n.t("options.dictionary.edit")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {trashData.records.map((record) => {
+                    const cellEntries = Object.entries(record.cells).filter(
+                      ([, val]) => val !== null && val !== undefined && val !== "",
+                    )
+                    return (
+                      <TableRow key={record.id}>
+                        <TableCell className="align-top">
+                          <div className="flex flex-col gap-1 text-xs">
+                            {cellEntries.slice(0, 3).map(([key, value]) => {
+                              const colDef = record.columns.find((c) => c.id === key)
+                              const label = colDef ? colDef.name : key
+                              return (
+                                <div key={key} className="flex items-start gap-1">
+                                  <span className="shrink-0 font-medium text-muted-foreground">
+                                    {label}:
+                                  </span>
+                                  <span className="line-clamp-2 text-foreground">
+                                    {String(value)}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                            {cellEntries.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                +{cellEntries.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="align-top text-xs text-muted-foreground">
+                          {record.actionName || record.actionId}
+                        </TableCell>
+                        <TableCell className="align-top text-xs text-muted-foreground">
+                          {record.deletedAt ? new Date(record.deletedAt).toLocaleString() : "-"}
+                        </TableCell>
+                        <TableCell className="text-right align-top">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              disabled={isRestoringTrashId === record.id}
+                              onClick={() => handleRestoreDeletedRecord(record)}
+                              aria-label={`restore-record-${record.id}`}
+                            >
+                              <Icon
+                                icon={
+                                  isRestoringTrashId === record.id
+                                    ? "tabler:loader-2"
+                                    : "tabler:rotate-2"
+                                }
+                                className={cn(
+                                  "mr-1 size-3.5",
+                                  isRestoringTrashId === record.id && "animate-spin",
+                                )}
+                              />
+                              {i18n.t("options.dictionary.restore")}
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => setPurgingRecord(record)}
+                              aria-label={`purge-record-${record.id}`}
+                            >
+                              <Icon icon="tabler:trash-x" className="size-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+
+            {(trashData?.total ?? 0) > PAGE_SIZE && (
+              <div className="flex items-center justify-between border-t px-2 py-3 text-xs text-muted-foreground">
+                <div>
+                  Page {trashPage} of {Math.max(1, Math.ceil((trashData?.total ?? 0) / PAGE_SIZE))}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={trashPage <= 1}
+                    onClick={() => setTrashPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={
+                      trashPage >= Math.max(1, Math.ceil((trashData?.total ?? 0) / PAGE_SIZE))
+                    }
+                    onClick={() =>
+                      setTrashPage((p) =>
+                        Math.min(Math.ceil((trashData?.total ?? 0) / PAGE_SIZE), p + 1),
+                      )
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setIsTrashOpen(false)}>
+              {i18n.t("options.dictionary.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purge Single Record Confirmation Dialog */}
+      <Dialog
+        open={Boolean(purgingRecord)}
+        onOpenChange={(open) => !open && setPurgingRecord(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Icon icon="tabler:alert-triangle" className="size-5" />
+              {i18n.t("options.dictionary.purgeConfirmTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {i18n.t("options.dictionary.purgeConfirmDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setPurgingRecord(null)}>
+              {i18n.t("options.dictionary.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleConfirmPurgeRecord}
+              disabled={isPurging}
+              aria-label="confirm-purge-record"
+            >
+              {i18n.t("options.dictionary.purge")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purge All Confirmation Dialog */}
+      <Dialog open={isPurgeAllDialogOpen} onOpenChange={setIsPurgeAllDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Icon icon="tabler:alert-triangle" className="size-5" />
+              {i18n.t("options.dictionary.purgeAllConfirmTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {i18n.t("options.dictionary.purgeAllConfirmDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setIsPurgeAllDialogOpen(false)}>
+              {i18n.t("options.dictionary.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleConfirmPurgeAll}
+              disabled={isPurgingAll}
+              aria-label="confirm-purge-all"
+            >
+              {i18n.t("options.dictionary.purgeAll")}
             </Button>
           </DialogFooter>
         </DialogContent>

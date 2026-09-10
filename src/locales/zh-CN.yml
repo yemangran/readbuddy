@@ -143,6 +143,21 @@ options:
     historyEmpty: 暂无保留版本
     restoreAsNew: 恢复为新词条
     restoreSuccess: 已成功恢复为新词条
+    trash: 回收站
+    trashTitle: 词典回收站
+    trashDescription: 查看已删除的词条。您可以将词条恢复到词典中，或彻底删除。
+    trashEmpty: 回收站为空
+    restore: 恢复
+    restoreTrashSuccess: 词条已成功恢复
+    purge: 彻底删除
+    purgeSuccess: 词条已彻底删除
+    purgeAll: 清空回收站
+    purgeAllSuccess: 回收站已清空
+    purgeConfirmTitle: 确定彻底删除？
+    purgeConfirmDescription: 该操作将从本地和远端同步快照中物理移除此记录，无法撤销。
+    purgeAllConfirmTitle: 确定清空回收站？
+    purgeAllConfirmDescription: 将彻底删除回收站中的所有词条，并在下次同步时从远端完全移除，无法撤销。
+    deletedAt: 删除时间
     columns:
       action: 来源动作
       updatedAt: 更新时间

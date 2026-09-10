@@ -143,6 +143,21 @@ options:
     historyEmpty: No conflict or preserved versions found
     restoreAsNew: Restore as New Record
     restoreSuccess: Successfully restored as a new active dictionary record
+    trash: Recycle Bin
+    trashTitle: Dictionary Recycle Bin
+    trashDescription: View deleted dictionary records. You can restore records to your active dictionary or permanently purge them.
+    trashEmpty: Recycle bin is empty
+    restore: Restore
+    restoreTrashSuccess: Record restored successfully
+    purge: Delete Permanently
+    purgeSuccess: Record permanently purged
+    purgeAll: Empty Recycle Bin
+    purgeAllSuccess: Recycle bin emptied
+    purgeConfirmTitle: Delete Permanently?
+    purgeConfirmDescription: This will permanently remove the record from both local storage and remote sync snapshots. This cannot be undone.
+    purgeAllConfirmTitle: Empty Recycle Bin?
+    purgeAllConfirmDescription: This will permanently delete all records in the recycle bin and remove them completely from remote sync on the next sync. This cannot be undone.
+    deletedAt: Deleted At
     columns:
       action: Source Action
       updatedAt: Updated

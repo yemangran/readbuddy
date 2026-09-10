@@ -12,7 +12,9 @@ import type {
   ListOutput,
   LocalDictionaryRecord,
   PortableDictionaryRecord,
+  PurgeInput,
   RestoreConflictVersionInput,
+  RestoreDeletedInput,
   UpdateCellsInput,
 } from "./types"
 import { sha256 } from "js-sha256"
@@ -570,9 +572,11 @@ export class LocalDictionaryRepository {
       const page = Math.max(1, input.page || 1)
       const pageSize = Math.min(100, Math.max(1, input.pageSize || 20))
 
-      const allActive = await this.db.vocabularies.filter((record) => !record.deletedAt).toArray()
+      const allRecords = await this.db.vocabularies
+        .filter((record) => (input.deletedOnly ? Boolean(record.deletedAt) : !record.deletedAt))
+        .toArray()
 
-      let filtered = allActive
+      let filtered = allRecords
       if (input.actionId) {
         filtered = filtered.filter((r) => r.actionId === input.actionId)
       }
@@ -795,6 +799,231 @@ export class LocalDictionaryRepository {
           code: "STORAGE_UNAVAILABLE",
           retryable: true,
           message: error?.message ?? "Storage error",
+        },
+      }
+    }
+  }
+
+  async restoreDeleted(
+    input: RestoreDeletedInput,
+  ): Promise<DictionaryReply<LocalDictionaryRecord>> {
+    const digest = computeRequestDigest(input)
+    const existingReceipt = await this.db.mutationReceipts.get(input.requestId)
+    if (existingReceipt) {
+      if (existingReceipt.requestDigest !== digest) {
+        return {
+          ok: false,
+          error: {
+            code: "REQUEST_ID_REUSED",
+            retryable: false,
+            message: "Request ID already used with different payload",
+          },
+        }
+      }
+      return {
+        ok: true,
+        data: existingReceipt.result as LocalDictionaryRecord,
+        changeSequence: existingReceipt.changeSequence,
+      }
+    }
+
+    try {
+      return await this.db.transaction(
+        "rw",
+        [
+          this.db.vocabularies,
+          this.db.conflictVersions,
+          this.db.metadata,
+          this.db.syncChanges,
+          this.db.mutationReceipts,
+        ],
+        async () => {
+          const existing = await this.db.vocabularies.get(input.id)
+          if (!existing) {
+            return {
+              ok: false,
+              error: { code: "NOT_FOUND", retryable: false, message: "Record not found" },
+            }
+          }
+
+          if (!existing.deletedAt) {
+            return {
+              ok: true,
+              data: existing,
+              changeSequence: (await this.db.metadata.get("changeSequence"))?.value as number,
+            }
+          }
+
+          const now = Math.max(Date.now(), existing.updatedAt + 1)
+          const metadata = await this.getMetadata()
+          const newSequence = metadata.changeSequence + 1
+          const localRevision = `${now}#${metadata.deviceId}#${newSequence}`
+
+          const restoredRecord: LocalDictionaryRecord = {
+            ...existing,
+            updatedAt: now,
+            deviceId: metadata.deviceId,
+            localRevision,
+          }
+          delete (restoredRecord as any).deletedAt
+
+          await this.db.vocabularies.put(restoredRecord)
+          await this.db.metadata.put({ key: "changeSequence", value: newSequence })
+          await this.db.syncChanges.add({
+            entityId: existing.id,
+            entityType: "vocabulary",
+            operation: "update",
+            timestamp: now,
+            deviceId: metadata.deviceId,
+            version: { id: existing.id, updatedAt: now, deviceId: metadata.deviceId },
+          })
+          await this.db.mutationReceipts.put({
+            requestId: input.requestId,
+            requestDigest: digest,
+            result: restoredRecord,
+            changeSequence: newSequence,
+            createdAt: now,
+          })
+
+          return {
+            ok: true,
+            data: restoredRecord,
+            changeSequence: newSequence,
+          }
+        },
+      )
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error during restore",
+        },
+      }
+    }
+  }
+
+  async purge(input: PurgeInput): Promise<DictionaryReply<{ id: string; purged: boolean }>> {
+    const digest = computeRequestDigest(input)
+    const existingReceipt = await this.db.mutationReceipts.get(input.requestId)
+    if (existingReceipt) {
+      if (existingReceipt.requestDigest !== digest) {
+        return {
+          ok: false,
+          error: {
+            code: "REQUEST_ID_REUSED",
+            retryable: false,
+            message: "Request ID already used with different payload",
+          },
+        }
+      }
+      return {
+        ok: true,
+        data: existingReceipt.result as { id: string; purged: boolean },
+        changeSequence: existingReceipt.changeSequence,
+      }
+    }
+
+    try {
+      return await this.db.transaction(
+        "rw",
+        [
+          this.db.vocabularies,
+          this.db.conflictVersions,
+          this.db.metadata,
+          this.db.syncChanges,
+          this.db.mutationReceipts,
+        ],
+        async () => {
+          await this.db.vocabularies.delete(input.id)
+          await this.db.conflictVersions.where("id").equals(input.id).delete()
+
+          const metadata = await this.getMetadata()
+          const newSequence = metadata.changeSequence + 1
+          const now = Date.now()
+
+          await this.db.metadata.put({ key: "changeSequence", value: newSequence })
+          await this.db.syncChanges.add({
+            entityId: input.id,
+            entityType: "vocabulary",
+            operation: "delete",
+            timestamp: now,
+            deviceId: metadata.deviceId,
+            version: { id: input.id, updatedAt: now, deviceId: metadata.deviceId },
+          })
+
+          const result = { id: input.id, purged: true }
+          await this.db.mutationReceipts.put({
+            requestId: input.requestId,
+            requestDigest: digest,
+            result,
+            changeSequence: newSequence,
+            createdAt: now,
+          })
+
+          return {
+            ok: true,
+            data: result,
+            changeSequence: newSequence,
+          }
+        },
+      )
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error during purge",
+        },
+      }
+    }
+  }
+
+  async purgeAllDeleted(): Promise<DictionaryReply<{ purgedCount: number }>> {
+    try {
+      return await this.db.transaction(
+        "rw",
+        [this.db.vocabularies, this.db.conflictVersions, this.db.metadata, this.db.syncChanges],
+        async () => {
+          const deleted = await this.db.vocabularies.filter((r) => Boolean(r.deletedAt)).toArray()
+          const metadata = await this.getMetadata()
+          let currentSeq = metadata.changeSequence
+          const now = Date.now()
+
+          for (const item of deleted) {
+            await this.db.vocabularies.delete(item.id)
+            await this.db.conflictVersions.where("id").equals(item.id).delete()
+            currentSeq++
+            await this.db.syncChanges.add({
+              entityId: item.id,
+              entityType: "vocabulary",
+              operation: "delete",
+              timestamp: now,
+              deviceId: metadata.deviceId,
+              version: { id: item.id, updatedAt: now, deviceId: metadata.deviceId },
+            })
+          }
+
+          if (deleted.length > 0) {
+            await this.db.metadata.put({ key: "changeSequence", value: currentSeq })
+          }
+
+          return {
+            ok: true,
+            data: { purgedCount: deleted.length },
+            changeSequence: currentSeq,
+          }
+        },
+      )
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          retryable: true,
+          message: error?.message ?? "Storage error during purgeAllDeleted",
         },
       }
     }

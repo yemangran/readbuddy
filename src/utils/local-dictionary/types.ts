@@ -112,6 +112,7 @@ export interface ListInput {
   pageSize?: number
   search?: string
   actionId?: string
+  deletedOnly?: boolean
 }
 
 export interface ListOutput {
@@ -167,6 +168,16 @@ export interface RestoreConflictVersionInput {
 }
 
 export interface ListConflictVersionsInput {
+  id: string
+}
+
+export interface RestoreDeletedInput {
+  requestId: string
+  id: string
+}
+
+export interface PurgeInput {
+  requestId: string
   id: string
 }
 

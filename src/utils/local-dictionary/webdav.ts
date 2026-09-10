@@ -425,7 +425,11 @@ export async function syncWithWebdav(
     if (!options?.forceUnconditional) {
       if (remoteExists) {
         if (remoteEtag) {
-          putHeaders["If-Match"] = remoteEtag
+          const trimmedEtag = remoteEtag.trim()
+          putHeaders["If-Match"] =
+            trimmedEtag.startsWith('"') || trimmedEtag.startsWith("W/")
+              ? trimmedEtag
+              : `"${trimmedEtag}"`
         }
       } else {
         putHeaders["If-None-Match"] = "*"

@@ -128,6 +128,33 @@ export function setupLocalDictionaryMessageHandlers(): void {
     return result
   })
 
+  onMessage("dictionaryRestoreDeleted", async (message) => {
+    const repo = getRepository()
+    const result = await repo.restoreDeleted(message.data)
+    if (result.ok) {
+      await notifyChange()
+    }
+    return result
+  })
+
+  onMessage("dictionaryPurge", async (message) => {
+    const repo = getRepository()
+    const result = await repo.purge(message.data)
+    if (result.ok) {
+      await notifyChange()
+    }
+    return result
+  })
+
+  onMessage("dictionaryPurgeAllDeleted", async () => {
+    const repo = getRepository()
+    const result = await repo.purgeAllDeleted()
+    if (result.ok) {
+      await notifyChange()
+    }
+    return result
+  })
+
   onMessage("dictionaryExportSnapshot", async () => {
     const repo = getRepository()
     return await repo.exportSnapshot()

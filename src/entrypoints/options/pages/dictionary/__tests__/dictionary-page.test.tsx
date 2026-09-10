@@ -19,6 +19,9 @@ const previewImportMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const commitImportMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const listConflictsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const restoreConflictMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const restoreDeletedMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const purgeRecordMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+const purgeAllDeletedMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const getWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const saveWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const clearWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
@@ -43,6 +46,9 @@ vi.mock("@/utils/local-dictionary/client", () => ({
   commitDictionaryImport: commitImportMock,
   listConflictVersions: listConflictsMock,
   restoreConflictVersionAsNew: restoreConflictMock,
+  restoreDeletedDictionaryRecord: restoreDeletedMock,
+  purgeDictionaryRecord: purgeRecordMock,
+  purgeAllDeletedDictionaryRecords: purgeAllDeletedMock,
   getWebdavConfig: getWebdavConfigMock,
   saveWebdavConfig: saveWebdavConfigMock,
   clearWebdavConfig: clearWebdavConfigMock,
@@ -100,6 +106,13 @@ describe("DictionaryPage", () => {
       data: [],
       changeSequence: 1,
     })
+    restoreDeletedMock.mockResolvedValue({ ok: true, data: mockRecords[0], changeSequence: 2 })
+    purgeRecordMock.mockResolvedValue({
+      ok: true,
+      data: { id: "rec-1", purged: true },
+      changeSequence: 2,
+    })
+    purgeAllDeletedMock.mockResolvedValue({ ok: true, data: { purgedCount: 1 }, changeSequence: 2 })
     getWebdavConfigMock.mockResolvedValue(null)
     saveWebdavConfigMock.mockResolvedValue({ ok: true })
     clearWebdavConfigMock.mockResolvedValue({ ok: true })
@@ -496,6 +509,62 @@ describe("DictionaryPage", () => {
     await waitFor(() => {
       const confirmBtn = screen.getByLabelText("confirm-force-overwrite")
       expect(confirmBtn).toBeDisabled()
+    })
+  })
+
+  it("opens recycle bin, displays deleted records, and supports restore and purge", async () => {
+    const baseRecord = mockRecords[0]
+    if (!baseRecord) throw new Error("base record missing")
+    const deletedRecord: LocalDictionaryRecord = {
+      ...baseRecord,
+      id: "rec-deleted-1",
+      deletedAt: 1500,
+    }
+
+    listRecordsMock.mockImplementation(async (input) => {
+      if (input?.deletedOnly) {
+        return {
+          ok: true,
+          data: { records: [deletedRecord], total: 1, page: 1, pageSize: 15 },
+          changeSequence: 1,
+        }
+      }
+      return {
+        ok: true,
+        data: { records: mockRecords, total: 1, page: 1, pageSize: 15 },
+        changeSequence: 1,
+      }
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("open-trash")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText("open-trash"))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("restore-record-rec-deleted-1")).toBeInTheDocument()
+      expect(screen.getByLabelText("purge-record-rec-deleted-1")).toBeInTheDocument()
+    })
+
+    // Click restore
+    fireEvent.click(screen.getByLabelText("restore-record-rec-deleted-1"))
+    await waitFor(() => {
+      expect(restoreDeletedMock).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "rec-deleted-1" }),
+      )
+    })
+
+    // Click purge button to open dialog
+    fireEvent.click(screen.getByLabelText("purge-record-rec-deleted-1"))
+    await waitFor(() => {
+      expect(screen.getByLabelText("confirm-purge-record")).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByLabelText("confirm-purge-record"))
+    await waitFor(() => {
+      expect(purgeRecordMock).toHaveBeenCalledWith(expect.objectContaining({ id: "rec-deleted-1" }))
     })
   })
 })
