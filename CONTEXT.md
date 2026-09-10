@@ -13,8 +13,13 @@ A user-configured action that produces named, typed output fields from selected 
 **Dictionary record**:
 A saved learning entry containing an action's structured content and the field definitions needed to interpret it later. A record is distinct from a flashcard or a review.
 
+**Local-First Provider**:
+A user-configured local or direct-API service provider (e.g. OpenAI, DeepSeek, Ollama) managed entirely within the extension without upstream cloud proxying or membership checks.
+_Avoid_: Built-in AI, Hosted AI, Official Provider
+
 **Notebase**:
-The upstream learning workspace that organizes notes into named columns and rows. It is distinct from this fork's local dictionary.
+The deprecated upstream cloud learning workspace that was coupled to upstream accounts. It is replaced entirely by this fork's local dictionary.
+_Avoid_: Cloud dictionary, Online notes
 
 **Sync**:
 Reconciliation of saved learning records between devices through a user-configured storage service.
