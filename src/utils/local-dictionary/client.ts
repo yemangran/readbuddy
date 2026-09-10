@@ -25,6 +25,25 @@ import { sendMessage } from "@/utils/message"
 
 export const DICTIONARY_CHANGE_SIGNAL_STORAGE_KEY = "local:dictionaryChangeSignal"
 
+export function isPortDisconnectionError(error: unknown): boolean {
+  if (!error) return false
+  const msg =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : typeof error === "string"
+          ? error
+          : ""
+  return (
+    msg.includes("message port closed") ||
+    msg.includes("Could not establish connection") ||
+    msg.includes("Receiving end does not exist") ||
+    msg.includes("No response") ||
+    msg.includes("Extension context invalidated")
+  )
+}
+
 export async function sendWithRetry<T>(
   action: () => Promise<DictionaryReply<T>> | Promise<any>,
   maxRetries = 2,
@@ -32,9 +51,22 @@ export async function sendWithRetry<T>(
 ): Promise<DictionaryReply<T>> {
   let attempt = 0
   while (true) {
-    const reply = (await action()) as DictionaryReply<T>
-    if (reply.ok || !reply.error.retryable || attempt >= maxRetries) {
-      return reply
+    try {
+      const reply = (await action()) as DictionaryReply<T>
+      if (reply.ok || !reply.error?.retryable || attempt >= maxRetries) {
+        return reply
+      }
+    } catch (err: any) {
+      if (!isPortDisconnectionError(err) || attempt >= maxRetries) {
+        return {
+          ok: false,
+          error: {
+            code: "STORAGE_UNAVAILABLE",
+            message: err?.message || "Communication port error",
+            retryable: false,
+          },
+        }
+      }
     }
     attempt++
     const delay = baseDelayMs * Math.pow(2, attempt - 1)

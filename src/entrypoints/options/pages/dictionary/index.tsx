@@ -300,6 +300,11 @@ export function DictionaryPage() {
           })
         }
       }
+    } catch (err: any) {
+      toastManager.add({
+        type: "error",
+        title: err?.message || "Failed to update record",
+      })
     } finally {
       setIsSavingEdit(false)
     }
@@ -324,6 +329,11 @@ export function DictionaryPage() {
           title: reply.error.message || "Failed to delete record",
         })
       }
+    } catch (err: any) {
+      toastManager.add({
+        type: "error",
+        title: err?.message || "Failed to delete record",
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -452,6 +462,11 @@ export function DictionaryPage() {
           title: reply.error.message || "Failed to restore version",
         })
       }
+    } catch (err: any) {
+      toastManager.add({
+        type: "error",
+        title: err?.message || "Failed to restore version",
+      })
     } finally {
       setIsRestoring(false)
     }
@@ -477,6 +492,11 @@ export function DictionaryPage() {
           title: reply.error.message || "Failed to restore record",
         })
       }
+    } catch (err: any) {
+      toastManager.add({
+        type: "error",
+        title: err?.message || "Failed to restore record",
+      })
     } finally {
       setIsRestoringTrashId(null)
     }
@@ -504,6 +524,11 @@ export function DictionaryPage() {
           title: reply.error.message || "Failed to purge record",
         })
       }
+    } catch (err: any) {
+      toastManager.add({
+        type: "error",
+        title: err?.message || "Failed to purge record",
+      })
     } finally {
       setIsPurging(false)
     }
@@ -527,6 +552,11 @@ export function DictionaryPage() {
           title: reply.error.message || "Failed to purge all deleted records",
         })
       }
+    } catch (err: any) {
+      toastManager.add({
+        type: "error",
+        title: err?.message || "Failed to purge all deleted records",
+      })
     } finally {
       setIsPurgingAll(false)
     }

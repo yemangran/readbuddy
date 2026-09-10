@@ -10,6 +10,9 @@ import {
   listDictionaryRecords,
   previewDictionaryImport,
   restoreConflictVersionAsNew,
+  restoreDeletedDictionaryRecord,
+  purgeDictionaryRecord,
+  purgeAllDeletedDictionaryRecords,
   updateDictionaryCells,
   clearWebdavConfig,
   getRemoteWebdavSummary,
@@ -173,5 +176,68 @@ describe("Background Local Dictionary Messaging", () => {
       ok: false,
       error: expect.objectContaining({ code: "AUTH_FAILED" }),
     })
+
+    // 13. Recycle bin messaging: delete, check trash, restore, purge
+    const trashItem = {
+      id: "msg-trash-item-1",
+      actionId: "default-dictionary",
+      actionName: "Dictionary",
+      outputSchema: [],
+      result: {},
+      columns: [{ id: "c-1", name: "Term", position: 0 }],
+      mappings: [],
+      cells: { "c-1": "trash-word" },
+    }
+    await createDictionaryRecords({
+      requestId: "req-create-trash-1",
+      items: [trashItem],
+    })
+    const trashCreated = await getDictionaryRecord("msg-trash-item-1")
+    expect(trashCreated.ok).toBe(true)
+    if (!trashCreated.ok) return
+
+    // Soft delete
+    await deleteDictionaryRecord({
+      requestId: "req-del-trash-1",
+      id: "msg-trash-item-1",
+      expectedRevision: trashCreated.data.localRevision,
+    })
+
+    // Verify in trash
+    const trashList = await listDictionaryRecords({ deletedOnly: true })
+    expect(trashList.ok).toBe(true)
+    if (!trashList.ok) return
+    expect(trashList.data.records.some((r) => r.id === "msg-trash-item-1")).toBe(true)
+
+    // Restore from trash
+    const restoreTrashRes = await restoreDeletedDictionaryRecord({
+      requestId: "req-restore-trash-1",
+      id: "msg-trash-item-1",
+    })
+    expect(restoreTrashRes.ok).toBe(true)
+    if (!restoreTrashRes.ok) return
+    expect(restoreTrashRes.data.deletedAt).toBeUndefined()
+
+    // Verify back in active
+    const activeAfterRestore = await listDictionaryRecords()
+    expect(activeAfterRestore.ok).toBe(true)
+    if (!activeAfterRestore.ok) return
+    expect(activeAfterRestore.data.records.some((r) => r.id === "msg-trash-item-1")).toBe(true)
+
+    // Soft delete again and purge
+    await deleteDictionaryRecord({
+      requestId: "req-del-trash-2",
+      id: "msg-trash-item-1",
+      expectedRevision: restoreTrashRes.data.localRevision,
+    })
+    const purgeRes = await purgeDictionaryRecord({
+      requestId: "req-purge-1",
+      id: "msg-trash-item-1",
+    })
+    expect(purgeRes.ok).toBe(true)
+
+    // Purge all on empty trash
+    const purgeAllRes = await purgeAllDeletedDictionaryRecords()
+    expect(purgeAllRes.ok).toBe(true)
   })
 })

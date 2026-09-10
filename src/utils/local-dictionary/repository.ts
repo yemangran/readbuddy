@@ -62,25 +62,29 @@ export class TransactionBusinessError extends Error {
 export class LocalDictionaryRepository {
   constructor(private readonly db: LocalDictionaryDB) {}
 
+  private async getOrInitMetadataWithinTx(): Promise<{ deviceId: string; changeSequence: number }> {
+    let deviceIdRecord = await this.db.metadata.get("deviceId")
+    if (!deviceIdRecord || typeof deviceIdRecord.value !== "string") {
+      const newDeviceId = getRandomUUID()
+      await this.db.metadata.put({ key: "deviceId", value: newDeviceId })
+      deviceIdRecord = { key: "deviceId", value: newDeviceId }
+    }
+
+    let seqRecord = await this.db.metadata.get("changeSequence")
+    if (!seqRecord || typeof seqRecord.value !== "number") {
+      await this.db.metadata.put({ key: "changeSequence", value: 0 })
+      seqRecord = { key: "changeSequence", value: 0 }
+    }
+
+    return {
+      deviceId: deviceIdRecord.value as string,
+      changeSequence: seqRecord.value as number,
+    }
+  }
+
   async getMetadata(): Promise<{ deviceId: string; changeSequence: number }> {
     return await this.db.transaction("rw", this.db.metadata, async () => {
-      let deviceIdRecord = await this.db.metadata.get("deviceId")
-      if (!deviceIdRecord || typeof deviceIdRecord.value !== "string") {
-        const newDeviceId = getRandomUUID()
-        await this.db.metadata.put({ key: "deviceId", value: newDeviceId })
-        deviceIdRecord = { key: "deviceId", value: newDeviceId }
-      }
-
-      let seqRecord = await this.db.metadata.get("changeSequence")
-      if (!seqRecord || typeof seqRecord.value !== "number") {
-        await this.db.metadata.put({ key: "changeSequence", value: 0 })
-        seqRecord = { key: "changeSequence", value: 0 }
-      }
-
-      return {
-        deviceId: deviceIdRecord.value as string,
-        changeSequence: seqRecord.value as number,
-      }
+      return await this.getOrInitMetadataWithinTx()
     })
   }
 
@@ -747,7 +751,7 @@ export class LocalDictionaryRepository {
 
           const newId = input.targetId || getRandomUUID()
           const now = Date.now()
-          const metadata = await this.getMetadata()
+          const metadata = await this.getOrInitMetadataWithinTx()
           const newSequence = metadata.changeSequence + 1
           const localRevision = `${now}#${metadata.deviceId}#${newSequence}`
 
@@ -855,7 +859,7 @@ export class LocalDictionaryRepository {
           }
 
           const now = Math.max(Date.now(), existing.updatedAt + 1)
-          const metadata = await this.getMetadata()
+          const metadata = await this.getOrInitMetadataWithinTx()
           const newSequence = metadata.changeSequence + 1
           const localRevision = `${now}#${metadata.deviceId}#${newSequence}`
 
@@ -939,7 +943,7 @@ export class LocalDictionaryRepository {
           await this.db.vocabularies.delete(input.id)
           await this.db.conflictVersions.where("id").equals(input.id).delete()
 
-          const metadata = await this.getMetadata()
+          const metadata = await this.getOrInitMetadataWithinTx()
           const newSequence = metadata.changeSequence + 1
           const now = Date.now()
 
@@ -988,7 +992,7 @@ export class LocalDictionaryRepository {
         [this.db.vocabularies, this.db.conflictVersions, this.db.metadata, this.db.syncChanges],
         async () => {
           const deleted = await this.db.vocabularies.filter((r) => Boolean(r.deletedAt)).toArray()
-          const metadata = await this.getMetadata()
+          const metadata = await this.getOrInitMetadataWithinTx()
           let currentSeq = metadata.changeSequence
           const now = Date.now()
 
@@ -1300,7 +1304,7 @@ export class LocalDictionaryRepository {
           let addedConflictCount = 0
 
           let runningSequence = currentSequence
-          const metadata = await this.getMetadata()
+          const metadata = await this.getOrInitMetadataWithinTx()
           const now = Date.now()
 
           for (const [id, winner] of reconciled.winners.entries()) {
@@ -1409,7 +1413,7 @@ export class LocalDictionaryRepository {
         "rw",
         [this.db.vocabularies, this.db.conflictVersions, this.db.metadata, this.db.syncChanges],
         async () => {
-          const metadata = await this.getMetadata()
+          const metadata = await this.getOrInitMetadataWithinTx()
           let runningSequence = metadata.changeSequence
           const now = Date.now()
 

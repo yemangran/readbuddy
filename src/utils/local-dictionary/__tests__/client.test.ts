@@ -78,4 +78,28 @@ describe("Local Dictionary Client - sendWithRetry", () => {
     expect(sendMessageMock).toHaveBeenCalledTimes(2)
     expect(sendMessageMock).toHaveBeenCalledWith("dictionaryGet", { id: "record-1" })
   })
+
+  it("retries on transient message port disconnection error and succeeds when port recovers", async () => {
+    const action = vi
+      .fn<() => Promise<any>>()
+      .mockRejectedValueOnce(new Error("The message port closed before a response was received."))
+      .mockResolvedValueOnce({ ok: true, data: { id: "record-1" }, changeSequence: 1 })
+
+    const result = await sendWithRetry(action, 2, 5)
+    expect(result).toEqual({ ok: true, data: { id: "record-1" }, changeSequence: 1 })
+    expect(action).toHaveBeenCalledTimes(2)
+  })
+
+  it("gracefully wraps unrecoverable port disconnection error into STORAGE_UNAVAILABLE without throwing", async () => {
+    const action = vi
+      .fn<() => Promise<any>>()
+      .mockRejectedValue(new Error("The message port closed before a response was received."))
+
+    const result = await sendWithRetry(action, 2, 5)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.code).toBe("STORAGE_UNAVAILABLE")
+    expect(result.error.message).toContain("message port closed")
+    expect(action).toHaveBeenCalledTimes(3) // 1 initial + 2 retries
+  })
 })
