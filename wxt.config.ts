@@ -40,7 +40,7 @@ export default defineConfig({
     // Fixed extension ID for development
     ...(mode === "development" &&
       (browser === "chrome" || browser === "edge") && {
-        key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw2KhiXO2vySZtPu5pNSbyKhYavh8Be7gXmCZt8aJf6tQ/L3JK0qzL+3JSc/o20td3Jw+B2Dcw+EI93NAZr24xKnTNXQiJpuIuHb8xLXD0Ra/HrTVi4TJIhPdESogoG4uL6CD/F3TxfZJ2trX4Bt9cdAw1RGGeU+xU0g+YFfEka4ZUCpFAmTEw9H3/DU+nCp8yGaJWyiVgCTcFe38GZKEPt0iMJkTw956wz/iiafLx0pNG/RaztG9cAPoQOD2+SMFaeQ+b/G4OG17TYhzb09AhNBl6zSJ3jTKHSwuedCFwCce8Q/EchJfQZv71mjAE97bzwvkDYPCLj31Z5FE8HntMwIDAQAB",
+        key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArRfHO7qBC1ZztQWfpofqOXnvN1Xxl/QhCPwTLXwT7qNX1l4XAsK07UBZCFK9BxhrndyzXpxugUU4uBegp3w9xdmmm/rpjci1HYB/mBYYqR/i/ThmjtdtsxWKmY9XH/Qt4/yzHlCG0bJ/5luRVxYTEEyL8jlA//B2C9O3Xs26tfU06+7U0TD3NgcN46dai0OXidnr8pYXsL+uGKuNdegcsakE5e4m+EmRNtILsQ9P8xNYHqr2M8FJ+mTR7K13YilBsCdq/n8s60V/KOn0AQV8F5DO91k/SVc4lRcmSFWHOlDo+sRzevI7eMNwcOmpmj7nPnPAIC1kF83i0ILtKehPsQIDAQAB",
       }),
     permissions: [
       "storage",
@@ -73,7 +73,7 @@ export default defineConfig({
       },
       browser_specific_settings: {
         gecko: {
-          id: "{bd311a81-4530-4fcc-9178-74006155461b}",
+          id: "{10c5c023-61f8-493e-91e3-f253a41ab291}",
           strict_min_version: "112.0",
           data_collection_permissions: {
             required: ["none"],

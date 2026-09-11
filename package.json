@@ -1,8 +1,8 @@
 {
-  "name": "@read-frog/extension",
+  "name": "@read-toad/extension",
   "version": "1.46.8",
   "private": true,
-  "description": "Read Frog browser extension for language learning",
+  "description": "Read Toad browser extension for language learning",
   "type": "module",
   "scripts": {
     "build": "wxt build",
