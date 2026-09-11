@@ -1,7 +1,7 @@
 name: Read Toad
 extName: Read Toad - 번역하고 배우기
 extDescription: Read Toad는 모든 웹사이트에서 언어를 깊이 있게 학습할 수 있도록 도와주는 오픈 소스 브라우저 확장 프로그램입니다.
-uninstallSurveyUrl: https://tally.so/r/nPK6Ob
+uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: 로그인
   webApp: 웹 앱
@@ -58,12 +58,10 @@ popup:
     title: 더보기
     help: 도움말
     tutorial: 사용 가이드
-    emailUs: 이메일 문의
     featureRequest: 기능 제안
     bugReport: 버그 신고
     community: 커뮤니티
-    joinDiscord: Discord 참여
-    joinWechat: WeChat 그룹 참여
+    discussions: 커뮤니티 토론
     starGithub: Github에서 스타
     rateUs: 리뷰 남기기
 errorRecovery:
@@ -110,30 +108,29 @@ options:
     roadmap: 로드맵
   helpAndCommunity:
     title: 도움말 및 커뮤니티
-    pageDescription: Read Toad 사용법을 익히고, 팀에 도움을 요청하거나, 커뮤니티에서 다른 사용자와 교류하세요.
+    pageDescription: Read Toad 사용법을 익히고, 문제를 보고하거나, 오픈 소스 커뮤니티에서 교류하세요.
     help:
       title: 도움말
     tutorial:
       title: 사용 가이드
       description: 문서를 읽고 Read Toad 사용법을 알아보세요
-    email:
-      title: 이메일 문의
-      description: contact@readfrog.app 으로 팀에 직접 연락하세요
-    featureRequest:
-      title: 기능 제안
-      description: 아이디어를 제안하고 다음에 개발할 기능에 투표하세요
     bugReport:
       title: 버그 신고
-      description: 지원 티켓을 열고 해결될 때까지 진행 상황을 확인하세요
+      description: GitHub Issues에서 버그를 보고하고 해결 과정을 추적하세요
+    featureRequest:
+      title: 기능 제안
+      description: GitHub Discussions에서 새로운 기능 아이디어를 제안하고 논의하세요
+    github:
+      title: GitHub
+      description: 오픈 소스 GitHub 저장소를 방문하여 소스 코드를 확인하세요
     community:
       title: 커뮤니티
-    discord:
-      title: Discord
-      description: 팀 및 다른 사용자와 실시간으로 이야기하세요
-    wechat:
-      title: WeChat 그룹
-      description: QR 코드를 스캔해 WeChat 토론 그룹에 참여하세요
-      qrCodeAlt: WeChat QR 코드
+    discussions:
+      title: 커뮤니티 토론
+      description: GitHub Discussions에서 커뮤니티 및 개발자와 소통하세요
+    contribute:
+      title: 기여하기
+      description: Pull Request나 피드백을 제출하여 Read Toad를 발전시키는 데 참여하세요
   apiProviders:
     title: API 제공업체
     pageDescription: Read Toad가 호출하는 AI 서비스를 연결하고, 각 기능에 사용할 서비스를 선택하세요.
@@ -789,7 +786,7 @@ options:
       description: 다양한 유형의 프롬프트를 사용자 정의하여, 번역 시 프롬프트 유형을 직접 조정할 수 있습니다. 프롬프트는 사용자가 LLM에게 보내는 텍스트를 말합니다.
       managePrompts: 프롬프트 관리
       communityPrompts: 커뮤니티에서 프롬프트 가져오기 또는 공유
-      communityPromptsUrl: https://github.com/mengxi-ream/read-frog/discussions/821
+      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
       addPrompt: 프롬프트 추가
       default: 기본
       builtIn: 기본 제공

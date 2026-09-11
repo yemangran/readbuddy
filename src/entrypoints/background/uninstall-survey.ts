@@ -47,20 +47,33 @@ function getOS(): string {
 }
 
 function getUILang(): string {
-  const uiLang = browser.i18n.getUILanguage?.()
-  return uiLang || globalThis.navigator?.language || "unknown"
+  try {
+    const uiLang = browser.i18n?.getUILanguage?.()
+    return uiLang || globalThis.navigator?.language || "unknown"
+  } catch {
+    return globalThis.navigator?.language || "unknown"
+  }
 }
 
 export async function setupUninstallSurvey() {
   const surveyUrl = i18n.t("uninstallSurveyUrl")
-  const browserType = import.meta.env.BROWSER
+  const browserType = import.meta.env.BROWSER || "chrome"
 
-  const url = new URL(surveyUrl)
-  url.searchParams.set("rf_version", EXTENSION_VERSION)
-  url.searchParams.set("browser_type", browserType)
-  url.searchParams.set("browser_version", getBrowserVersion(browserType))
-  url.searchParams.set("os", getOS())
-  url.searchParams.set("ui_lang", getUILang())
+  try {
+    const url = new URL(surveyUrl)
+    if (url.hostname.includes("github.com")) {
+      void browser.runtime.setUninstallURL(url.toString())
+      return
+    }
 
-  void browser.runtime.setUninstallURL(url.toString())
+    url.searchParams.set("version", EXTENSION_VERSION)
+    url.searchParams.set("browser_type", browserType)
+    url.searchParams.set("browser_version", getBrowserVersion(browserType))
+    url.searchParams.set("os", getOS())
+    url.searchParams.set("ui_lang", getUILang())
+
+    void browser.runtime.setUninstallURL(url.toString())
+  } catch {
+    void browser.runtime.setUninstallURL(surveyUrl)
+  }
 }

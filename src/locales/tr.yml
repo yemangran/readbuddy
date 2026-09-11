@@ -1,7 +1,7 @@
 name: Read Toad
 extName: Read Toad - Çevir ve Öğren
 extDescription: Read Toad, herhangi bir web sitesinden dilleri derinlemesine öğrenmenize yardımcı olmak için tasarlanmış açık kaynaklı bir tarayıcı uzantısıdır.
-uninstallSurveyUrl: https://tally.so/r/nPK6Ob
+uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: Giriş yap
   webApp: Web uygulaması
@@ -58,12 +58,10 @@ popup:
     title: Daha Fazla
     help: Yardım
     tutorial: Rehber
-    emailUs: Bize e-posta gönderin
     featureRequest: Özellik önerisi
     bugReport: Hata bildir
     community: Topluluk
-    joinDiscord: Discord'a Katıl
-    joinWechat: WeChat Grubuna Katıl
+    discussions: Tartışmalar
     starGithub: Github'da Yıldız Ver
     rateUs: Bizi Değerlendirin
 errorRecovery:
@@ -110,30 +108,29 @@ options:
     roadmap: Yol Haritası
   helpAndCommunity:
     title: Yardım ve topluluk
-    pageDescription: Read Toad'u nasıl kullanacağınızı öğrenin, ekipten yardım alın ya da toplulukta diğer kullanıcılara katılın.
+    pageDescription: Read Toad'u nasıl kullanacağınızı öğrenin, hata bildirin veya açık kaynak topluluğundaki tartışmalara katılın.
     help:
       title: Yardım
     tutorial:
       title: Rehber
       description: Belgeleri okuyun ve Read Toad'u nasıl kullanacağınızı öğrenin
-    email:
-      title: Bize e-posta gönderin
-      description: Ekibe doğrudan contact@readfrog.app adresinden ulaşın
-    featureRequest:
-      title: Özellik önerisi
-      description: Bir fikir önerin ve ekibin sırada ne geliştireceğini oylayın
     bugReport:
       title: Hata bildir
-      description: Destek talebi açın ve çözülene kadar takip edin
+      description: GitHub Issues üzerinde hata kaydı açın ve çözümü takip edin
+    featureRequest:
+      title: Özellik önerisi
+      description: GitHub Discussions üzerinde yeni fikirler önerin ve tartışın
+    github:
+      title: GitHub
+      description: Açık kaynak GitHub deposunu ziyaret edin ve kaynak kodları inceleyin
     community:
       title: Topluluk
-    discord:
-      title: Discord
-      description: Ekiple ve diğer kullanıcılarla anlık olarak sohbet edin
-    wechat:
-      title: WeChat grubu
-      description: WeChat tartışma grubuna katılmak için QR kodu tarayın
-      qrCodeAlt: WeChat QR kodu
+    discussions:
+      title: Topluluk tartışmaları
+      description: GitHub Discussions üzerinde topluluk ve geliştiricilerle iletişim kurun
+    contribute:
+      title: Katkıda bulunun
+      description: Read Toad'u geliştirmeye yardımcı olmak için Pull Request veya geri bildirim gönderin
   apiProviders:
     title: API Sağlayıcıları
     pageDescription: Read Toad'un çağırdığı yapay zekâ servislerini bağlayın ve her özelliğin hangisini kullanacağını seçin.
@@ -789,7 +786,7 @@ options:
       description: Farklı türde Promptları özelleştirmek, çeviri sırasında Prompt türünü kendiniz ayarlamanıza olanak tanır. Prompt, kullanıcının LLM'ye gönderdiği metni temsil eder.
       managePrompts: Promptları yönet
       communityPrompts: Topluluktan prompt al veya paylaş
-      communityPromptsUrl: https://github.com/mengxi-ream/read-frog/discussions/821
+      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
       addPrompt: Prompt ekle
       default: Varsayılan
       builtIn: Yerleşik

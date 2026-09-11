@@ -1,5 +1,4 @@
 import { Icon } from "@iconify/react"
-import { useAtomValue } from "jotai"
 import { Link, useLocation } from "react-router"
 import {
   SidebarGroup,
@@ -9,17 +8,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/base-ui/sidebar"
-import { configFieldsAtomMap } from "@/utils/atoms/config"
-import { buildFeaturebasePortalUrl } from "@/utils/featurebase"
+import { GITHUB_REPO_URL } from "@/utils/constants/app"
 import { i18n } from "@/utils/i18n"
-import { resolveUiLocale } from "@/utils/i18n/locale-map"
 
 export function ProductNav() {
-  const uiLanguage = useAtomValue(configFieldsAtomMap.uiLanguage)
-  const locale = resolveUiLocale(uiLanguage)
   const { pathname } = useLocation()
 
-  const roadmapHref = buildFeaturebasePortalUrl({ destination: "roadmap", locale })
+  const roadmapHref = `${GITHUB_REPO_URL}/issues`
 
   return (
     <SidebarGroup>

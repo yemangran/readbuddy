@@ -1,7 +1,7 @@
 name: Read Toad
 extName: "Read Toad - Translate & Learn"
 extDescription: Read Toad is an open source browser extension designed to help you learn languages deeply from any website.
-uninstallSurveyUrl: https://tally.so/r/nPK6Ob
+uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: Log in
   webApp: Web app
@@ -58,12 +58,10 @@ popup:
     title: More
     help: Help
     tutorial: Tutorial
-    emailUs: Email us
     featureRequest: Feature request
     bugReport: Report a bug
     community: Community
-    joinDiscord: Join Discord
-    joinWechat: Join WeChat Group
+    discussions: Discussions
     starGithub: Star on Github
     rateUs: Rate Us
 errorRecovery:
@@ -222,30 +220,29 @@ options:
     roadmap: Roadmap
   helpAndCommunity:
     title: Help & Community
-    pageDescription: Learn how to use Read Toad, get help from the team, or join other users in the community.
+    pageDescription: Learn how to use Read Toad, report issues, or join discussions in the open-source community.
     help:
       title: Help
     tutorial:
       title: Tutorial
       description: Read the docs and learn how to use Read Toad
-    email:
-      title: Email us
-      description: Reach the team directly at contact@readfrog.app
-    featureRequest:
-      title: Feature request
-      description: Suggest an idea and vote on what the team builds next
     bugReport:
       title: Report a bug
-      description: Open a support ticket and follow it until it is fixed
+      description: Open an issue on GitHub and follow it until it is fixed
+    featureRequest:
+      title: Feature request
+      description: Suggest ideas and discuss future features on GitHub Discussions
+    github:
+      title: GitHub
+      description: Visit the open-source GitHub repository and explore the source code
     community:
       title: Community
-    discord:
-      title: Discord
-      description: Chat with the team and other users in real time
-    wechat:
-      title: WeChat group
-      description: Scan the QR code to join the WeChat discussion group
-      qrCodeAlt: WeChat QR code
+    discussions:
+      title: Discussions
+      description: Chat with the community and developers on GitHub Discussions
+    contribute:
+      title: Contribute
+      description: Submit pull requests or feedback to help make Read Toad better
   apiProviders:
     title: API Providers
     pageDescription: Connect the AI services Read Toad calls, then choose which one runs each feature.
@@ -1017,7 +1014,7 @@ options:
       description: Customizing different types of Prompts allows you to adjust the Prompt type yourself during translation. A Prompt represents the text that the user sends to the LLM.
       managePrompts: Manage prompts
       communityPrompts: Get or share prompts from community
-      communityPromptsUrl: https://github.com/mengxi-ream/read-frog/discussions/821
+      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
       addPrompt: Add prompt
       default: Default
       builtIn: Built-in

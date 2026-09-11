@@ -1,7 +1,7 @@
 name: 伴读蛤蟆
 extName: 伴读蛤蟆 - 翻译与学习
 extDescription: 伴读蛤蟆是一款开放源代码的浏览器插件，旨在帮助您从任何网站深入学习语言。
-uninstallSurveyUrl: https://tally.so/r/3E9XDL
+uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: 登录
   webApp: 网页应用
@@ -58,12 +58,10 @@ popup:
     title: 更多
     help: 帮助
     tutorial: 使用教程
-    emailUs: 邮件联系
     featureRequest: 功能建议
     bugReport: 报告问题
     community: 社区
-    joinDiscord: 加入 Discord
-    joinWechat: 加入微信群
+    discussions: 社区讨论
     starGithub: Github 加星
     rateUs: 好评支持
 errorRecovery:
@@ -222,30 +220,29 @@ options:
     roadmap: 路线图
   helpAndCommunity:
     title: 帮助与社区
-    pageDescription: 了解怎么使用伴读蛤蟆、向团队寻求帮助，或者加入社区和其他用户交流。
+    pageDescription: 了解怎么使用伴读蛤蟆、反馈问题或参与开源社区交流。
     help:
       title: 帮助
     tutorial:
       title: 使用教程
       description: 阅读文档，了解怎么使用伴读蛤蟆
-    email:
-      title: 邮件联系
-      description: 通过 contact@readfrog.app 直接联系团队
-    featureRequest:
-      title: 功能建议
-      description: 提出想法，并为团队接下来要做的功能投票
     bugReport:
       title: 报告问题
-      description: 提交工单，并跟进直到问题解决
+      description: 在 GitHub Issues 提交问题并跟进修复
+    featureRequest:
+      title: 功能建议
+      description: 在 GitHub Discussions 提出新功能想法与建议
+    github:
+      title: GitHub
+      description: 访问开源代码仓库，查看项目源码与动态
     community:
       title: 社区
-    discord:
-      title: Discord
-      description: 与团队和其他用户实时交流
-    wechat:
-      title: 微信群
-      description: 扫描二维码进入微信讨论群
-      qrCodeAlt: 微信二维码
+    discussions:
+      title: 社区讨论
+      description: 在 GitHub Discussions 与其他用户和开发者交流
+    contribute:
+      title: 参与贡献
+      description: 提交 Pull Request 或改进建议，共同完善伴读蛤蟆
   apiProviders:
     title: API 提供商
     pageDescription: 接入 Read Toad 调用的 AI 服务，并为每项功能指定使用哪一个。
@@ -1017,7 +1014,7 @@ options:
       description: 自定义不同类型的 Prompt，可以在翻译时自行调整 Prompt 类型。Prompt 表示以用户身份发送给 LLM 的文本。
       managePrompts: 管理 Prompt
       communityPrompts: 获取或分享社区 Prompt
-      communityPromptsUrl: https://github.com/mengxi-ream/read-frog/discussions/820
+      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
       addPrompt: 添加 Prompt
       default: 通用
       builtIn: 内置

@@ -1,7 +1,7 @@
 name: Read Toad
 extName: Read Toad - Dịch và học
 extDescription: Read Toad là tiện ích mở rộng trình duyệt mã nguồn mở được thiết kế để giúp bạn học ngôn ngữ sâu từ bất kỳ trang web nào.
-uninstallSurveyUrl: https://tally.so/r/nPK6Ob
+uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: Đăng nhập
   webApp: Ứng dụng web
@@ -58,12 +58,10 @@ popup:
     title: Thêm
     help: Trợ giúp
     tutorial: Hướng dẫn
-    emailUs: Gửi email cho chúng tôi
     featureRequest: Đề xuất tính năng
     bugReport: Báo lỗi
     community: Cộng đồng
-    joinDiscord: Tham gia Discord
-    joinWechat: Tham gia nhóm WeChat
+    discussions: Thảo luận cộng đồng
     starGithub: Đánh dấu sao trên Github
     rateUs: Đánh giá chúng tôi
 errorRecovery:
@@ -110,30 +108,29 @@ options:
     roadmap: Lộ trình
   helpAndCommunity:
     title: Trợ giúp và cộng đồng
-    pageDescription: Tìm hiểu cách dùng Read Toad, nhờ nhóm hỗ trợ, hoặc tham gia cộng đồng cùng những người dùng khác.
+    pageDescription: Tìm hiểu cách dùng Read Toad, báo cáo sự cố hoặc tham gia thảo luận trong cộng đồng mã nguồn mở.
     help:
       title: Trợ giúp
     tutorial:
       title: Hướng dẫn
       description: Đọc tài liệu để biết cách sử dụng Read Toad
-    email:
-      title: Gửi email cho chúng tôi
-      description: Liên hệ trực tiếp với nhóm qua contact@readfrog.app
-    featureRequest:
-      title: Đề xuất tính năng
-      description: Đề xuất ý tưởng và bình chọn cho tính năng nhóm sẽ làm tiếp theo
     bugReport:
       title: Báo lỗi
-      description: Mở phiếu hỗ trợ và theo dõi cho đến khi được khắc phục
+      description: Tạo issue trên GitHub Issues và theo dõi tiến độ sửa lỗi
+    featureRequest:
+      title: Đề xuất tính năng
+      description: Đề xuất ý tưởng và thảo luận về các tính năng mới trên GitHub Discussions
+    github:
+      title: GitHub
+      description: Truy cập kho lưu trữ GitHub mã nguồn mở và khám phá mã nguồn
     community:
       title: Cộng đồng
-    discord:
-      title: Discord
-      description: Trò chuyện trực tiếp với nhóm và những người dùng khác
-    wechat:
-      title: Nhóm WeChat
-      description: Quét mã QR để tham gia nhóm thảo luận trên WeChat
-      qrCodeAlt: Mã QR WeChat
+    discussions:
+      title: Thảo luận cộng đồng
+      description: Trò chuyện cùng cộng đồng và các nhà phát triển trên GitHub Discussions
+    contribute:
+      title: Đóng góp
+      description: Gửi Pull Request hoặc phản hồi để cùng hoàn thiện Read Toad
   apiProviders:
     title: Nhà cung cấp API
     pageDescription: Kết nối các dịch vụ AI mà Read Toad sử dụng và chọn dịch vụ cho từng tính năng.
@@ -789,7 +786,7 @@ options:
       description: Tùy chỉnh các loại Prompt khác nhau cho phép bạn tự điều chỉnh loại Prompt trong quá trình dịch. Prompt là văn bản mà người dùng gửi cho LLM.
       managePrompts: Quản lý prompt
       communityPrompts: Nhận hoặc chia sẻ prompt từ cộng đồng
-      communityPromptsUrl: https://github.com/mengxi-ream/read-frog/discussions/821
+      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
       addPrompt: Thêm Prompt
       default: Mặc định
       builtIn: Tích hợp sẵn

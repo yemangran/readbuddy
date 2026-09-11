@@ -12,7 +12,7 @@ export function APIConfigWarning({ className }: { className?: string }) {
     >
       {i18n.t("noAPIKeyConfig.warningWithLink.youMust")}{" "}
       <a
-        href="https://readfrog.app/docs/api-key"
+        href="https://github.com/yemangran/read-toad#readme"
         target="_blank"
         rel="noreferrer"
         className="underline"

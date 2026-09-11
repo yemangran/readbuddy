@@ -1,7 +1,7 @@
 name: Read Toad
 extName: Read Toad - 翻訳して学ぶ
 extDescription: Read Toadは、あらゆるウェブサイトから言語を深く学ぶために設計されたオープンソースのブラウザ拡張機能です。
-uninstallSurveyUrl: https://tally.so/r/nPK6Ob
+uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: ログイン
   webApp: ウェブアプリ
@@ -58,12 +58,10 @@ popup:
     title: その他
     help: ヘルプ
     tutorial: 使い方ガイド
-    emailUs: メールで問い合わせ
     featureRequest: 機能リクエスト
     bugReport: 不具合を報告
     community: コミュニティ
-    joinDiscord: Discordに参加
-    joinWechat: WeChatグループに参加
+    discussions: コミュニティディスカッション
     starGithub: Githubでスター
     rateUs: レビューを書く
 errorRecovery:
@@ -110,30 +108,29 @@ options:
     roadmap: ロードマップ
   helpAndCommunity:
     title: ヘルプとコミュニティ
-    pageDescription: Read Toad の使い方を学び、チームに相談したり、コミュニティで他のユーザーと交流したりできます。
+    pageDescription: Read Toad の使い方を学び、問題を報告したり、オープンソースコミュニティで交流したりできます。
     help:
       title: ヘルプ
     tutorial:
       title: 使い方ガイド
       description: ドキュメントを読んで Read Toad の使い方を学べます
-    email:
-      title: メールで問い合わせ
-      description: contact@readfrog.app からチームに直接連絡できます
-    featureRequest:
-      title: 機能リクエスト
-      description: アイデアを提案し、次に開発する機能に投票できます
     bugReport:
       title: 不具合を報告
-      description: サポートチケットを作成し、解決までの状況を追えます
+      description: GitHub Issues で不具合を報告し、修正を追跡できます
+    featureRequest:
+      title: 機能リクエスト
+      description: GitHub Discussions で新機能のアイデアを提案・ディスカッションできます
+    github:
+      title: GitHub
+      description: オープンソースリポジトリにアクセスし、ソースコードを確認できます
     community:
       title: コミュニティ
-    discord:
-      title: Discord
-      description: チームや他のユーザーとリアルタイムで交流できます
-    wechat:
-      title: WeChat グループ
-      description: QR コードをスキャンして WeChat のディスカッショングループに参加
-      qrCodeAlt: WeChat QR コード
+    discussions:
+      title: コミュニティディスカッション
+      description: GitHub Discussions で他のユーザーや開発者と交流できます
+    contribute:
+      title: 貢献する
+      description: Pull Request やフィードバックを送信して Read Toad を改善できます
   apiProviders:
     title: APIプロバイダー
     pageDescription: Read Toad が呼び出す AI サービスを接続し、各機能で使うものを選びます。
@@ -789,7 +786,7 @@ options:
       description: 異なるタイプのプロンプトをカスタマイズすることで、翻訳時にプロンプトタイプを自ら調整できます。プロンプトとは、ユーザーがLLMに送信するテキストを指します。
       managePrompts: プロンプトを管理
       communityPrompts: コミュニティからプロンプトを取得・共有
-      communityPromptsUrl: https://github.com/mengxi-ream/read-frog/discussions/821
+      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
       addPrompt: プロンプトを追加
       default: デフォルト
       builtIn: 組み込み
