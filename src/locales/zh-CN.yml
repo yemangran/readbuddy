@@ -1,6 +1,6 @@
-name: 陪读蛙
-extName: 陪读蛙 - 翻译与学习
-extDescription: 陪读蛙是一款开放源代码的浏览器插件，旨在帮助您从任何网站深入学习语言。
+name: 伴读蛤蟆
+extName: 伴读蛤蟆 - 翻译与学习
+extDescription: 伴读蛤蟆是一款开放源代码的浏览器插件，旨在帮助您从任何网站深入学习语言。
 uninstallSurveyUrl: https://tally.so/r/3E9XDL
 account:
   login: 登录
@@ -16,7 +16,7 @@ contextMenu:
   readAloudSelection: 朗读”%s”
   showOriginal: 显示原文
 sidePanel:
-  firefoxUserActionHint: 在 Firefox 中，请从浏览器侧边栏打开陪读蛙。
+  firefoxUserActionHint: 在 Firefox 中，请从浏览器侧边栏打开伴读蛤蟆。
   firefoxUserActionHelpText: 查看 Firefox 侧边栏说明
   firefoxUserActionHelpUrl: https://support.mozilla.org/zh-CN/kb/use-sidebar-access-tools-and-vertical-tabs
 popup:
@@ -51,7 +51,7 @@ popup:
   discord:
     tooltip: 加入 Discord 与开发者交流，抢先体验新功能
   blog:
-    notification: 陪读蛙更新动态
+    notification: 伴读蛤蟆更新动态
   aiSmartContext: AI 智能上下文
   aiSmartContextDescription: 结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。
   more:
@@ -222,12 +222,12 @@ options:
     roadmap: 路线图
   helpAndCommunity:
     title: 帮助与社区
-    pageDescription: 了解怎么使用陪读蛙、向团队寻求帮助，或者加入社区和其他用户交流。
+    pageDescription: 了解怎么使用伴读蛤蟆、向团队寻求帮助，或者加入社区和其他用户交流。
     help:
       title: 帮助
     tutorial:
       title: 使用教程
-      description: 阅读文档，了解怎么使用陪读蛙
+      description: 阅读文档，了解怎么使用伴读蛤蟆
     email:
       title: 邮件联系
       description: 通过 contact@readfrog.app 直接联系团队
@@ -439,12 +439,12 @@ options:
     duplicate: 该模式已在列表中
   preference:
     title: 偏好设置
-    pageDescription: 设置陪读蛙的外观与生效范围，以及配置的同步与备份方式。
+    pageDescription: 设置伴读蛤蟆的外观与生效范围，以及配置的同步与备份方式。
     appearanceAndLanguage:
       title: 外观与语言
       theme:
         title: 主题
-        description: 为陪读蛙选择主题。
+        description: 为伴读蛤蟆选择主题。
         system: 跟随系统
         light: 浅色
         dark: 深色
@@ -456,7 +456,7 @@ options:
       title: 翻译语言
       sourceCode:
         title: 源语言
-        description: 网页原文的语言。选择“自动检测”则由陪读蛙从页面本身判断。
+        description: 网页原文的语言。选择“自动检测”则由伴读蛤蟆从页面本身判断。
         auto: 自动检测
       targetCode:
         title: 目标语言
@@ -636,7 +636,7 @@ options:
     demoImageAlt: 悬浮按钮演示
     enable:
       title: 启用悬浮按钮
-      description: 在网页上显示悬浮按钮，快速访问陪读蛙功能
+      description: 在网页上显示悬浮按钮，快速访问伴读蛤蟆功能
     display:
       title: 显示
       side:
@@ -1156,7 +1156,7 @@ options:
       noVoicesFound: 未找到语音
       language:
         title: 语言语音
-        description: 先选择一种语言，再挑选朗读它时使用的语音。重置会换回陪读蛙为该语言选定的语音。
+        description: 先选择一种语言，再挑选朗读它时使用的语音。重置会换回伴读蛤蟆为该语言选定的语音。
         reset: 重置
         previewSample: 来自 Read Frog 的问候！这是我朗读时的声音。
       fallback:
