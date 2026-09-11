@@ -136,8 +136,8 @@ options:
       qrCodeAlt: 微信 QR code
   apiProviders:
     title: API 提供者
-    pageDescription: 接入 Read Frog 呼叫的 AI 服務，並為每項功能指定使用哪一個。
-    description: 新增 Read Frog 可以呼叫的提供者。內建 20 多個，也可以新增相容 Chat Completions 的自訂 API 和 Open Responses 自訂 API。
+    pageDescription: 接入 Read Toad 呼叫的 AI 服務，並為每項功能指定使用哪一個。
+    description: 新增 Read Toad 可以呼叫的提供者。內建 20 多個，也可以新增相容 Chat Completions 的自訂 API 和 Open Responses 自訂 API。
     configTitle: 提供者設定
     addProvider: 新增提供者
     builtInProvider: 內建提供者
@@ -243,8 +243,8 @@ options:
         customChatComplete: 自訂 Chat Complete
         customResponses: 自訂 Responses
       attribution:
-        builtInAi: 由 Read Frog 託管的普通模型。非 Ultra 使用者僅支援在自訂 AI 指令使用，Ultra 使用者支援在更多功能上使用。
-        builtInAiAdvance: 由 Read Frog 託管的進階模型，Ultra 會員專屬。網頁翻譯、自訂 AI 指令等全部內建 AI 功能均可使用，共享每週額度，額度消耗比標準模型更快。
+        builtInAi: 由 Read Toad 託管的普通模型。非 Ultra 使用者僅支援在自訂 AI 指令使用，Ultra 使用者支援在更多功能上使用。
+        builtInAiAdvance: 由 Read Toad 託管的進階模型，Ultra 會員專屬。網頁翻譯、自訂 AI 指令等全部內建 AI 功能均可使用，共享每週額度，額度消耗比標準模型更快。
       description:
         openai: 提供 GPT-4o 等模型
         azure: 透過 Azure 部署使用 OpenAI 模型
@@ -828,7 +828,7 @@ options:
         duplicateFieldKey: 欄位名稱不能重複
   contextMenu:
     title: 右鍵選單
-    pageDescription: 控制瀏覽器右鍵選單裡的 Read Frog 選項。
+    pageDescription: 控制瀏覽器右鍵選單裡的 Read Toad 選項。
     demoImageAlt: 右鍵選單示範
     enable:
       title: 啟用右鍵翻譯
