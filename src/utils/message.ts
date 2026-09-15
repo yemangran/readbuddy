@@ -12,14 +12,12 @@ import type {
   EdgeTTSSynthesizeRequest,
   EdgeTTSSynthesizeWireResponse,
 } from "@/types/edge-tts"
-import type { ProviderRequestRouting } from "@/types/hosted-request"
 import type { ProxyRequest, ProxyResponse } from "@/types/proxy-fetch"
 import type {
   TTSPlaybackStartRequest,
   TTSPlaybackStartResponse,
   TTSPlaybackStopRequest,
 } from "@/types/tts-playback"
-import type { HostedAiStatus } from "@/utils/hosted-ai/types"
 import type {
   CommitImportInput,
   CommitImportOutput,
@@ -111,37 +109,35 @@ interface ProtocolMap {
   guideDictionaryNotebaseStateChanged: (data: { completed: boolean }) => void
   completeGuideDictionaryNotebase: (data: GuideDictionaryNotebaseCompletionInput) => void
   // request
-  enqueueTranslateRequest: (
-    data: ProviderRequestRouting & {
-      text: string
-      langConfig: Config["language"]
-      scheduleAt: number
-      hash: string
-      textFormat?: TranslationTextFormat
-      // Source line breaks are semantic (newline-preserving container or typed
-      // input); providers whose transport collapses "\n" must protect them.
-      preserveLineBreaks?: boolean
-      webTitle?: string | null
-      webDescription?: string | null
-      webContent?: string | null
-      webSummary?: string | null
-      // Page-translation session this request belongs to; scopes the request
-      // for cancelPageTranslationRequests. Absent for non-page requests
-      // (input/selection translation), which are never cancellable.
-      sessionId?: string
-      forceRetranslation?: boolean
-    },
-  ) => Promise<string>
+  enqueueTranslateRequest: (data: {
+    providerRef: SerializableProviderRef
+    text: string
+    langConfig: Config["language"]
+    scheduleAt: number
+    hash: string
+    textFormat?: TranslationTextFormat
+    // Source line breaks are semantic (newline-preserving container or typed
+    // input); providers whose transport collapses "\n" must protect them.
+    preserveLineBreaks?: boolean
+    webTitle?: string | null
+    webDescription?: string | null
+    webContent?: string | null
+    webSummary?: string | null
+    // Page-translation session this request belongs to; scopes the request
+    // for cancelPageTranslationRequests. Absent for non-page requests
+    // (input/selection translation), which are never cancellable.
+    sessionId?: string
+    forceRetranslation?: boolean
+  }) => Promise<string>
   // Drain queued/in-flight page-translation requests of one session (#1881).
   // The background composes the scope as `${sender.tab.id}:${sessionId}`, so a
   // tab can only ever cancel its own requests.
   cancelPageTranslationRequests: (data: { sessionId: string }) => void
-  getOrGenerateWebPageSummary: (
-    data: ProviderRequestRouting<PromptableProviderRef> & {
-      webTitle: string
-      webContent: string
-    },
-  ) => Promise<string | null>
+  getOrGenerateWebPageSummary: (data: {
+    providerRef: PromptableProviderRef
+    webTitle: string
+    webContent: string
+  }) => Promise<string | null>
   enqueueSubtitlesTranslateRequest: (data: {
     text: string
     langConfig: Config["language"]
@@ -176,11 +172,6 @@ interface ProtocolMap {
     jsonContent: string
     providerRef: PromptableProviderRef
   }) => Promise<string>
-  // Hosted AI availability. Owned by the background because one response covers
-  // every feature and tier — so it can be cached and shared across tabs — and
-  // because content scripts cannot read the session storage that cache lives in.
-  // Null means "no verdict" (fetch failed); callers fail open on it.
-  getHostedAiStatus: () => Promise<HostedAiStatus | null>
   // network proxy
   backgroundFetch: (data: ProxyRequest) => Promise<ProxyResponse>
   // cache management
@@ -218,7 +209,9 @@ interface ProtocolMap {
     data: RestoreDeletedInput,
   ) => Promise<DictionaryReply<LocalDictionaryRecord>>
   dictionaryPurge: (data: PurgeInput) => Promise<DictionaryReply<{ id: string; purged: boolean }>>
-  dictionaryPurgeAllDeleted: () => Promise<DictionaryReply<{ purgedCount: number }>>
+  dictionaryPurgeAllDeleted: () => Promise<
+    DictionaryReply<{ purgedCount: number; purgedIds?: string[] }>
+  >
   dictionaryExportSnapshot: () => Promise<DictionaryReply<string>>
   dictionaryPreviewImport: (
     data: DictionarySnapshotV1,

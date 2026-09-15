@@ -12,6 +12,7 @@ import {
 } from "@/utils/local-dictionary/webdav"
 import { logger } from "@/utils/logger"
 import { onMessage } from "@/utils/message"
+import { reviewStore } from "@/utils/review/store"
 
 export const DICTIONARY_CHANGE_SIGNAL_KEY = "local:dictionaryChangeSignal"
 
@@ -20,7 +21,11 @@ let syncEngineInstance: WebdavSyncEngine | null = null
 
 export function getRepository(): LocalDictionaryRepository {
   if (!repositoryInstance) {
-    repositoryInstance = new LocalDictionaryRepository(getLocalDictionaryDb())
+    repositoryInstance = new LocalDictionaryRepository(getLocalDictionaryDb(), {
+      onPurged: async (purgedIds) => {
+        await reviewStore.purgeReviewStates(purgedIds)
+      },
+    })
   }
   return repositoryInstance
 }
@@ -29,6 +34,7 @@ export function getSyncEngine(): WebdavSyncEngine {
   if (!syncEngineInstance) {
     syncEngineInstance = new WebdavSyncEngine(() => getRepository(), {
       onLocalUpdated: () => notifyChange(),
+      syncReviews: true,
     })
   }
   return syncEngineInstance
@@ -141,6 +147,7 @@ export function setupLocalDictionaryMessageHandlers(): void {
     const repo = getRepository()
     const result = await repo.purge(message.data)
     if (result.ok) {
+      await reviewStore.purgeReviewStates([message.data.id])
       await notifyChange()
     }
     return result
@@ -150,6 +157,14 @@ export function setupLocalDictionaryMessageHandlers(): void {
     const repo = getRepository()
     const result = await repo.purgeAllDeleted()
     if (result.ok) {
+      if (result.data.purgedIds && result.data.purgedIds.length > 0) {
+        await reviewStore.purgeReviewStates(result.data.purgedIds)
+      }
+      const allActive = await repo.list({ pageSize: 100000 })
+      if (allActive.ok) {
+        const activeIds = new Set(allActive.data.records.map((r) => r.id))
+        await reviewStore.purgeOrphanedReviewStates(activeIds)
+      }
       await notifyChange()
     }
     return result
@@ -191,7 +206,13 @@ export function setupLocalDictionaryMessageHandlers(): void {
   })
 
   onMessage("dictionaryTestWebdavConnection", async (message) => {
-    const config = message.data || (await getStoredWebdavConfig())
+    const stored = await getStoredWebdavConfig()
+    let config = message.data
+    if (!config) {
+      config = stored ?? undefined
+    } else if (!config.password && stored?.password) {
+      config = { ...config, password: stored.password }
+    }
     if (!config) {
       return {
         ok: false,

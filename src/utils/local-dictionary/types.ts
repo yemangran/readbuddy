@@ -41,7 +41,7 @@ export interface SyncChangeRecord {
   sequence?: number
   entityId: string
   entityType: "vocabulary"
-  operation: "create" | "update" | "delete"
+  operation: "create" | "update" | "delete" | "purge"
   timestamp: number
   deviceId: string
   version: {

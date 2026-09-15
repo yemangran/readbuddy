@@ -111,6 +111,8 @@ export interface ReviewStore {
     options?: { now?: number; batchLimit?: number },
   ) => Promise<ReviewCardItem[]>
   purgeReviewStates: (recordIds: string[]) => Promise<void>
+  purgeOrphanedReviewStates: (validRecordIds: Iterable<string>) => Promise<number>
+  saveAllStates: (states: Record<string, ReviewState>) => Promise<void>
   getDueCount: (records: LocalDictionaryRecord[], now?: number) => Promise<number>
 }
 
@@ -217,12 +219,38 @@ export function createReviewStore(driver: ReviewStorageDriver = defaultStorageDr
     return count
   }
 
+  async function saveAllStates(states: Record<string, ReviewState>): Promise<void> {
+    await driver.saveStates(states)
+  }
+
+  async function purgeOrphanedReviewStates(validRecordIds: Iterable<string>): Promise<number> {
+    const validSet = new Set(validRecordIds)
+    const states = await driver.getStates()
+    let changed = false
+    let count = 0
+
+    for (const id of Object.keys(states)) {
+      if (!validSet.has(id)) {
+        delete states[id]
+        changed = true
+        count++
+      }
+    }
+
+    if (changed) {
+      await driver.saveStates(states)
+    }
+    return count
+  }
+
   return {
     getState,
     getAllStates,
     submitRating,
     buildReviewQueue,
     purgeReviewStates,
+    purgeOrphanedReviewStates,
+    saveAllStates,
     getDueCount,
   }
 }

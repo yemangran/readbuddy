@@ -59,8 +59,15 @@ export class TransactionBusinessError extends Error {
   }
 }
 
+export interface LocalDictionaryRepositoryOptions {
+  onPurged?: (purgedIds: string[]) => Promise<void> | void
+}
+
 export class LocalDictionaryRepository {
-  constructor(private readonly db: LocalDictionaryDB) {}
+  constructor(
+    private readonly db: LocalDictionaryDB,
+    private readonly options?: LocalDictionaryRepositoryOptions,
+  ) {}
 
   private async getOrInitMetadataWithinTx(): Promise<{ deviceId: string; changeSequence: number }> {
     let deviceIdRecord = await this.db.metadata.get("deviceId")
@@ -951,7 +958,7 @@ export class LocalDictionaryRepository {
           await this.db.syncChanges.add({
             entityId: input.id,
             entityType: "vocabulary",
-            operation: "delete",
+            operation: "purge",
             timestamp: now,
             deviceId: metadata.deviceId,
             version: { id: input.id, updatedAt: now, deviceId: metadata.deviceId },
@@ -966,11 +973,15 @@ export class LocalDictionaryRepository {
             createdAt: now,
           })
 
-          return {
-            ok: true,
+          const reply = {
+            ok: true as const,
             data: result,
             changeSequence: newSequence,
           }
+          if (this.options?.onPurged) {
+            void this.options.onPurged([input.id])
+          }
+          return reply
         },
       )
     } catch (error: any) {
@@ -985,7 +996,7 @@ export class LocalDictionaryRepository {
     }
   }
 
-  async purgeAllDeleted(): Promise<DictionaryReply<{ purgedCount: number }>> {
+  async purgeAllDeleted(): Promise<DictionaryReply<{ purgedCount: number; purgedIds?: string[] }>> {
     try {
       return await this.db.transaction(
         "rw",
@@ -995,6 +1006,7 @@ export class LocalDictionaryRepository {
           const metadata = await this.getOrInitMetadataWithinTx()
           let currentSeq = metadata.changeSequence
           const now = Date.now()
+          const purgedIds = deleted.map((item) => item.id)
 
           for (const item of deleted) {
             await this.db.vocabularies.delete(item.id)
@@ -1003,7 +1015,7 @@ export class LocalDictionaryRepository {
             await this.db.syncChanges.add({
               entityId: item.id,
               entityType: "vocabulary",
-              operation: "delete",
+              operation: "purge",
               timestamp: now,
               deviceId: metadata.deviceId,
               version: { id: item.id, updatedAt: now, deviceId: metadata.deviceId },
@@ -1014,9 +1026,13 @@ export class LocalDictionaryRepository {
             await this.db.metadata.put({ key: "changeSequence", value: currentSeq })
           }
 
+          if (this.options?.onPurged && purgedIds.length > 0) {
+            void this.options.onPurged(purgedIds)
+          }
+
           return {
             ok: true,
-            data: { purgedCount: deleted.length },
+            data: { purgedCount: deleted.length, purgedIds },
             changeSequence: currentSeq,
           }
         },
@@ -1423,14 +1439,39 @@ export class LocalDictionaryRepository {
           const localPortable = localVocabs.map(toPortableRecord)
           const localConflictsPortable = localConflicts.map(toPortableRecord)
 
+          const localMap = new Map<string, LocalDictionaryRecord>()
+          for (const v of localVocabs) {
+            localMap.set(v.id, v)
+          }
+
+          // 1b. Identify any records that were purged locally
+          const localSyncChanges = await this.db.syncChanges.toArray()
+          const purgedIds = new Set<string>()
+          for (const change of localSyncChanges) {
+            if (
+              change.operation === "purge" ||
+              (change.operation === "delete" && !localMap.has(change.entityId))
+            ) {
+              purgedIds.add(change.entityId)
+            }
+          }
+
+          // Filter remote snapshot records so locally purged items are not resurrected
+          const remoteVocabulariesFiltered = (remoteSnapshot.vocabularies || []).filter(
+            (r) => !purgedIds.has(r.id),
+          )
+          const remoteConflictsFiltered = (remoteSnapshot.conflictVersions || []).filter(
+            (c) => !purgedIds.has(c.id),
+          )
+
           // 2. Reconcile local and remote record sets
           let reconciled: ReturnType<typeof reconcileRecordSets>
           try {
             reconciled = reconcileRecordSets(
               localPortable,
               localConflictsPortable,
-              remoteSnapshot.vocabularies,
-              remoteSnapshot.conflictVersions,
+              remoteVocabulariesFiltered,
+              remoteConflictsFiltered,
             )
           } catch (err: any) {
             return {
@@ -1441,11 +1482,6 @@ export class LocalDictionaryRepository {
                 message: err?.message ?? "Reconciliation integrity error",
               },
             }
-          }
-
-          const localMap = new Map<string, LocalDictionaryRecord>()
-          for (const v of localVocabs) {
-            localMap.set(v.id, v)
           }
 
           const localConflictMap = new Map<string, Set<string>>()
@@ -1604,6 +1640,18 @@ export class LocalDictionaryRepository {
       return await this.db.syncChanges.count()
     } catch {
       return 0
+    }
+  }
+
+  async clearSyncChanges(upToSequence?: number): Promise<void> {
+    try {
+      if (typeof upToSequence === "number") {
+        await this.db.syncChanges.where("sequence").belowOrEqual(upToSequence).delete()
+      } else {
+        await this.db.syncChanges.clear()
+      }
+    } catch {
+      // ignore
     }
   }
 }

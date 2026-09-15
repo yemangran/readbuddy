@@ -6,14 +6,18 @@ import type {
   WebdavSyncResult,
   WebdavSyncState,
 } from "./types"
+import type { ReviewStore } from "@/utils/review/store"
 import { browser, storage } from "#imports"
 import { logger } from "@/utils/logger"
+import { syncReviewsWithWebdav, getWebdavReviewsFileUrl } from "@/utils/review/sync"
 import { type LocalDictionaryRepository } from "./repository"
 import {
   exportDictionarySnapshot,
   parseAndValidateSnapshot,
   SNAPSHOT_MAX_SIZE_BYTES,
 } from "./snapshot"
+
+export { getWebdavReviewsFileUrl }
 
 export const WEBDAV_CONFIG_STORAGE_KEY = "local:webdavConfig"
 export const WEBDAV_SYNC_STATE_STORAGE_KEY = "local:webdavSyncState"
@@ -221,13 +225,50 @@ export async function testWebdavConnection(
   }
 }
 
+export interface SyncWithWebdavOptions {
+  maxRetries?: number
+  forceUnconditional?: boolean
+  syncReviews?: boolean
+  reviewStoreInstance?: ReviewStore
+}
+
+async function maybeSyncReviews(
+  repository: LocalDictionaryRepository,
+  config: WebdavConfig,
+  options?: SyncWithWebdavOptions,
+  fetchFn: typeof fetch = globalThis.fetch,
+): Promise<void> {
+  if (!options?.syncReviews) return
+  let validRecordIds: Set<string> | undefined
+  try {
+    const allActive = await repository.list({ pageSize: 100000 })
+    if (allActive.ok) {
+      validRecordIds = new Set(allActive.data.records.map((r) => r.id))
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    await syncReviewsWithWebdav(
+      config,
+      {
+        forceUnconditional: options.forceUnconditional,
+        maxRetries: options.maxRetries,
+        validRecordIds,
+      },
+      fetchFn,
+      options.reviewStoreInstance,
+    )
+  } catch (err) {
+    logger.warn("[WebDAV] Review sync failed during dual sync", err)
+  }
+}
+
 export async function syncWithWebdav(
   repository: LocalDictionaryRepository,
   config: WebdavConfig,
-  options?: {
-    maxRetries?: number
-    forceUnconditional?: boolean
-  },
+  options?: SyncWithWebdavOptions,
   fetchFn: typeof fetch = globalThis.fetch,
 ): Promise<WebdavSyncResult> {
   let fileUrl: string
@@ -393,9 +434,12 @@ export async function syncWithWebdav(
       mergedSnapshot,
       needsRemoteUpload,
     } = mergeReply.data
+    const syncSequence = mergeReply.changeSequence
 
     // 3. If remote does not need upload (e.g. remote already had everything or local was empty)
     if (!needsRemoteUpload && remoteExists) {
+      await repository.clearSyncChanges(syncSequence)
+      await maybeSyncReviews(repository, config, options, fetchFn)
       return {
         ok: true,
         remoteUploaded: false,
@@ -496,6 +540,8 @@ export async function syncWithWebdav(
 
     if (putRes.status === 200 || putRes.status === 201 || putRes.status === 204) {
       const newEtag = putRes.headers.get("etag") || putRes.headers.get("ETag")
+      await repository.clearSyncChanges(syncSequence)
+      await maybeSyncReviews(repository, config, options, fetchFn)
       return {
         ok: true,
         remoteUploaded: true,

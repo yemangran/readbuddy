@@ -139,7 +139,7 @@ export async function purgeDictionaryRecord(
 }
 
 export async function purgeAllDeletedDictionaryRecords(): Promise<
-  DictionaryReply<{ purgedCount: number }>
+  DictionaryReply<{ purgedCount: number; purgedIds?: string[] }>
 > {
   return await sendWithRetry(() => sendMessage("dictionaryPurgeAllDeleted"))
 }

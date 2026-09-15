@@ -50,6 +50,7 @@ export class WebdavSyncEngine {
       fetchFn?: typeof fetch
       onStateChange?: (state: WebdavSyncState) => void
       onLocalUpdated?: () => Promise<void> | void
+      syncReviews?: boolean
     },
   ) {}
 
@@ -145,7 +146,10 @@ export class WebdavSyncEngine {
         result = await syncWithWebdav(
           repo,
           config,
-          { forceUnconditional: isForceUnconditional },
+          {
+            forceUnconditional: isForceUnconditional,
+            syncReviews: this.options?.syncReviews ?? false,
+          },
           this.options?.fetchFn,
         )
       } catch (err: any) {
