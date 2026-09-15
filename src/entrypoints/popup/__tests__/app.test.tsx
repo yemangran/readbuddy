@@ -3,6 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import App, { POPUP_ACTIVE_TAB_STORAGE_KEY } from "../app"
 
+const openOptionsPageMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+vi.mock("@/utils/navigation", () => ({
+  openOptionsPage: openOptionsPageMock,
+}))
+
 // Mock subcomponents
 vi.mock("../components/brand-header", () => ({
   PopupBrandHeader: () => <div data-testid="brand-header">BrandHeader</div>,
@@ -144,5 +149,18 @@ describe("Popup App Component", () => {
       expect(screen.getByText(/本地词典复习/i)).toBeInTheDocument()
     })
     expect(screen.queryByTestId("language-options")).not.toBeInTheDocument()
+  })
+
+  it("navigates to options review mode when clicking fullscreen review button", async () => {
+    mockStorageMap.set(POPUP_ACTIVE_TAB_STORAGE_KEY, "learning")
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /在独立页面中全屏复习/i })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /在独立页面中全屏复习/i }))
+    expect(openOptionsPageMock).toHaveBeenCalledWith({ route: "/dictionary?mode=review" })
   })
 })

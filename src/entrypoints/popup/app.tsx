@@ -142,10 +142,10 @@ function App() {
             dueCount={dueCount}
             isLoading={isDictLoading}
             onOpenFullscreenReview={() => {
-              void openOptionsPage()
+              void openOptionsPage({ route: "/dictionary?mode=review" })
             }}
             onOpenDictionary={() => {
-              void openOptionsPage()
+              void openOptionsPage({ route: "/dictionary" })
             }}
           />
         )}

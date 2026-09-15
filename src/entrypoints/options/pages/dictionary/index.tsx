@@ -8,7 +8,7 @@ import { Icon } from "@iconify/react"
 import { useQuery } from "@tanstack/react-query"
 import { saveAs } from "file-saver"
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
 import {
@@ -49,6 +49,7 @@ import { parseAndValidateSnapshot } from "@/utils/local-dictionary/snapshot"
 import { cn } from "@/utils/styles/utils"
 import { queryClient } from "@/utils/tanstack-query"
 import { PageLayout } from "../../components/page-layout"
+import { ImmersiveStudyMode } from "./components/immersive-study-mode"
 
 const PAGE_SIZE = 15
 
@@ -154,6 +155,226 @@ function extractRecordFields(record: LocalDictionaryRecord): ExtractedRecordFiel
   }
 }
 
+interface PartOfSpeechMeta {
+  abbr: string
+  colorClass: string
+}
+
+const POS_MAP: Record<string, PartOfSpeechMeta> = {
+  // 名词 (Noun) -> n. (Blue)
+  noun: {
+    abbr: "n.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  n: {
+    abbr: "n.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  名词: {
+    abbr: "n.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+
+  // 动词 (Verb) -> v. (Emerald / Green)
+  verb: {
+    abbr: "v.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  v: {
+    abbr: "v.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  动词: {
+    abbr: "v.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+
+  // 形容词 (Adjective) -> adj. (Amber / Orange)
+  adjective: {
+    abbr: "adj.",
+    colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  },
+  adj: {
+    abbr: "adj.",
+    colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  },
+  a: {
+    abbr: "adj.",
+    colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  },
+  形容词: {
+    abbr: "adj.",
+    colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  },
+
+  // 副词 (Adverb) -> adv. (Purple)
+  adverb: {
+    abbr: "adv.",
+    colorClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  },
+  adv: {
+    abbr: "adv.",
+    colorClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  },
+  副词: {
+    abbr: "adv.",
+    colorClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  },
+
+  // 代词 (Pronoun) -> pron. (Sky)
+  pronoun: {
+    abbr: "pron.",
+    colorClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  },
+  pron: {
+    abbr: "pron.",
+    colorClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  },
+  代词: {
+    abbr: "pron.",
+    colorClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  },
+
+  // 介词 (Preposition) -> prep. (Rose)
+  preposition: {
+    abbr: "prep.",
+    colorClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  },
+  prep: {
+    abbr: "prep.",
+    colorClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  },
+  介词: {
+    abbr: "prep.",
+    colorClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  },
+
+  // 连词 (Conjunction) -> conj. (Indigo)
+  conjunction: {
+    abbr: "conj.",
+    colorClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  },
+  conj: {
+    abbr: "conj.",
+    colorClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  },
+  连词: {
+    abbr: "conj.",
+    colorClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  },
+
+  // 感叹词 (Interjection) -> int. (Orange)
+  interjection: {
+    abbr: "int.",
+    colorClass: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  },
+  interj: {
+    abbr: "int.",
+    colorClass: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  },
+  int: {
+    abbr: "int.",
+    colorClass: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  },
+  感叹词: {
+    abbr: "int.",
+    colorClass: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  },
+
+  // 数词 (Numeral) -> num. (Teal)
+  numeral: {
+    abbr: "num.",
+    colorClass: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
+  },
+  number: {
+    abbr: "num.",
+    colorClass: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
+  },
+  num: {
+    abbr: "num.",
+    colorClass: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
+  },
+  数词: {
+    abbr: "num.",
+    colorClass: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
+  },
+
+  // 冠词 (Article) -> art. (Cyan)
+  article: {
+    abbr: "art.",
+    colorClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+  },
+  art: {
+    abbr: "art.",
+    colorClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+  },
+  冠词: {
+    abbr: "art.",
+    colorClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+  },
+
+  // 短语 (Phrase) / 成语 (Idiom) -> phr. / idiom (Zinc)
+  phrase: {
+    abbr: "phr.",
+    colorClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  },
+  phr: {
+    abbr: "phr.",
+    colorClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  },
+  idiom: {
+    abbr: "idiom",
+    colorClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  },
+  短语: {
+    abbr: "phr.",
+    colorClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  },
+  成语: {
+    abbr: "idiom",
+    colorClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  },
+}
+
+export function getPartOfSpeechBadge(rawPos: string): PartOfSpeechMeta {
+  const trimmed = rawPos.trim()
+  if (!trimmed) {
+    return {
+      abbr: "",
+      colorClass: "bg-muted text-muted-foreground border-border/40",
+    }
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/\.+$/, "")
+  const matched = POS_MAP[normalized]
+  if (matched) {
+    return matched
+  }
+
+  return {
+    abbr: trimmed,
+    colorClass: "bg-muted text-muted-foreground border-border/40",
+  }
+}
+
+export function PartOfSpeechBadge({ pos, className }: { pos: string; className?: string }) {
+  const { abbr, colorClass } = getPartOfSpeechBadge(pos)
+  if (!abbr) return null
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "border px-1.5 py-0 text-[11px] font-medium tracking-tight shadow-none",
+        colorClass,
+        className,
+      )}
+    >
+      {abbr}
+    </Badge>
+  )
+}
+
 function playWordPronunciation(text: string, e?: React.MouseEvent) {
   e?.stopPropagation()
   if (!text || typeof window === "undefined" || !("speechSynthesis" in window)) return
@@ -181,6 +402,8 @@ export function DictionaryPage() {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const isReviewMode = searchParams.get("mode") === "review"
 
   // Viewing detail dialog state
   const [viewingRecord, setViewingRecord] = useState<LocalDictionaryRecord | null>(null)
@@ -252,11 +475,24 @@ export function DictionaryPage() {
     },
   })
 
+  const { data: allRecordsReply } = useQuery({
+    queryKey: ["local-dictionary-all-records"],
+    enabled: isReviewMode,
+    queryFn: async () => {
+      const reply = await listDictionaryRecords({ page: 1, pageSize: 1000 })
+      if (!reply.ok) {
+        throw new Error(reply.error.message || "Failed to load records for review")
+      }
+      return reply.data.records
+    },
+  })
+
   useEffect(() => {
     return watchDictionaryChangeSignal(() => {
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-records"] })
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-trash"] })
       void queryClient.invalidateQueries({ queryKey: ["local-dictionary-conflicts"] })
+      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-all-records"] })
     })
   }, [])
 
@@ -575,6 +811,27 @@ export function DictionaryPage() {
     }
   }
 
+  if (isReviewMode) {
+    return (
+      <PageLayout
+        title={i18n.t("options.dictionary.title")}
+        description={i18n.t("options.dictionary.pageDescription")}
+        innerClassName="flex flex-col gap-6"
+      >
+        <ImmersiveStudyMode
+          records={allRecordsReply ?? records}
+          onExit={() => {
+            setSearchParams((prev) => {
+              const next = new URLSearchParams(prev)
+              next.delete("mode")
+              return next
+            })
+          }}
+        />
+      </PageLayout>
+    )
+  }
+
   return (
     <PageLayout
       title={i18n.t("options.dictionary.title")}
@@ -594,6 +851,21 @@ export function DictionaryPage() {
           />
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev)
+                next.set("mode", "review")
+                return next
+              })
+            }}
+            aria-label="start-review"
+          >
+            <Icon icon="tabler:cards" className="mr-1.5 size-4" />
+            闪卡复习
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -713,11 +985,7 @@ export function DictionaryPage() {
                             </Button>
                           )}
 
-                          {fields.partOfSpeech && (
-                            <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                              {fields.partOfSpeech}
-                            </Badge>
-                          )}
+                          {fields.partOfSpeech && <PartOfSpeechBadge pos={fields.partOfSpeech} />}
 
                           {fields.difficulty && (
                             <Badge
@@ -1124,9 +1392,10 @@ export function DictionaryPage() {
                         </span>
                       )}
                       {fields.partOfSpeech && (
-                        <Badge variant="secondary" className="text-xs">
-                          {fields.partOfSpeech}
-                        </Badge>
+                        <PartOfSpeechBadge
+                          pos={fields.partOfSpeech}
+                          className="px-2 py-0.5 text-xs"
+                        />
                       )}
                       {fields.difficulty && (
                         <Badge
@@ -1306,9 +1575,10 @@ export function DictionaryPage() {
                                 </span>
                               )}
                               {fields.partOfSpeech && (
-                                <Badge variant="secondary" className="px-1 py-0 text-[10px]">
-                                  {fields.partOfSpeech}
-                                </Badge>
+                                <PartOfSpeechBadge
+                                  pos={fields.partOfSpeech}
+                                  className="px-1 py-0 text-[10px]"
+                                />
                               )}
                               {fields.difficulty && (
                                 <Badge

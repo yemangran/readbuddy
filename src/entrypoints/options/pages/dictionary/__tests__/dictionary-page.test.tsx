@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { saveAs } from "file-saver"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { i18n } from "@/utils/i18n"
-import { DictionaryPage } from "../index"
+import { DictionaryPage, getPartOfSpeechBadge } from "../index"
 
 const listRecordsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const updateCellsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
@@ -33,12 +33,15 @@ const getRemoteWebdavSummaryMock = vi.hoisted(() => vi.fn<(...args: any[]) => an
 const watchWebdavSyncStateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 
 const navigateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
+let searchParamsMock = new URLSearchParams()
+const setSearchParamsMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router")
   return {
     ...actual,
     useNavigate: () => navigateMock,
+    useSearchParams: () => [searchParamsMock, setSearchParamsMock],
   }
 })
 
@@ -105,6 +108,7 @@ function renderWithQuery(ui: React.ReactElement) {
 describe("DictionaryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    searchParamsMock = new URLSearchParams()
     watchSignalMock.mockReturnValue(() => {})
     listRecordsMock.mockResolvedValue({
       ok: true,
@@ -483,6 +487,94 @@ describe("DictionaryPage", () => {
     fireEvent.click(screen.getByLabelText("confirm-purge-record"))
     await waitFor(() => {
       expect(purgeRecordMock).toHaveBeenCalledWith(expect.objectContaining({ id: "rec-deleted-1" }))
+    })
+  })
+
+  describe("PartOfSpeech abbreviation and colors", () => {
+    it("correctly maps common full part-of-speech names to abbreviations and color classes", () => {
+      const noun = getPartOfSpeechBadge("noun")
+      expect(noun.abbr).toBe("n.")
+      expect(noun.colorClass).toContain("text-blue-600")
+
+      const adj = getPartOfSpeechBadge("adjective")
+      expect(adj.abbr).toBe("adj.")
+      expect(adj.colorClass).toContain("text-amber-600")
+
+      const verb = getPartOfSpeechBadge("verb")
+      expect(verb.abbr).toBe("v.")
+      expect(verb.colorClass).toContain("text-emerald-600")
+
+      const adv = getPartOfSpeechBadge("adverb")
+      expect(adv.abbr).toBe("adv.")
+      expect(adv.colorClass).toContain("text-purple-600")
+
+      const prep = getPartOfSpeechBadge("preposition")
+      expect(prep.abbr).toBe("prep.")
+      expect(prep.colorClass).toContain("text-rose-600")
+
+      const conj = getPartOfSpeechBadge("conjunction")
+      expect(conj.abbr).toBe("conj.")
+      expect(conj.colorClass).toContain("text-indigo-600")
+
+      const pron = getPartOfSpeechBadge("pronoun")
+      expect(pron.abbr).toBe("pron.")
+      expect(pron.colorClass).toContain("text-sky-600")
+    })
+
+    it("handles pre-abbreviated, punctuated, case-insensitive, and Chinese inputs", () => {
+      expect(getPartOfSpeechBadge("adj.").abbr).toBe("adj.")
+      expect(getPartOfSpeechBadge("ADJ").abbr).toBe("adj.")
+      expect(getPartOfSpeechBadge("N.").abbr).toBe("n.")
+      expect(getPartOfSpeechBadge("形容词").abbr).toBe("adj.")
+      expect(getPartOfSpeechBadge("名词").abbr).toBe("n.")
+      expect(getPartOfSpeechBadge("动词").abbr).toBe("v.")
+    })
+
+    it("renders abbreviated part of speech tag on the word card", async () => {
+      const baseRecord = mockRecords[0] as LocalDictionaryRecord
+      const recordWithPos: LocalDictionaryRecord = {
+        ...baseRecord,
+        columns: [...baseRecord.columns, { id: "c-pos", name: "PartOfSpeech", position: 2 }],
+        cells: {
+          ...baseRecord.cells,
+          "c-pos": "adjective",
+        },
+      }
+
+      listRecordsMock.mockResolvedValue({
+        ok: true,
+        data: { records: [recordWithPos], total: 1, page: 1, pageSize: 15 },
+        changeSequence: 1,
+      })
+
+      renderWithQuery(<DictionaryPage />)
+
+      await waitFor(() => {
+        const badge = screen.getByText("adj.")
+        expect(badge).toBeInTheDocument()
+        expect(badge.className).toContain("text-amber-600")
+      })
+    })
+
+    it("triggers review mode when clicking 闪卡复习 button", async () => {
+      renderWithQuery(<DictionaryPage />)
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "start-review" })).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole("button", { name: "start-review" }))
+      expect(setSearchParamsMock).toHaveBeenCalled()
+    })
+
+    it("renders ImmersiveStudyMode when mode=review is set in searchParams", async () => {
+      searchParamsMock.set("mode", "review")
+      renderWithQuery(<DictionaryPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("闪卡复习")).toBeInTheDocument()
+        expect(screen.getByText("FSRS 间隔记忆")).toBeInTheDocument()
+      })
     })
   })
 })
