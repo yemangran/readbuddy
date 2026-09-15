@@ -9,7 +9,7 @@
 ## PR Notes
 
 - PR titles must use conventional commit format, such as `fix(subtitles): ...`; avoid extra prefixes like `[codex]`.
-- User-facing fixes and features should include a `.changeset/*.md` file for `@read-toad/extension` unless the change intentionally does not need a release. use conventional commit format for the changeset content.
+- User-facing fixes and features should include a `.changeset/*.md` file for `@read-buddy/extension` unless the change intentionally does not need a release. use conventional commit format for the changeset content.
 
 ## Agent skills
 
