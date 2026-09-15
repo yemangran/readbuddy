@@ -30,7 +30,6 @@ export default defineConfig({
   alias: useLocalPackages
     ? {
         "@read-frog/definitions": path.resolve(monorepoRoot, "packages/definitions/src"),
-        "@read-frog/api-contract": path.resolve(monorepoRoot, "packages/api-contract/src"),
       }
     : {},
   manifest: ({ mode, browser }) => ({

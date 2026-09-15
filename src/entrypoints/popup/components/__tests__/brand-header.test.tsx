@@ -6,15 +6,15 @@ import { PopupBrandHeader } from "../brand-header"
 
 vi.mock("@/utils/i18n", () => ({
   i18n: {
-    t: (key: string) => (key === "name" ? "伴读蛤蟆" : key),
+    t: (key: string) => (key === "name" ? "伴读书童" : key),
   },
 }))
 
 describe("PopupBrandHeader", () => {
   it("renders brand logo and title", () => {
     render(<PopupBrandHeader />)
-    expect(screen.getByText("伴读蛤蟆")).toBeInTheDocument()
-    const img = screen.getByRole("img", { name: "伴读蛤蟆" })
+    expect(screen.getByText("伴读书童")).toBeInTheDocument()
+    const img = screen.getByRole("img", { name: "伴读书童" })
     expect(img).toBeInTheDocument()
   })
 })

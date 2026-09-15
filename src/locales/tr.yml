@@ -1,6 +1,6 @@
-name: Read Toad
-extName: Read Toad - Çevir ve Öğren
-extDescription: Read Toad, herhangi bir web sitesinden dilleri derinlemesine öğrenmenize yardımcı olmak için tasarlanmış açık kaynaklı bir tarayıcı uzantısıdır.
+name: Read Buddy
+extName: Read Buddy - Çevir ve Öğren
+extDescription: Read Buddy, herhangi bir web sitesinden dilleri derinlemesine öğrenmenize yardımcı olmak için tasarlanmış açık kaynaklı bir tarayıcı uzantısıdır.
 uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: Giriş yap
@@ -16,7 +16,7 @@ contextMenu:
   readAloudSelection: '"%s" Sesli oku'
   showOriginal: Orijinali Göster
 sidePanel:
-  firefoxUserActionHint: Firefox'ta Read Toad'u tarayıcının kenar çubuğundan açın.
+  firefoxUserActionHint: Firefox'ta Read Buddy'u tarayıcının kenar çubuğundan açın.
   firefoxUserActionHelpText: Firefox kenar çubuğunu açmayı öğrenin
   firefoxUserActionHelpUrl: https://support.mozilla.org/tr/kb/use-sidebar-access-tools-and-vertical-tabs
 popup:
@@ -51,7 +51,7 @@ popup:
   discord:
     tooltip: Geliştiricilerle bağlantı kurmak ve yeni özelliklere erken erişim sağlamak için Discord'a katılın
   blog:
-    notification: Read Toad'da yenilikler
+    notification: Read Buddy'da yenilikler
   aiSmartContext: AI Akıllı Bağlam
   aiSmartContextDescription: Çeviri kalitesini artırmak için web sayfası bağlamını kullanır. LLM çeviri sağlayıcısı gerektirir.
   more:
@@ -108,12 +108,12 @@ options:
     roadmap: Yol Haritası
   helpAndCommunity:
     title: Yardım ve topluluk
-    pageDescription: Read Toad'u nasıl kullanacağınızı öğrenin, hata bildirin veya açık kaynak topluluğundaki tartışmalara katılın.
+    pageDescription: Read Buddy'u nasıl kullanacağınızı öğrenin, hata bildirin veya açık kaynak topluluğundaki tartışmalara katılın.
     help:
       title: Yardım
     tutorial:
       title: Rehber
-      description: Belgeleri okuyun ve Read Toad'u nasıl kullanacağınızı öğrenin
+      description: Belgeleri okuyun ve Read Buddy'u nasıl kullanacağınızı öğrenin
     bugReport:
       title: Hata bildir
       description: GitHub Issues üzerinde hata kaydı açın ve çözümü takip edin
@@ -130,11 +130,11 @@ options:
       description: GitHub Discussions üzerinde topluluk ve geliştiricilerle iletişim kurun
     contribute:
       title: Katkıda bulunun
-      description: Read Toad'u geliştirmeye yardımcı olmak için Pull Request veya geri bildirim gönderin
+      description: Read Buddy'u geliştirmeye yardımcı olmak için Pull Request veya geri bildirim gönderin
   apiProviders:
     title: API Sağlayıcıları
-    pageDescription: Read Toad'un çağırdığı yapay zekâ servislerini bağlayın ve her özelliğin hangisini kullanacağını seçin.
-    description: Read Toad'un çağırabileceği sağlayıcıları ekleyin. 20'den fazlası yerleşik gelir; ayrıca Chat Completions uyumlu ve Open Responses API'lerini özel olarak ekleyebilirsiniz.
+    pageDescription: Read Buddy'un çağırdığı yapay zekâ servislerini bağlayın ve her özelliğin hangisini kullanacağını seçin.
+    description: Read Buddy'un çağırabileceği sağlayıcıları ekleyin. 20'den fazlası yerleşik gelir; ayrıca Chat Completions uyumlu ve Open Responses API'lerini özel olarak ekleyebilirsiniz.
     configTitle: Sağlayıcı yapılandırması
     addProvider: Sağlayıcı ekle
     builtInProvider: Yerleşik sağlayıcı
@@ -239,8 +239,8 @@ options:
         customChatComplete: Özel Chat Complete
         customResponses: Özel Responses
       attribution:
-        builtInAi: Read Toad tarafından barındırılan standart model. Ultra olmayan kullanıcılar yalnızca özel AI eylemlerinde kullanabilir; Ultra kullanıcıları daha fazla özellikte kullanabilir.
-        builtInAiAdvance: Read Toad tarafından barındırılan gelişmiş model, yalnızca Ultra üyelerine özeldir. Sayfa çevirisi, özel AI eylemleri ve diğer tüm yerleşik AI özelliklerinde çalışır; haftalık kota ortaktır. Kotayı standart modelden daha hızlı tüketir.
+        builtInAi: Read Buddy tarafından barındırılan standart model. Ultra olmayan kullanıcılar yalnızca özel AI eylemlerinde kullanabilir; Ultra kullanıcıları daha fazla özellikte kullanabilir.
+        builtInAiAdvance: Read Buddy tarafından barındırılan gelişmiş model, yalnızca Ultra üyelerine özeldir. Sayfa çevirisi, özel AI eylemleri ve diğer tüm yerleşik AI özelliklerinde çalışır; haftalık kota ortaktır. Kotayı standart modelden daha hızlı tüketir.
       description:
         openai: GPT-4o gibi modeller sağlar
         azure: Azure dağıtımlarınız üzerinden OpenAI modelleri
@@ -323,12 +323,12 @@ options:
     duplicate: Bu desen zaten listede
   preference:
     title: Tercihler
-    pageDescription: Read Toad'un görünümünü, nerede çalışacağını ve yapılandırmanızın nasıl eşitlenip yedekleneceğini ayarlayın.
+    pageDescription: Read Buddy'un görünümünü, nerede çalışacağını ve yapılandırmanızın nasıl eşitlenip yedekleneceğini ayarlayın.
     appearanceAndLanguage:
       title: Görünüm ve dil
       theme:
         title: Tema
-        description: Read Toad için bir tema seçin.
+        description: Read Buddy için bir tema seçin.
         system: Sistem
         light: Açık
         dark: Koyu
@@ -347,7 +347,7 @@ options:
         description: Sayfaların çevrileceği dil.
     extensionActivation:
       title: Uzantı etkinleştirme
-      description: Read Toad listelediğiniz siteler dışında her yerde mi, yoksa yalnızca listelediğiniz sitelerde mi çalışsın
+      description: Read Buddy listelediğiniz siteler dışında her yerde mi, yoksa yalnızca listelediğiniz sitelerde mi çalışsın
       manageSites: Siteleri yönet
       mode:
         title: Etkinleştirme modu
@@ -466,8 +466,8 @@ options:
         description: Henüz kararsız olabilecek deneysel özellikleri açın
       analytics:
         title: Kullanıcı deneyimini geliştirmemize yardımcı ol
-        tooltip: Açık olduğunda Read Toad, hataları yakalamak, özelliklerin güvenilir çalıştığını doğrulamak, performansı ve UX ayrıntılarını iyileştirmek ve sıradaki önceliklerimizi belirlemek için anonim kullanım sinyalleri gönderir.
-        description: Hataları bulmamıza, arayüzü iyileştirmemize ve daha fazlasına yardım ederek Read Toad'u geliştirin
+        tooltip: Açık olduğunda Read Buddy, hataları yakalamak, özelliklerin güvenilir çalıştığını doğrulamak, performansı ve UX ayrıntılarını iyileştirmek ve sıradaki önceliklerimizi belirlemek için anonim kullanım sinyalleri gönderir.
+        description: Hataları bulmamıza, arayüzü iyileştirmemize ve daha fazlasına yardım ederek Read Buddy'u geliştirin
   shortcuts:
     title: Kısayollar
     pageDescription: Okurken çeviriyi başlatan tuşları belirleyin.
@@ -520,7 +520,7 @@ options:
     demoImageAlt: Yüzen buton demosu
     enable:
       title: Yüzen butonu etkinleştir
-      description: Read Toad özelliklerine hızlı erişim için web sayfalarında yüzen butonu görüntüle
+      description: Read Buddy özelliklerine hızlı erişim için web sayfalarında yüzen butonu görüntüle
     display:
       title: Görünüm
       side:
@@ -709,7 +709,7 @@ options:
         duplicateFieldKey: Alan adları benzersiz olmalıdır
   contextMenu:
     title: Bağlam Menüsü
-    pageDescription: Tarayıcının sağ tık menüsündeki Read Toad seçeneklerini yönetin.
+    pageDescription: Tarayıcının sağ tık menüsündeki Read Buddy seçeneklerini yönetin.
     demoImageAlt: Bağlam menüsü demosu
     enable:
       title: Bağlam menüsü çevirisini etkinleştir
@@ -925,9 +925,9 @@ options:
       noVoicesFound: Ses bulunamadı
       language:
         title: Dil sesi
-        description: Bir dil seçin, ardından o dili okuyacak sesi belirleyin. Sıfırlamak, Read Toad'un o dil için seçtiği sesi geri getirir.
+        description: Bir dil seçin, ardından o dili okuyacak sesi belirleyin. Sıfırlamak, Read Buddy'un o dil için seçtiği sesi geri getirir.
         reset: Sıfırla
-        previewSample: Read Toad'dan merhaba! Yüksek sesle okurken böyle ses çıkaracağım.
+        previewSample: Read Buddy'dan merhaba! Yüksek sesle okurken böyle ses çıkaracağım.
       fallback:
         title: Yedek ses
         description: Kendine ait bir ses atamadığınız diller bu sesle okunur.
@@ -1069,7 +1069,7 @@ options:
   rateUs:
     title: Bizi Değerlendirin
   configMigration:
-    versionTooNew: İçe aktarılan yapılandırma sürümü daha yeni, lütfen Read Toad'u en son sürüme yükseltin
+    versionTooNew: İçe aktarılan yapılandırma sürümü daha yeni, lütfen Read Buddy'u en son sürüme yükseltin
     validationError: Yapılandırma doğrulaması başarısız
 side:
   sourceLang: Kaynak Dil
@@ -1143,8 +1143,8 @@ action:
   saveToNotebaseMissingNotebaseDescription: Eski Notebase artık yok veya bu hesapla açılamıyor. Yeni bir Notebase oluşturup kaydedin ya da Custom AI Actions içinde mevcut bir Notebase bağlayın.
   saveToNotebaseAccountUnavailableDescription: Giriş yapılan hesap aşağıdaki bağlı hesapla eşleşmiyor. Oluşturup kaydetmek önceki bağlantıyı ve alan eşlemelerini değiştirir. Custom AI Actions içinde mevcut bir Notebase de bağlayabilirsiniz.
   saveToNotebasePendingLogin: Kaydetmeyi tamamlamak için giriş yapın
-  saveToNotebasePendingLoginDescription: Giriş yaptıktan sonra Read Toad Notebase'i oluşturur ve bu sonucu otomatik olarak kaydeder.
-  saveToNotebasePendingConnectedLoginDescription: Girişten sonra Read Toad mümkünse bağlı Notebase'e kaydeder. Bu hesap onu kullanamazsa yeni bir Notebase oluşturup kaydeder.
+  saveToNotebasePendingLoginDescription: Giriş yaptıktan sonra Read Buddy Notebase'i oluşturur ve bu sonucu otomatik olarak kaydeder.
+  saveToNotebasePendingConnectedLoginDescription: Girişten sonra Read Buddy mümkünse bağlı Notebase'e kaydeder. Bu hesap onu kullanamazsa yeni bir Notebase oluşturup kaydeder.
   upgrade: Yükselt
   updatePayment: Ödemeyi güncelle
   openCustomActions: Custom AI Actions'ı aç
@@ -1194,7 +1194,7 @@ subtitles:
     downloadTranslatedComplete: Çevrilmiş altyazılar indirildi
     downloadSource: Kaynak altyazıları indir
   state:
-    loading: Read Toad altyazılar yükleniyor
+    loading: Read Buddy altyazılar yükleniyor
     translating: Çevriliyor…
     error: Bir hata oluştu
   errors:

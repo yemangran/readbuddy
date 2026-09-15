@@ -1,6 +1,6 @@
-name: Read Toad
-extName: Read Toad - 번역하고 배우기
-extDescription: Read Toad는 모든 웹사이트에서 언어를 깊이 있게 학습할 수 있도록 도와주는 오픈 소스 브라우저 확장 프로그램입니다.
+name: Read Buddy
+extName: Read Buddy - 번역하고 배우기
+extDescription: Read Buddy는 모든 웹사이트에서 언어를 깊이 있게 학습할 수 있도록 도와주는 오픈 소스 브라우저 확장 프로그램입니다.
 uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: 로그인
@@ -16,7 +16,7 @@ contextMenu:
   readAloudSelection: '"%s" 읽어주기'
   showOriginal: 원문 보기
 sidePanel:
-  firefoxUserActionHint: Firefox에서는 브라우저 사이드바에서 Read Toad를 열어 주세요.
+  firefoxUserActionHint: Firefox에서는 브라우저 사이드바에서 Read Buddy를 열어 주세요.
   firefoxUserActionHelpText: Firefox 사이드바 여는 방법 보기
   firefoxUserActionHelpUrl: https://support.mozilla.org/ko/kb/use-sidebar-access-tools-and-vertical-tabs
 popup:
@@ -51,7 +51,7 @@ popup:
   discord:
     tooltip: Discord에 참여하여 개발자와 소통하고 새 기능을 먼저 체험하세요
   blog:
-    notification: Read Toad의 새로운 소식
+    notification: Read Buddy의 새로운 소식
   aiSmartContext: AI 스마트 컨텍스트
   aiSmartContextDescription: 웹페이지 컨텍스트를 사용하여 번역 품질을 향상시킵니다. LLM 번역 제공자가 필요합니다.
   more:
@@ -108,12 +108,12 @@ options:
     roadmap: 로드맵
   helpAndCommunity:
     title: 도움말 및 커뮤니티
-    pageDescription: Read Toad 사용법을 익히고, 문제를 보고하거나, 오픈 소스 커뮤니티에서 교류하세요.
+    pageDescription: Read Buddy 사용법을 익히고, 문제를 보고하거나, 오픈 소스 커뮤니티에서 교류하세요.
     help:
       title: 도움말
     tutorial:
       title: 사용 가이드
-      description: 문서를 읽고 Read Toad 사용법을 알아보세요
+      description: 문서를 읽고 Read Buddy 사용법을 알아보세요
     bugReport:
       title: 버그 신고
       description: GitHub Issues에서 버그를 보고하고 해결 과정을 추적하세요
@@ -130,11 +130,11 @@ options:
       description: GitHub Discussions에서 커뮤니티 및 개발자와 소통하세요
     contribute:
       title: 기여하기
-      description: Pull Request나 피드백을 제출하여 Read Toad를 발전시키는 데 참여하세요
+      description: Pull Request나 피드백을 제출하여 Read Buddy를 발전시키는 데 참여하세요
   apiProviders:
     title: API 제공업체
-    pageDescription: Read Toad가 호출하는 AI 서비스를 연결하고, 각 기능에 사용할 서비스를 선택하세요.
-    description: Read Toad가 호출할 수 있는 제공업체를 추가합니다. 20개 이상이 내장되어 있으며, Chat Completions 호환 API와 Open Responses API를 사용자 정의로 추가할 수 있습니다.
+    pageDescription: Read Buddy가 호출하는 AI 서비스를 연결하고, 각 기능에 사용할 서비스를 선택하세요.
+    description: Read Buddy가 호출할 수 있는 제공업체를 추가합니다. 20개 이상이 내장되어 있으며, Chat Completions 호환 API와 Open Responses API를 사용자 정의로 추가할 수 있습니다.
     configTitle: 제공업체 구성
     addProvider: 제공업체 추가
     builtInProvider: 내장 제공업체
@@ -239,8 +239,8 @@ options:
         customChatComplete: 사용자 정의 Chat Complete
         customResponses: 사용자 정의 Responses
       attribution:
-        builtInAi: Read Toad가 호스팅하는 일반 모델입니다. Ultra가 아닌 사용자는 사용자 지정 AI 작업에서만 사용할 수 있으며, Ultra 사용자는 더 많은 기능에서 사용할 수 있습니다.
-        builtInAiAdvance: Read Toad가 호스팅하는 고급 모델로, Ultra 멤버 전용입니다. 페이지 번역, 사용자 지정 AI 작업 등 모든 내장 AI 기능에서 사용할 수 있으며 주간 할당량을 공유합니다. 표준 모델보다 할당량이 더 빨리 소모됩니다.
+        builtInAi: Read Buddy가 호스팅하는 일반 모델입니다. Ultra가 아닌 사용자는 사용자 지정 AI 작업에서만 사용할 수 있으며, Ultra 사용자는 더 많은 기능에서 사용할 수 있습니다.
+        builtInAiAdvance: Read Buddy가 호스팅하는 고급 모델로, Ultra 멤버 전용입니다. 페이지 번역, 사용자 지정 AI 작업 등 모든 내장 AI 기능에서 사용할 수 있으며 주간 할당량을 공유합니다. 표준 모델보다 할당량이 더 빨리 소모됩니다.
       description:
         openai: GPT-4o 같은 모델을 제공합니다
         azure: Azure 배포를 통해 OpenAI 모델 사용
@@ -323,12 +323,12 @@ options:
     duplicate: 이 패턴은 이미 목록에 있습니다
   preference:
     title: 환경 설정
-    pageDescription: Read Toad의 모양과 실행 범위, 설정 동기화 및 백업 방식을 지정하세요.
+    pageDescription: Read Buddy의 모양과 실행 범위, 설정 동기화 및 백업 방식을 지정하세요.
     appearanceAndLanguage:
       title: 모양 및 언어
       theme:
         title: 테마
-        description: Read Toad의 테마를 선택하세요.
+        description: Read Buddy의 테마를 선택하세요.
         system: 시스템
         light: 라이트
         dark: 다크
@@ -466,8 +466,8 @@ options:
         description: 아직 불안정할 수 있는 실험적 기능을 켭니다
       analytics:
         title: 사용자 경험 개선에 기여
-        tooltip: 켜면 Read Toad가 익명 사용 신호를 전송하여 버그를 찾아내고, 기능 안정성을 검증하고, 성능과 UX 디테일을 개선하며, 앞으로 무엇을 우선적으로 만들지 결정하는 데 활용합니다.
-        description: 버그를 찾고 UI 레이아웃을 다듬는 등 Read Toad 개선에 기여합니다
+        tooltip: 켜면 Read Buddy가 익명 사용 신호를 전송하여 버그를 찾아내고, 기능 안정성을 검증하고, 성능과 UX 디테일을 개선하며, 앞으로 무엇을 우선적으로 만들지 결정하는 데 활용합니다.
+        description: 버그를 찾고 UI 레이아웃을 다듬는 등 Read Buddy 개선에 기여합니다
   shortcuts:
     title: 단축키
     pageDescription: 읽는 중에 번역을 실행하는 키를 설정합니다.
@@ -520,7 +520,7 @@ options:
     demoImageAlt: 플로팅 버튼 데모
     enable:
       title: 플로팅 버튼 활성화
-      description: 웹 페이지에 플로팅 버튼을 표시하여 Read Toad 기능에 빠르게 액세스
+      description: 웹 페이지에 플로팅 버튼을 표시하여 Read Buddy 기능에 빠르게 액세스
     display:
       title: 표시
       side:
@@ -709,7 +709,7 @@ options:
         duplicateFieldKey: 필드 이름은 고유해야 합니다
   contextMenu:
     title: 컨텍스트 메뉴
-    pageDescription: 브라우저 우클릭 메뉴에 표시되는 Read Toad 항목을 설정하세요.
+    pageDescription: 브라우저 우클릭 메뉴에 표시되는 Read Buddy 항목을 설정하세요.
     demoImageAlt: 컨텍스트 메뉴 데모
     enable:
       title: 우클릭 번역 활성화
@@ -925,9 +925,9 @@ options:
       noVoicesFound: 음성을 찾을 수 없습니다
       language:
         title: 언어별 음성
-        description: 언어를 고른 다음 그 언어를 읽어 줄 음성을 지정합니다. 재설정하면 Read Toad가 그 언어에 정해 둔 음성으로 돌아갑니다.
+        description: 언어를 고른 다음 그 언어를 읽어 줄 음성을 지정합니다. 재설정하면 Read Buddy가 그 언어에 정해 둔 음성으로 돌아갑니다.
         reset: 재설정
-        previewSample: Read Toad의 인사입니다! 제가 읽어 드릴 때 이렇게 들립니다.
+        previewSample: Read Buddy의 인사입니다! 제가 읽어 드릴 때 이렇게 들립니다.
       fallback:
         title: 대체 음성
         description: 따로 음성을 지정하지 않은 언어는 이 음성으로 읽습니다.
@@ -1069,7 +1069,7 @@ options:
   rateUs:
     title: 리뷰 남기기
   configMigration:
-    versionTooNew: 가져온 설정 버전이 최신이므로 Read Toad를 최신 버전으로 업그레이드해 주세요
+    versionTooNew: 가져온 설정 버전이 최신이므로 Read Buddy를 최신 버전으로 업그레이드해 주세요
     validationError: 설정 검증 실패
 side:
   sourceLang: 원본 언어
@@ -1143,8 +1143,8 @@ action:
   saveToNotebaseMissingNotebaseDescription: 이전 Notebase가 없거나 이 계정에서 열 수 없습니다. 새 Notebase를 만들고 저장하거나 Custom AI Actions에서 기존 Notebase를 연결하세요.
   saveToNotebaseAccountUnavailableDescription: 로그인한 계정이 아래의 연결된 계정과 다릅니다. 만들고 저장하면 이전 연결 설정과 필드 매핑이 교체됩니다. Custom AI Actions에서 기존 Notebase를 연결할 수도 있습니다.
   saveToNotebasePendingLogin: 로그인 후 저장 완료
-  saveToNotebasePendingLoginDescription: 로그인 후 Read Toad가 Notebase를 만들고 이 결과를 자동으로 저장합니다.
-  saveToNotebasePendingConnectedLoginDescription: 로그인 후 Read Toad는 가능하면 연결된 Notebase에 저장합니다. 이 계정에서 사용할 수 없으면 새 Notebase를 만들고 저장합니다.
+  saveToNotebasePendingLoginDescription: 로그인 후 Read Buddy가 Notebase를 만들고 이 결과를 자동으로 저장합니다.
+  saveToNotebasePendingConnectedLoginDescription: 로그인 후 Read Buddy는 가능하면 연결된 Notebase에 저장합니다. 이 계정에서 사용할 수 없으면 새 Notebase를 만들고 저장합니다.
   upgrade: 업그레이드
   updatePayment: 결제 수단 업데이트
   openCustomActions: Custom AI Actions 열기
@@ -1194,7 +1194,7 @@ subtitles:
     downloadTranslatedComplete: 번역 자막을 다운로드했습니다
     downloadSource: 원본 자막 다운로드
   state:
-    loading: Read Toad 자막 로딩 중
+    loading: Read Buddy 자막 로딩 중
     translating: 번역 중…
     error: 오류 발생
   errors:

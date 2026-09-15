@@ -1,6 +1,6 @@
-name: Read Toad
-extName: "Read Toad - Translate & Learn"
-extDescription: Read Toad is an open source browser extension designed to help you learn languages deeply from any website.
+name: Read Buddy
+extName: "Read Buddy - Translate & Learn"
+extDescription: Read Buddy is an open source browser extension designed to help you learn languages deeply from any website.
 uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
 account:
   login: Log in
@@ -16,7 +16,7 @@ contextMenu:
   readAloudSelection: Read aloud "%s"
   showOriginal: Show Original
 sidePanel:
-  firefoxUserActionHint: In Firefox, open Read Toad from the browser sidebar.
+  firefoxUserActionHint: In Firefox, open Read Buddy from the browser sidebar.
   firefoxUserActionHelpText: Learn how to open the Firefox sidebar
   firefoxUserActionHelpUrl: https://support.mozilla.org/en-US/kb/use-sidebar-access-tools-and-vertical-tabs
 popup:
@@ -51,7 +51,7 @@ popup:
   discord:
     tooltip: Join Discord to connect with developers and get early access to new features
   blog:
-    notification: What's new in Read Toad
+    notification: What's new in Read Buddy
   aiSmartContext: AI Smart Context
   aiSmartContextDescription: Uses webpage context to improve translation quality. Requires LLM translation provider.
   more:
@@ -173,10 +173,12 @@ options:
       title: WebDAV Sync
       description: Synchronize your local dictionary across multiple devices with generic WebDAV.
       endpoint: Endpoint URL
-      endpointPlaceholder: https://dav.jianguoyun.com/dav/
+      endpointPlaceholder: https://your-server.com/dav/
       username: Username
       password: Password
       save: Save & Connect
+      edit: Edit
+      cancelEdit: Cancel
       testConnection: Test Connection
       syncNow: Sync Now
       disconnect: Disconnect
@@ -215,17 +217,32 @@ options:
       remoteConflicts: Retained Conflicts
       remoteUpdatedAt: Remote Updated At
       remoteNotExists: Remote file does not exist yet
+      allSynced: Up to date
+      viewRemoteSnapshot: View Remote Snapshot
+      hideRemoteSnapshot: Hide Remote Snapshot
+      passwordKeepPlaceholder: "•••••••• (Leave blank to keep current password)"
+      presetJianguoyun: Jianguoyun
+      jianguoyunTip: For Jianguoyun, please use an App Password instead of your account password.
+      jianguoyunPresetApplied: Jianguoyun endpoint applied
+      jianguoyunPresetAppliedDesc: Please enter your Jianguoyun email (username) and app authorization password
+      viewSetupGuide: Setup Guide
+      setupGuideTitle: Jianguoyun WebDAV Setup Guide
+      setupGuideStep1: Log in to Jianguoyun web portal (jianguoyun.com).
+      setupGuideStep2: Navigate to Account Information ➜ Security.
+      setupGuideStep3: Under Third-party App Management, click Add App Password and name it "Read Buddy".
+      setupGuideStep4: Fill your account email in "Username", the generated app password in "Password", then click "Test Connection".
+      openJianguoyunWeb: Open Jianguoyun Security Settings
 
   product:
     roadmap: Roadmap
   helpAndCommunity:
     title: Help & Community
-    pageDescription: Learn how to use Read Toad, report issues, or join discussions in the open-source community.
+    pageDescription: Learn how to use Read Buddy, report issues, or join discussions in the open-source community.
     help:
       title: Help
     tutorial:
       title: Tutorial
-      description: Read the docs and learn how to use Read Toad
+      description: Read the docs and learn how to use Read Buddy
     bugReport:
       title: Report a bug
       description: Open an issue on GitHub and follow it until it is fixed
@@ -242,11 +259,11 @@ options:
       description: Chat with the community and developers on GitHub Discussions
     contribute:
       title: Contribute
-      description: Submit pull requests or feedback to help make Read Toad better
+      description: Submit pull requests or feedback to help make Read Buddy better
   apiProviders:
     title: API Providers
-    pageDescription: Connect the AI services Read Toad calls, then choose which one runs each feature.
-    description: Add the providers Read Toad can call. Over 20 are built in, with custom support for Chat Completions-compatible and Open Responses APIs.
+    pageDescription: Connect the AI services Read Buddy calls, then choose which one runs each feature.
+    description: Add the providers Read Buddy can call. Over 20 are built in, with custom support for Chat Completions-compatible and Open Responses APIs.
     configTitle: Provider config
     addProvider: Add provider
     builtInProvider: Built-in provider
@@ -352,8 +369,8 @@ options:
         customChatComplete: Custom Chat Complete
         customResponses: Custom Responses
       attribution:
-        builtInAi: Read Toad's hosted standard model. Non-Ultra users can use it only for Custom AI Actions; Ultra members can use it on more features.
-        builtInAiAdvance: Read Toad's hosted advanced model, exclusive to Ultra members. Runs page translation, Custom AI Actions, and every other Built-in AI feature on a shared weekly quota. Uses up the quota faster than the standard model.
+        builtInAi: Read Buddy's hosted standard model. Non-Ultra users can use it only for Custom AI Actions; Ultra members can use it on more features.
+        builtInAiAdvance: Read Buddy's hosted advanced model, exclusive to Ultra members. Runs page translation, Custom AI Actions, and every other Built-in AI feature on a shared weekly quota. Uses up the quota faster than the standard model.
       description:
         openai: Provides models like GPT-4o
         azure: Azure-hosted OpenAI models through your deployments
@@ -436,12 +453,12 @@ options:
     duplicate: This pattern is already in the list
   preference:
     title: Preferences
-    pageDescription: Set how Read Toad looks, where it runs, and how your config is synced and backed up.
+    pageDescription: Set how Read Buddy looks, where it runs, and how your config is synced and backed up.
     appearanceAndLanguage:
       title: Appearance & language
       theme:
         title: Theme
-        description: Choose a theme for Read Toad.
+        description: Choose a theme for Read Buddy.
         system: System
         light: Light
         dark: Dark
@@ -460,7 +477,7 @@ options:
         description: The language pages are translated into.
     extensionActivation:
       title: Extension activation
-      description: Whether Read Toad runs everywhere except the sites you list, or only on the sites you list
+      description: Whether Read Buddy runs everywhere except the sites you list, or only on the sites you list
       manageSites: Manage sites
       mode:
         title: Activation mode
@@ -579,8 +596,8 @@ options:
         description: Turn on experimental features that may still be unstable
       analytics:
         title: Help improve user experience
-        tooltip: When enabled, Read Toad sends anonymous product usage signals so we can catch bugs, verify feature reliability, improve performance and UX polish, and prioritize future work.
-        description: Improve Read Toad by helping us locate bugs, refine layouts, and more
+        tooltip: When enabled, Read Buddy sends anonymous product usage signals so we can catch bugs, verify feature reliability, improve performance and UX polish, and prioritize future work.
+        description: Improve Read Buddy by helping us locate bugs, refine layouts, and more
   shortcuts:
     title: Shortcuts
     pageDescription: Set the keys that trigger translation while you read.
@@ -633,7 +650,7 @@ options:
     demoImageAlt: Floating button demo
     enable:
       title: Enable floating button
-      description: Display the floating button on web pages for quick access to Read Toad features
+      description: Display the floating button on web pages for quick access to Read Buddy features
     display:
       title: Display
       side:
@@ -937,7 +954,7 @@ options:
         duplicateFieldKey: Field names must be unique
   contextMenu:
     title: Context Menu
-    pageDescription: Control the Read Toad entries in the browser's right-click menu.
+    pageDescription: Control the Read Buddy entries in the browser's right-click menu.
     demoImageAlt: Context menu demo
     enable:
       title: Enable context menu translate
@@ -1153,9 +1170,9 @@ options:
       noVoicesFound: No voices found
       language:
         title: Language voice
-        description: Pick a language, then the voice that reads it aloud. Reset puts back the voice Read Toad picks for that language.
+        description: Pick a language, then the voice that reads it aloud. Reset puts back the voice Read Buddy picks for that language.
         reset: Reset
-        previewSample: Hello from Read Toad! This is how I will sound when reading aloud.
+        previewSample: Hello from Read Buddy! This is how I will sound when reading aloud.
       fallback:
         title: Fallback voice
         description: The voice for any language you have not given one of its own.
@@ -1297,7 +1314,7 @@ options:
   rateUs:
     title: Rate Us
   configMigration:
-    versionTooNew: The imported config version is newer, please upgrade Read Toad to the latest version
+    versionTooNew: The imported config version is newer, please upgrade Read Buddy to the latest version
     validationError: Config validation failed
 side:
   sourceLang: Source Language
@@ -1371,13 +1388,13 @@ action:
   saveToNotebaseConnectExisting: Connect existing Notebase
   saveToNotebaseGoConfigure: Configure
   saveToNotebaseLoginConnectedTitle: Log in to save?
-  saveToNotebaseLoginConnectedDescription: This Custom Action is connected to the account below. After login, Read Toad will save to the existing Notebase when possible, or create a new Notebase for the logged-in account.
+  saveToNotebaseLoginConnectedDescription: This Custom Action is connected to the account below. After login, Read Buddy will save to the existing Notebase when possible, or create a new Notebase for the logged-in account.
   saveToNotebaseConnectionUnavailableTitle: Notebase connection unavailable
   saveToNotebaseMissingNotebaseDescription: The old Notebase no longer exists or cannot be opened by this account. Create a new Notebase and save this result, or connect an existing Notebase in Custom AI Actions.
   saveToNotebaseAccountUnavailableDescription: The logged-in account does not match the connected account below. Creating and saving will replace the previous connection and field mappings. You can also connect an existing Notebase in Custom AI Actions.
   saveToNotebasePendingLogin: Log in to finish saving
-  saveToNotebasePendingLoginDescription: After login, Read Toad will create the Notebase and save this result automatically.
-  saveToNotebasePendingConnectedLoginDescription: After login, Read Toad will save to the connected Notebase when possible. If this account cannot use it, Read Toad will create a new Notebase and save this result.
+  saveToNotebasePendingLoginDescription: After login, Read Buddy will create the Notebase and save this result automatically.
+  saveToNotebasePendingConnectedLoginDescription: After login, Read Buddy will save to the connected Notebase when possible. If this account cannot use it, Read Buddy will create a new Notebase and save this result.
   upgrade: Upgrade
   updatePayment: Update payment
   openCustomActions: Open Custom AI Actions
@@ -1423,7 +1440,7 @@ subtitles:
     downloadTranslatedComplete: Translated subtitles downloaded
     downloadSource: Download source subtitles
   state:
-    loading: Read Toad loading captions
+    loading: Read Buddy loading captions
     translating: Translating…
     error: Error occurred
   errors:
