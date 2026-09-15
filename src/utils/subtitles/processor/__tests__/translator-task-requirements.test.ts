@@ -41,7 +41,7 @@ describe("subtitles task requirements", () => {
     vi.clearAllMocks()
     // The real serialize unwraps the resolved ref; the mock must too, or a
     // LocalProviderRef would come back double-wrapped.
-    serializeProviderRefMock.mockImplementation(async (ref: { config: unknown }) => ({
+    serializeProviderRefMock.mockImplementation((ref: { config: unknown }) => ({
       kind: "local",
       config: ref.config,
     }))
@@ -52,16 +52,16 @@ describe("subtitles task requirements", () => {
     const config = configWithProvider(GOOGLE) as never
 
     // The picker legally admits Google for videoSubtitles…
-    await expect(resolveSubtitlesProvider(config, "lineTranslation")).resolves.toEqual({
+    expect(resolveSubtitlesProvider(config, "lineTranslation")).toEqual({
       status: "ok",
       ref: { kind: "local", config: GOOGLE },
     })
     // …but a summary or a recut is a generation, and the resolution reports
     // that as its own state — with no ref a caller could misuse.
-    await expect(resolveSubtitlesProvider(config, "summary")).resolves.toEqual({
+    expect(resolveSubtitlesProvider(config, "summary")).toEqual({
       status: "notPromptable",
     })
-    await expect(resolveSubtitlesProvider(config, "segmentation")).resolves.toEqual({
+    expect(resolveSubtitlesProvider(config, "segmentation")).toEqual({
       status: "notPromptable",
     })
   })
@@ -73,7 +73,7 @@ describe("subtitles task requirements", () => {
       videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId: "does-not-exist" },
     } as never
 
-    await expect(resolveSubtitlesProvider(config, "summary")).resolves.toEqual({
+    expect(resolveSubtitlesProvider(config, "summary")).toEqual({
       status: "none",
     })
   })
@@ -82,7 +82,7 @@ describe("subtitles task requirements", () => {
     const { resolveSubtitlesProviderRef } = await import("../translator")
     const config = configWithProvider(GOOGLE) as never
 
-    await expect(resolveSubtitlesProviderRef(config, "segmentation")).resolves.toBeNull()
+    expect(resolveSubtitlesProviderRef(config, "segmentation")).toBeNull()
     // Unlike a hosted denial (something the user was refused), an unpromptable
     // provider is a configuration state the pre-flight UI explains; the run
     // itself falls back without announcing.

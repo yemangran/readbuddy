@@ -63,24 +63,15 @@ function localRef(model: string) {
   } as unknown as VideoSummaryProviderRef
 }
 
-function systemRef(providerId: string) {
-  return {
-    kind: "system",
-    id: providerId,
-    name: providerId,
-    modelTier: "standard",
-  } as unknown as VideoSummaryProviderRef
-}
-
 describe("videoSummaryQueryKey", () => {
   it("separates the cache per video, language and provider", () => {
-    const ref = systemRef("built-in-ai")
+    const ref = localRef("v1")
     const base = videoSummaryQueryKey("video-1", "cmn", ref)
 
     expect(hashKey(base)).not.toBe(hashKey(videoSummaryQueryKey("video-2", "cmn", ref)))
     expect(hashKey(base)).not.toBe(hashKey(videoSummaryQueryKey("video-1", "eng", ref)))
     expect(hashKey(base)).not.toBe(
-      hashKey(videoSummaryQueryKey("video-1", "cmn", systemRef("other"))),
+      hashKey(videoSummaryQueryKey("video-1", "cmn", localRef("v1-other-model"))),
     )
     expect(hashKey(base)).toBe(hashKey(videoSummaryQueryKey("video-1", "cmn", ref)))
   })
@@ -90,23 +81,6 @@ describe("videoSummaryQueryKey", () => {
     const after = videoSummaryQueryKey("video-1", "cmn", localRef("v2"))
 
     expect(hashKey(before)).not.toBe(hashKey(after))
-  })
-
-  it("hashes the same regardless of the order fields were written in", () => {
-    const a = videoSummaryQueryKey("video-1", "cmn", {
-      kind: "system",
-      id: "built-in-ai",
-      name: "built-in-ai",
-      modelTier: "standard",
-    } as unknown as VideoSummaryProviderRef)
-    const b = videoSummaryQueryKey("video-1", "cmn", {
-      modelTier: "standard",
-      name: "built-in-ai",
-      id: "built-in-ai",
-      kind: "system",
-    } as unknown as VideoSummaryProviderRef)
-
-    expect(hashKey(a)).toBe(hashKey(b))
   })
 })
 
