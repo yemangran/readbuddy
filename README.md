@@ -19,7 +19,7 @@
 
 ## 📌 项目渊源与上游致谢 (Upstream Attribution)
 
-本项目是基于优秀开源项目 **[Read Frog (阅蛙)](https://github.com/mengxi-ream/read-frog)** 进行深度重构与功能演进的独立分支版本。
+本项目是基于优秀开源项目 **[Read Frog (陪读蛙)](https://github.com/mengxi-ream/read-frog)** 进行深度重构与功能演进的独立分支版本。
 
 在此，衷心感谢 **Read Frog** 原作者 **[mengxi-ream](https://github.com/mengxi-ream)** 以及所有上游社区贡献者构建的卓越阅读翻译基石！
 
