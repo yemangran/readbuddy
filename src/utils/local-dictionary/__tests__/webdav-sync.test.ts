@@ -180,6 +180,7 @@ describe("WebDAV First Sync & Conditional Upload", () => {
         return Promise.reject(new Error("Unexpected request"))
       })
 
+    expect(await repo.getPendingSyncChangesCount()).toBe(1)
     const syncResult = await syncWithWebdav(repo, sampleConfig, {}, mockFetch as any)
 
     expect(syncResult.ok).toBe(true)
@@ -187,6 +188,7 @@ describe("WebDAV First Sync & Conditional Upload", () => {
     expect(syncResult.etag).toBe('"initial-etag-123"')
     expect(putCapturedHeaders["If-None-Match"]).toBe("*")
     expect(putCapturedHeaders["If-Match"]).toBeUndefined()
+    expect(await repo.getPendingSyncChangesCount()).toBe(0)
 
     // Verify uploaded body contains the local record
     expect(putCapturedBody).toContain("vocab-1")
