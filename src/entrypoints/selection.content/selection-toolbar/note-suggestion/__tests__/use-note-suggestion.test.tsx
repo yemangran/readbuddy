@@ -13,7 +13,6 @@ import { DEFAULT_CONFIG } from "@/utils/constants/config"
 const streamBackgroundNoteSuggestionMock = vi.fn<(...args: any[]) => any>()
 const validateNoteSuggestionMock = vi.fn<(...args: any[]) => any>()
 const getOrCreateWebPageContextMock = vi.fn<(...args: any[]) => any>()
-const hostedStatusMock = vi.fn<(...args: any[]) => any>()
 
 vi.mock("@/utils/content-script/background-stream-client", () => ({
   streamBackgroundNoteSuggestion: (...args: any[]) => streamBackgroundNoteSuggestionMock(...args),
@@ -23,11 +22,6 @@ vi.mock("@/utils/note-suggestion/validate", () => ({
 }))
 vi.mock("@/utils/host/translate/webpage-context", () => ({
   getOrCreateWebPageContext: (...args: any[]) => getOrCreateWebPageContextMock(...args),
-}))
-// The status request is owned by the background (it holds the shared cache), so
-// the hook reaches it through the message channel rather than the oRPC client.
-vi.mock("@/utils/message", () => ({
-  sendMessage: (...args: any[]) => hostedStatusMock(...args),
 }))
 
 const { useNoteSuggestion } = await import("../use-note-suggestion")
@@ -50,13 +44,6 @@ const LOCAL_PROVIDER_REF = {
   config: LLM_PROVIDER_CONFIG,
 } satisfies NoteSuggestionFireInput["provider"]
 
-const SYSTEM_PROVIDER_REF = {
-  kind: "system",
-  id: "read-frog-free-ai",
-  name: "Built-in AI",
-  modelTier: "normal",
-} satisfies NoteSuggestionFireInput["provider"]
-
 const VALID_ENVELOPE = {
   output: {
     summaryFieldName: null,
@@ -76,19 +63,6 @@ const EMPTY_NOTES_ENVELOPE = {
 const VALIDATED_SUGGESTION = {
   notes: [{ term: "ephemeral" }],
   summaryFieldName: null,
-}
-
-function createHostedStatus(available: boolean) {
-  return {
-    features: {
-      noteSuggestion: {
-        normal: available
-          ? { available: true }
-          : { available: false, unavailableReason: "quota_exhausted" },
-      },
-    },
-    credits: [],
-  }
 }
 
 const fireInput = (
@@ -121,7 +95,6 @@ describe("useNoteSuggestion", () => {
     })
     streamBackgroundNoteSuggestionMock.mockResolvedValue(VALID_ENVELOPE)
     validateNoteSuggestionMock.mockReturnValue(VALIDATED_SUGGESTION)
-    hostedStatusMock.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -165,88 +138,10 @@ describe("useNoteSuggestion", () => {
       expect.objectContaining({ providerId: LLM_PROVIDER_CONFIG.id }),
       expect.anything(),
     )
-    // A local provider never consults the hosted availability gate.
-    expect(hostedStatusMock).not.toHaveBeenCalled()
     expect(result.current.suggestion?.analyticsProvider).toEqual({
       provider: "openai",
       backend_kind: "llm",
     })
-  })
-
-  it("sends the hosted payload for a system provider without local provider knobs", async () => {
-    hostedStatusMock.mockResolvedValue(createHostedStatus(true))
-    const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
-    const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
-
-    act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
-    await waitFor(() => expect(result.current.suggestion).not.toBeNull())
-
-    expect(hostedStatusMock).toHaveBeenCalledTimes(1)
-
-    const request = streamBackgroundNoteSuggestionMock.mock.calls[0]![0]
-    // Exact shape: no providerOptions, reasoning, or temperature leak into the
-    // hosted payload — the server owns those knobs.
-    expect(request).toEqual({
-      providerId: SYSTEM_PROVIDER_REF.id,
-      modelTier: SYSTEM_PROVIDER_REF.modelTier,
-      requestId: expect.any(String),
-      instructions: expect.any(String),
-      prompt: expect.any(String),
-    })
-    // Hosted envelope contract: the prompts describe the contract's
-    // action+notes shape (with the pinned inert action fields).
-    expect(request.instructions).toContain('"action"')
-    expect(request.instructions).toContain("createNewDictionaryAction")
-    expect(request.instructions).toContain("targetActionId")
-  })
-
-  it("classifies a system provider suggestion as Built-in AI", async () => {
-    hostedStatusMock.mockResolvedValue(createHostedStatus(true))
-    const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
-    const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
-
-    act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
-    await waitFor(() => expect(result.current.suggestion).not.toBeNull())
-
-    expect(result.current.suggestion?.analyticsProvider).toEqual({
-      provider: "read-frog-built-in-ai",
-      backend_kind: "llm",
-    })
-  })
-
-  it("skips silently and completes the session when the hosted tier is unavailable", async () => {
-    hostedStatusMock.mockResolvedValue(createHostedStatus(false))
-    const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
-    const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
-
-    act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
-    await waitFor(() => expect(hostedStatusMock).toHaveBeenCalledTimes(1))
-    await flushRun()
-
-    expect(streamBackgroundNoteSuggestionMock).not.toHaveBeenCalled()
-    expect(result.current.suggestion).toBeNull()
-
-    // The session is marked complete: the same key neither re-checks the
-    // status nor fires a request.
-    act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
-    await flushRun()
-    expect(hostedStatusMock).toHaveBeenCalledTimes(1)
-    expect(streamBackgroundNoteSuggestionMock).not.toHaveBeenCalled()
-  })
-
-  it("fails open and fires when the hosted status check itself fails", async () => {
-    hostedStatusMock.mockRejectedValue(new Error("status endpoint down"))
-    const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
-    const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
-
-    act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
-    await waitFor(() => expect(result.current.suggestion).not.toBeNull())
-
-    expect(streamBackgroundNoteSuggestionMock).toHaveBeenCalledTimes(1)
   })
 
   it("uses the configured action snapshot even when the action is disabled", async () => {

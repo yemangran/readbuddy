@@ -8,7 +8,6 @@ import {
   normalizeFeatureProviderAnalytics,
   UNKNOWN_FEATURE_PROVIDER,
 } from "@/utils/analytics-provider"
-import { BUILT_IN_AI_PROVIDER_ID } from "@/utils/providers/provider-registry"
 
 const openAIProvider = {
   id: "openai-provider-id",
@@ -44,15 +43,12 @@ describe("feature provider analytics", () => {
     })
   })
 
-  it("maps the persisted built-in provider ID to its analytics-only name", () => {
-    expect(
-      classifyResolvedProvider({
-        kind: "system",
-        id: BUILT_IN_AI_PROVIDER_ID,
-        name: "Built-in AI",
-        modelTier: "normal",
-      }),
-    ).toEqual(BUILT_IN_AI_FEATURE_PROVIDER)
+  it("still normalizes the historical built-in provider analytics name", () => {
+    // Events recorded before the hosted providers were removed carry this
+    // value; normalization keeps accepting them.
+    expect(normalizeFeatureProviderAnalytics("read-frog-built-in-ai", "llm")).toEqual(
+      BUILT_IN_AI_FEATURE_PROVIDER,
+    )
     expect(BUILT_IN_AI_FEATURE_PROVIDER).toEqual({
       provider: "read-frog-built-in-ai",
       backend_kind: "llm",

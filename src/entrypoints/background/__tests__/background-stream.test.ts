@@ -4,17 +4,12 @@ import type {
 } from "@/types/background-stream"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
-import { defaultRequestRetryPolicy } from "@/utils/request/retry-policy"
 
 const streamTextMock = vi.fn<(...args: any[]) => any>()
 const outputObjectMock = vi.fn<(...args: any[]) => any>((params: Record<string, unknown>) => params)
 const getModelByIdMock = vi.fn<(...args: any[]) => any>()
 const getLanguageModelForConfigMock = vi.fn<(...args: any[]) => any>()
 const loggerErrorMock = vi.fn<(...args: any[]) => any>()
-const hostedStreamTextMock = vi.fn<(...args: any[]) => any>()
-const hostedSelectionStreamTextMock = vi.fn<(...args: any[]) => any>()
-const hostedStreamStructuredObjectMock = vi.fn<(...args: any[]) => any>()
-const hostedNoteSuggestionStreamMock = vi.fn<(...args: any[]) => any>()
 const parsePartialJsonMock = vi.fn<(...args: any[]) => any>(async (text: string | undefined) => {
   if (!text) {
     return { state: "undefined-input", value: undefined }
@@ -49,25 +44,6 @@ vi.mock("ai", () => ({
 vi.mock("@/utils/providers/model", () => ({
   getModelById: getModelByIdMock,
   getLanguageModelForConfig: getLanguageModelForConfigMock,
-}))
-
-vi.mock("@/utils/orpc/background-client", () => ({
-  backgroundOrpcClient: {
-    hostedAi: {
-      translate: {
-        streamText: hostedStreamTextMock,
-      },
-      selectionTranslation: {
-        streamText: hostedSelectionStreamTextMock,
-      },
-      customAction: {
-        streamStructuredObject: hostedStreamStructuredObjectMock,
-      },
-      noteSuggestion: {
-        streamStructuredObject: hostedNoteSuggestionStreamMock,
-      },
-    },
-  },
 }))
 
 vi.mock("@/utils/logger", () => ({
@@ -136,7 +112,7 @@ describe("background-stream", () => {
   })
 
   it.each([undefined, null, "", "unknownFeature", "toString"])(
-    "rejects an invalid hosted feature (%s) at the stream port before calling a provider",
+    "rejects a hosted system payload (%s) at the stream port before calling a provider",
     async (hostedFeature) => {
       const { handleStreamTextPort } = await import("../background-stream")
       const mockPort = createMockPort("stream-text")
@@ -157,13 +133,13 @@ describe("background-stream", () => {
         streamRequestId: "invalid-hosted-route",
         error: { message: "Invalid stream start payload" },
       })
-      expect(hostedStreamTextMock).not.toHaveBeenCalled()
       expect(getModelByIdMock).not.toHaveBeenCalled()
       expect(streamTextMock).not.toHaveBeenCalled()
     },
   )
 
-  it("rejects a built-in provider disguised as a local stream", async () => {
+  it("rejects a local payload whose provider cannot be resolved", async () => {
+    getModelByIdMock.mockRejectedValue(new Error("Provider read-frog-free-ai not found"))
     const { handleStreamTextPort } = await import("../background-stream")
     const mockPort = createMockPort("stream-text")
     handleStreamTextPort(mockPort.port as never)
@@ -172,9 +148,14 @@ describe("background-stream", () => {
       streamRequestId: "wrong-provider-kind",
       payload: { providerKind: "local", providerId: "read-frog-free-ai", prompt: "Hello" },
     })
-    expect(mockPort.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
-    expect(hostedStreamTextMock).not.toHaveBeenCalled()
-    expect(getModelByIdMock).not.toHaveBeenCalled()
+    expect(mockPort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "error",
+        error: { message: "Provider read-frog-free-ai not found" },
+      }),
+    )
+    // The id resolves to no local row, so the stream never starts.
+    expect(streamTextMock).not.toHaveBeenCalled()
   })
 
   it("streams structured object output from background", async () => {
@@ -267,281 +248,6 @@ describe("background-stream", () => {
       }).success,
     ).toBe(false)
   })
-
-  it("streams hosted structured object output from background", async () => {
-    hostedStreamStructuredObjectMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "text-delta", id: "text-1", text: '{"score":97' }
-        yield { type: "start-step", request: {}, warnings: [] }
-        yield { type: "reasoning-start", id: "reasoning-1" }
-        yield { type: "reasoning-delta", id: "reasoning-1", text: "checking context" }
-        yield { type: "reasoning-end", id: "reasoning-1" }
-        yield { type: "text-delta", id: "text-1", text: ',"summary":"Strong argument structure"}' }
-        yield { type: "finish", finishReason: "stop" }
-      })(),
-    )
-
-    const chunkSnapshots: BackgroundStructuredObjectStreamSnapshot[] = []
-    const { runStructuredObjectStreamInBackground } = await import("../background-stream")
-    const result = await runStructuredObjectStreamInBackground(
-      {
-        providerId: "read-frog-advance-ai",
-        modelTier: "advance",
-        requestId: "123e4567-e89b-42d3-a456-426614174000",
-        instructions: "Return structured data",
-        prompt: "Analyze selection",
-        outputSchema: [
-          { name: "score", type: "number" },
-          { name: "summary", type: "string" },
-        ],
-      },
-      {
-        onChunk: (snapshot) => {
-          chunkSnapshots.push(snapshot)
-        },
-      },
-    )
-
-    expect(getModelByIdMock).not.toHaveBeenCalled()
-    expect(hostedStreamStructuredObjectMock).toHaveBeenCalledWith(
-      {
-        instructions: "Return structured data",
-        prompt: "Analyze selection",
-        outputSchema: [
-          { name: "score", type: "number" },
-          { name: "summary", type: "string" },
-        ],
-        temperature: undefined,
-        modelTier: "advance",
-        requestId: "123e4567-e89b-42d3-a456-426614174000",
-      },
-      { signal: undefined },
-    )
-    expect(result).toEqual({
-      output: {
-        score: 97,
-        summary: "Strong argument structure",
-      },
-      thinking: {
-        status: "complete",
-        text: "checking context",
-      },
-    })
-    expect(chunkSnapshots.at(-1)).toEqual(result)
-  })
-
-  it("surfaces guest hosted rate limit errors with the sign-in message", async () => {
-    hostedStreamStructuredObjectMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        throw Object.assign(new Error("Too Many Requests"), {
-          code: "TOO_MANY_REQUESTS",
-          status: 429,
-          data: { quotaScope: "guest", retryAfterMs: 42_000 },
-        })
-      })(),
-    )
-
-    const { runStructuredObjectStreamInBackground } = await import("../background-stream")
-
-    let caught: unknown
-    try {
-      await runStructuredObjectStreamInBackground({
-        providerId: "read-frog-free-ai",
-        instructions: "Return structured data",
-        prompt: "Analyze selection",
-        outputSchema: [{ name: "score", type: "number" }],
-      })
-    } catch (error) {
-      caught = error
-    }
-
-    expect(caught).toBeInstanceOf(Error)
-    expect((caught as Error).message).toContain("hostedAi.errors.guestRateLimited")
-    expect(
-      defaultRequestRetryPolicy.decide(caught, {
-        retryCount: 0,
-        maxRetries: 2,
-        baseRetryDelayMs: 1_000,
-        now: Date.now(),
-        rateLimitRetryCount: 0,
-        consecutiveRateLimits: 0,
-      }),
-    ).toEqual({ action: "pause-and-retry", pauseMs: 42_000 })
-  })
-
-  it("does not normalize billing-period quota exhaustion into short-term traffic limiting", async () => {
-    hostedStreamStructuredObjectMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        throw Object.assign(new Error("Quota exhausted"), {
-          code: "HOSTED_AI_QUOTA_EXHAUSTED",
-          status: 429,
-          data: { quotaScope: "guest", retryAfterMs: 42_000 },
-        })
-      })(),
-    )
-
-    const { runStructuredObjectStreamInBackground } = await import("../background-stream")
-
-    let caught: unknown
-    try {
-      await runStructuredObjectStreamInBackground({
-        providerId: "read-frog-free-ai",
-        modelTier: "normal",
-        requestId: "123e4567-e89b-42d3-a456-426614174001",
-        instructions: "Return structured data",
-        prompt: "Analyze selection",
-        outputSchema: [{ name: "score", type: "number" }],
-      })
-    } catch (error) {
-      caught = error
-    }
-
-    expect(caught).toBeInstanceOf(Error)
-    expect((caught as Error).message).toContain("hostedAi.availability.quotaExhausted")
-    expect((caught as Error & { retryAfterMs?: number }).retryAfterMs).toBeUndefined()
-    expect(
-      defaultRequestRetryPolicy.decide(caught, {
-        retryCount: 0,
-        maxRetries: 2,
-        baseRetryDelayMs: 1_000,
-        now: Date.now(),
-        rateLimitRetryCount: 0,
-        consecutiveRateLimits: 0,
-      }),
-    ).toEqual({ action: "fail", failQueue: true })
-  })
-
-  it.each([
-    {
-      code: "HOSTED_AI_TIER_RESTRICTED",
-      status: 403,
-      messageKey: "hostedAi.availability.ultraRequired",
-    },
-    {
-      code: "UNAUTHORIZED",
-      status: 401,
-      messageKey: "hostedAi.availability.authenticationRequired",
-    },
-  ])(
-    "drains the backlog on $code without leaking the transport status",
-    async ({ code, status, messageKey }) => {
-      hostedStreamStructuredObjectMock.mockResolvedValue(
-        (async function* () {
-          yield { type: "start" }
-          throw Object.assign(new Error("denied"), { code, status, data: {} })
-        })(),
-      )
-
-      const { runStructuredObjectStreamInBackground } = await import("../background-stream")
-
-      let caught: unknown
-      try {
-        await runStructuredObjectStreamInBackground({
-          providerId: "read-frog-free-ai",
-          modelTier: "normal",
-          requestId: "123e4567-e89b-42d3-a456-426614174002",
-          instructions: "Return structured data",
-          prompt: "Analyze selection",
-          outputSchema: [{ name: "score", type: "number" }],
-        })
-      } catch (error) {
-        caught = error
-      }
-
-      expect(caught).toBeInstanceOf(Error)
-      expect((caught as Error).message).toContain(messageKey)
-      expect((caught as Error & { retryAfterMs?: number }).retryAfterMs).toBeUndefined()
-      expect(
-        defaultRequestRetryPolicy.decide(caught, {
-          retryCount: 0,
-          maxRetries: 2,
-          baseRetryDelayMs: 1_000,
-          now: Date.now(),
-          rateLimitRetryCount: 0,
-          consecutiveRateLimits: 0,
-        }),
-      ).toEqual({ action: "fail", failQueue: true })
-    },
-  )
-
-  // Denials arrive two ways and they are normalized by different code. Failing
-  // to open the stream lands in each path's own `catch` around
-  // `normalizeHostedAiError` — four independent call sites, so covering one
-  // says nothing about the others. Failing mid-stream lands in the shared
-  // `normalizeHostedPartStreamErrors`. The case above only exercises the
-  // second; this covers both for the text path, which is what page
-  // translation, selection translation, subtitles and input translation run
-  // on. Either one coming back retryable makes the queue burn its whole
-  // backoff budget on a pricing wall that never moves.
-  it.each([
-    {
-      code: "HOSTED_AI_TIER_RESTRICTED",
-      status: 403,
-      messageKey: "hostedAi.availability.ultraRequired",
-    },
-    {
-      code: "UNAUTHORIZED",
-      status: 401,
-      messageKey: "hostedAi.availability.authenticationRequired",
-    },
-  ])(
-    "drains the backlog on $code from a hosted text stream",
-    async ({ code, status, messageKey }) => {
-      const denial = () => Object.assign(new Error("denied"), { code, status, data: {} })
-      const { runStreamTextInBackground } = await import("../background-stream")
-
-      const runAndCatch = async () => {
-        let caught: unknown
-        try {
-          await runStreamTextInBackground({
-            providerKind: "system",
-            hostedFeature: "pageTranslation",
-            providerId: "read-frog-free-ai",
-            modelTier: "normal",
-            requestId: "123e4567-e89b-42d3-a456-426614174003",
-            instructions: "Translate text",
-            prompt: "Hello world",
-          })
-        } catch (error) {
-          caught = error
-        }
-        return caught
-      }
-
-      const expectQueueFatal = (caught: unknown) => {
-        expect(caught).toBeInstanceOf(Error)
-        expect((caught as Error).message).toContain(messageKey)
-        // A retryAfterMs would route this into the rate-limit pause path instead.
-        expect((caught as Error & { retryAfterMs?: number }).retryAfterMs).toBeUndefined()
-        expect(
-          defaultRequestRetryPolicy.decide(caught, {
-            retryCount: 0,
-            maxRetries: 2,
-            baseRetryDelayMs: 1_000,
-            now: Date.now(),
-            rateLimitRetryCount: 0,
-            consecutiveRateLimits: 0,
-          }),
-        ).toEqual({ action: "fail", failQueue: true })
-      }
-
-      // Refused before the stream opens — the text path's own catch.
-      hostedStreamTextMock.mockRejectedValueOnce(denial())
-      expectQueueFatal(await runAndCatch())
-
-      // Refused after the first part — the shared mid-stream normalizer.
-      hostedStreamTextMock.mockResolvedValueOnce(
-        (async function* () {
-          yield { type: "start" }
-          throw denial()
-        })(),
-      )
-      expectQueueFatal(await runAndCatch())
-    },
-  )
 
   it("treats structured object streams without finish as protocol errors", async () => {
     getModelByIdMock.mockResolvedValue("mock-model")
@@ -756,12 +462,6 @@ describe("background-stream", () => {
       providerId: DEFAULT_PROVIDER_CONFIG["microsoft-translate"].id,
       providerConfig: DEFAULT_PROVIDER_CONFIG["microsoft-translate"],
     },
-    {
-      providerKind: "system",
-      hostedFeature: "pageTranslation",
-      providerId: "read-frog-free-ai",
-      providerConfig: { ...DEFAULT_PROVIDER_CONFIG.openai, id: "read-frog-free-ai" },
-    },
   ])("rejects invalid local snapshots before starting a stream", async (payload) => {
     const { handleStreamTextPort } = await import("../background-stream")
     const mockPort = createMockPort("stream-text")
@@ -776,143 +476,22 @@ describe("background-stream", () => {
     })
   })
 
-  it("streams hosted text output from background", async () => {
-    hostedStreamTextMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "reasoning-start", id: "reasoning-1" }
-        yield { type: "reasoning-delta", id: "reasoning-1", text: "checking language" }
-        yield { type: "reasoning-end", id: "reasoning-1" }
-        yield { type: "text-delta", id: "text-1", text: "Hola" }
-        yield { type: "text-delta", id: "text-1", text: " mundo" }
-        yield { type: "finish", finishReason: "stop" }
-      })(),
-    )
-
-    const chunkSnapshots: BackgroundTextStreamSnapshot[] = []
-    const { runStreamTextInBackground } = await import("../background-stream")
-    const result = await runStreamTextInBackground(
-      {
-        providerKind: "system",
-        hostedFeature: "pageTranslation",
-        providerId: "read-frog-free-ai",
-        modelTier: "normal",
-        requestId: "123e4567-e89b-42d3-a456-426614174002",
-        instructions: "Translate text",
-        prompt: "Hello world",
-      },
-      {
-        onChunk: (snapshot) => {
-          chunkSnapshots.push(snapshot)
-        },
-      },
-    )
-
-    expect(getModelByIdMock).not.toHaveBeenCalled()
-    expect(hostedStreamTextMock).toHaveBeenCalledWith(
-      {
-        instructions: "Translate text",
-        prompt: "Hello world",
-        temperature: undefined,
-        modelTier: "normal",
-        requestId: "123e4567-e89b-42d3-a456-426614174002",
-      },
-      { signal: undefined },
-    )
-    // Absent hostedFeature routes to the page translation procedure.
-    expect(hostedSelectionStreamTextMock).not.toHaveBeenCalled()
-    expect(result).toEqual({
-      output: "Hola mundo",
-      thinking: {
-        status: "complete",
-        text: "checking language",
-      },
-    })
-    expect(chunkSnapshots.at(-1)).toEqual(result)
-  })
-
-  it("routes hosted text streams with an explicit pageTranslation feature to the translate procedure", async () => {
-    hostedStreamTextMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "text-delta", id: "text-1", text: "Hola" }
-        yield { type: "finish", finishReason: "stop" }
-      })(),
-    )
-
-    const { runStreamTextInBackground } = await import("../background-stream")
-    const result = await runStreamTextInBackground({
-      providerKind: "system",
-      providerId: "read-frog-free-ai",
-      hostedFeature: "pageTranslation",
-      instructions: "Translate text",
-      prompt: "Hello world",
-    })
-
-    expect(hostedStreamTextMock).toHaveBeenCalledTimes(1)
-    expect(hostedSelectionStreamTextMock).not.toHaveBeenCalled()
-    expect(getModelByIdMock).not.toHaveBeenCalled()
-    expect(result.output).toBe("Hola")
-  })
-
-  it("routes hosted selectionTranslation text streams to the selectionTranslation procedure", async () => {
-    hostedSelectionStreamTextMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "text-delta", id: "text-1", text: "Hola" }
-        yield { type: "text-delta", id: "text-1", text: " mundo" }
-        yield { type: "finish", finishReason: "stop" }
-      })(),
-    )
-
-    const { runStreamTextInBackground } = await import("../background-stream")
-    const result = await runStreamTextInBackground({
-      providerKind: "system",
-      providerId: "read-frog-free-ai",
-      hostedFeature: "selectionTranslation",
-      modelTier: "normal",
-      requestId: "123e4567-e89b-42d3-a456-426614174003",
-      instructions: "Translate text",
-      prompt: "Hello world",
-    })
-
-    expect(hostedStreamTextMock).not.toHaveBeenCalled()
-    // Exact wire payload: hostedFeature only selects the procedure and must
-    // never ride along into the strict contract input.
-    expect(hostedSelectionStreamTextMock).toHaveBeenCalledWith(
-      {
-        instructions: "Translate text",
-        prompt: "Hello world",
-        temperature: undefined,
-        modelTier: "normal",
-        requestId: "123e4567-e89b-42d3-a456-426614174003",
-      },
-      { signal: undefined },
-    )
-    expect(getModelByIdMock).not.toHaveBeenCalled()
-    expect(result).toEqual({
-      output: "Hola mundo",
-      thinking: { status: "complete", text: "" },
-    })
-  })
-
   it("ends the thinking phase at the first output delta when no reasoning is emitted", async () => {
-    hostedStreamTextMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "text-delta", id: "text-1", text: "Hola" }
-        yield { type: "text-delta", id: "text-1", text: " mundo" }
+    getModelByIdMock.mockResolvedValue("mock-model")
+    streamTextMock.mockReturnValue({
+      stream: (async function* () {
+        yield { type: "text-delta", text: "Hola" }
+        yield { type: "text-delta", text: " mundo" }
         yield { type: "finish", finishReason: "stop" }
       })(),
-    )
+    })
 
     const chunkSnapshots: BackgroundTextStreamSnapshot[] = []
     const { runStreamTextInBackground } = await import("../background-stream")
     await runStreamTextInBackground(
       {
-        providerKind: "system",
-        hostedFeature: "pageTranslation",
-        providerId: "read-frog-free-ai",
+        providerKind: "local",
+        providerId: "openai-default",
         instructions: "Translate text",
         prompt: "Hello world",
       },
@@ -930,23 +509,22 @@ describe("background-stream", () => {
   })
 
   it("reopens the thinking phase when reasoning arrives after output", async () => {
-    hostedStreamTextMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "text-delta", id: "text-1", text: "Hola" }
-        yield { type: "reasoning-delta", id: "reasoning-1", text: "second guess" }
-        yield { type: "text-delta", id: "text-1", text: " mundo" }
+    getModelByIdMock.mockResolvedValue("mock-model")
+    streamTextMock.mockReturnValue({
+      stream: (async function* () {
+        yield { type: "text-delta", text: "Hola" }
+        yield { type: "reasoning-delta", text: "second guess" }
+        yield { type: "text-delta", text: " mundo" }
         yield { type: "finish", finishReason: "stop" }
       })(),
-    )
+    })
 
     const chunkSnapshots: BackgroundTextStreamSnapshot[] = []
     const { runStreamTextInBackground } = await import("../background-stream")
     await runStreamTextInBackground(
       {
-        providerKind: "system",
-        providerId: "read-frog-free-ai",
-        hostedFeature: "pageTranslation",
+        providerKind: "local",
+        providerId: "openai-default",
         instructions: "Translate text",
         prompt: "Hello world",
       },
@@ -1222,107 +800,15 @@ describe("background-stream", () => {
       output: envelope,
       thinking: { status: "complete", text: "" },
     })
-    expect(hostedStreamTextMock).not.toHaveBeenCalled()
-    expect(hostedStreamStructuredObjectMock).not.toHaveBeenCalled()
   })
 
-  it("streams hosted note suggestions and adapts the contract object into the envelope", async () => {
-    const hostedObject = {
-      action: {
-        createNewDictionaryAction: false,
-        targetActionId: null,
-        summaryFieldName: "definition",
-      },
-      notes: [
-        {
-          fields: [
-            { name: "Word", value: "ephemeral" },
-            { name: "definition", value: "lasting a very short time" },
-          ],
-        },
-      ],
-    }
-    const hostedObjectJson = JSON.stringify(hostedObject)
-    hostedNoteSuggestionStreamMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "start" }
-        yield { type: "text-delta", id: "text-1", text: hostedObjectJson.slice(0, 40) }
-        yield { type: "text-delta", id: "text-1", text: hostedObjectJson.slice(40) }
-        yield { type: "finish", finishReason: "stop" }
-      })(),
-    )
-
-    const { runNoteSuggestionStreamInBackground } = await import("../background-stream")
-    const result = await runNoteSuggestionStreamInBackground({
-      providerId: "read-frog-advance-ai",
-      modelTier: "advance",
-      requestId: "123e4567-e89b-42d3-a456-426614174010",
-      instructions: "Suggest words",
-      prompt: "Selection context",
-    })
-
-    expect(getModelByIdMock).not.toHaveBeenCalled()
-    expect(streamTextMock).not.toHaveBeenCalled()
-    expect(hostedStreamStructuredObjectMock).not.toHaveBeenCalled()
-    expect(hostedNoteSuggestionStreamMock).toHaveBeenCalledWith(
-      {
-        instructions: "Suggest words",
-        prompt: "Selection context",
-        temperature: undefined,
-        modelTier: "advance",
-        requestId: "123e4567-e89b-42d3-a456-426614174010",
-      },
-      { signal: undefined },
-    )
-    // The contract's action.createNewDictionaryAction / action.targetActionId
-    // are dropped in the envelope adaptation; only summaryFieldName survives.
-    expect(result).toEqual({
-      output: {
-        summaryFieldName: "definition",
-        notes: hostedObject.notes,
-      },
-      thinking: { status: "complete", text: "" },
-    })
-    expect(result.output).not.toHaveProperty("action")
-  })
-
-  it("defaults hosted note suggestion modelTier to normal when absent", async () => {
-    const hostedObject = {
-      action: {
-        createNewDictionaryAction: false,
-        targetActionId: null,
-        summaryFieldName: null,
-      },
-      notes: [{ fields: [{ name: "Word", value: "ephemeral" }] }],
-    }
-    hostedNoteSuggestionStreamMock.mockResolvedValue(
-      (async function* () {
-        yield { type: "text-delta", id: "text-1", text: JSON.stringify(hostedObject) }
-        yield { type: "finish", finishReason: "stop" }
-      })(),
-    )
-
-    const { runNoteSuggestionStreamInBackground } = await import("../background-stream")
-    await runNoteSuggestionStreamInBackground({
-      providerId: "read-frog-free-ai",
-      instructions: "Suggest words",
-      prompt: "Selection context",
-    })
-
-    expect(hostedNoteSuggestionStreamMock).toHaveBeenCalledWith(
-      expect.objectContaining({ modelTier: "normal" }),
-      { signal: undefined },
-    )
-  })
-
-  it("rejects invalid hosted note suggestion input before calling the procedure", async () => {
+  it("rejects note suggestion input without instructions before starting a stream", async () => {
     const { runNoteSuggestionStreamInBackground } = await import("../background-stream")
 
-    // Missing instructions hits the shared guard for both provider kinds.
     let guardCaught: unknown
     try {
       await runNoteSuggestionStreamInBackground({
-        providerId: "read-frog-free-ai",
+        providerId: "openai-default",
         instructions: "",
         prompt: "Selection context",
       })
@@ -1333,63 +819,8 @@ describe("background-stream", () => {
     expect((guardCaught as Error & { code?: string }).code).toBe("invalid_request")
     expect((guardCaught as Error).message).toBe("Note suggestion requires instructions and prompt")
 
-    // Whitespace-only instructions pass the guard but fail the contract parse.
-    let contractCaught: unknown
-    try {
-      await runNoteSuggestionStreamInBackground({
-        providerId: "read-frog-free-ai",
-        instructions: "   ",
-        prompt: "Selection context",
-      })
-    } catch (error) {
-      contractCaught = error
-    }
-    expect(contractCaught).toBeInstanceOf(Error)
-    expect((contractCaught as Error & { code?: string }).code).toBe("invalid_request")
-    expect((contractCaught as Error).message).toBe("Invalid hosted AI request")
-
-    expect(hostedNoteSuggestionStreamMock).not.toHaveBeenCalled()
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(getModelByIdMock).not.toHaveBeenCalled()
-  })
-
-  it("normalizes hosted note suggestion quota exhaustion into an access-denied failure", async () => {
-    hostedNoteSuggestionStreamMock.mockRejectedValue(
-      Object.assign(new Error("Quota exhausted"), {
-        code: "HOSTED_AI_QUOTA_EXHAUSTED",
-        status: 429,
-        data: { quotaScope: "user", retryAfterMs: 42_000 },
-      }),
-    )
-
-    const { runNoteSuggestionStreamInBackground } = await import("../background-stream")
-
-    let caught: unknown
-    try {
-      await runNoteSuggestionStreamInBackground({
-        providerId: "read-frog-free-ai",
-        modelTier: "normal",
-        requestId: "123e4567-e89b-42d3-a456-426614174011",
-        instructions: "Suggest words",
-        prompt: "Selection context",
-      })
-    } catch (error) {
-      caught = error
-    }
-
-    expect(caught).toBeInstanceOf(Error)
-    expect((caught as Error).message).toContain("hostedAi.availability.quotaExhausted")
-    expect((caught as Error & { retryAfterMs?: number }).retryAfterMs).toBeUndefined()
-    expect(
-      defaultRequestRetryPolicy.decide(caught, {
-        retryCount: 0,
-        maxRetries: 2,
-        baseRetryDelayMs: 1_000,
-        now: Date.now(),
-        rateLimitRetryCount: 0,
-        consecutiveRateLimits: 0,
-      }),
-    ).toEqual({ action: "fail", failQueue: true })
   })
 
   it("propagates provider resolution failures for note suggestions", async () => {

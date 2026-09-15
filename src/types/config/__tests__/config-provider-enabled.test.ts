@@ -73,12 +73,14 @@ describe("config provider enabled validation", () => {
     expect(issuePaths).toContain("selectionToolbar.builtInActions.dictionary.providerId")
   })
 
-  it("allows built-in AI for custom actions", () => {
+  it("rejects a hosted provider id for custom actions", () => {
+    // The hosted Built-in AI providers are gone; a stored reference to one
+    // must fail validation so the migration can rewrite it.
     const action = createDefaultDictionaryAction()
     if (!action) {
       throw new Error("Dictionary definition missing")
     }
-    const result = configSchema.safeParse({
+    const issuePaths = getIssuePaths({
       ...DEFAULT_CONFIG,
       selectionToolbar: {
         ...DEFAULT_CONFIG.selectionToolbar,
@@ -86,10 +88,10 @@ describe("config provider enabled validation", () => {
       },
     })
 
-    expect(result.success).toBe(true)
+    expect(issuePaths).toContain("selectionToolbar.customActions.0.providerId")
   })
 
-  it("allows built-in AI for selection toolbar translation", () => {
+  it("rejects a hosted provider id for selection toolbar translation", () => {
     const issuePaths = getIssuePaths({
       ...DEFAULT_CONFIG,
       selectionToolbar: {
@@ -104,7 +106,7 @@ describe("config provider enabled validation", () => {
       },
     })
 
-    expect(issuePaths).not.toContain("selectionToolbar.features.translate.providerId")
+    expect(issuePaths).toContain("selectionToolbar.features.translate.providerId")
   })
 
   it("rejects an unknown provider for selection toolbar translation", () => {
@@ -147,7 +149,7 @@ describe("config provider enabled validation", () => {
     expect(issuePaths).toContain("selectionToolbar.features.translate.providerId")
   })
 
-  it("allows built-in AI for page translation", () => {
+  it("rejects a hosted provider id for page translation", () => {
     const issuePaths = getIssuePaths({
       ...DEFAULT_CONFIG,
       pageTranslation: {
@@ -156,33 +158,33 @@ describe("config provider enabled validation", () => {
       },
     })
 
-    expect(issuePaths).not.toContain("pageTranslation.providerId")
+    expect(issuePaths).toContain("pageTranslation.providerId")
   })
 
-  it("allows built-in AI for every feature that declares the capability", () => {
-    // Subtitles and input translation gained hosted routes, so the built-in
-    // providers now declare those capabilities and the schema must accept them.
+  it("rejects a hosted provider id for every feature slot", () => {
+    // The hosted providers are gone from the registry, so no feature slot may
+    // accept them anymore.
     for (const providerId of ["read-frog-free-ai", "read-frog-advance-ai"]) {
       expect(
         getIssuePaths({
           ...DEFAULT_CONFIG,
           inputTranslation: { ...DEFAULT_CONFIG.inputTranslation, providerId },
         }),
-      ).not.toContain("inputTranslation.providerId")
+      ).toContain("inputTranslation.providerId")
 
       expect(
         getIssuePaths({
           ...DEFAULT_CONFIG,
           videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId },
         }),
-      ).not.toContain("videoSubtitles.providerId")
+      ).toContain("videoSubtitles.providerId")
 
       expect(
         getIssuePaths({
           ...DEFAULT_CONFIG,
           languageDetection: { mode: "llm" as const, providerId },
         }),
-      ).not.toContain("languageDetection.providerId")
+      ).toContain("languageDetection.providerId")
     }
   })
 

@@ -15,10 +15,7 @@ const { providerRefAtom, selectedProvidersAtom, setTranslateMock, testState, tra
     setTranslateMock: vi.fn<(value: Partial<Config["pageTranslation"]>) => Promise<void>>(),
     testState: {
       pageTranslation: null as Config["pageTranslation"] | null,
-      pageTranslationProviderRef: null as
-        | { kind: "local"; config: { provider: string } }
-        | { kind: "system"; id: string; name: string; modelTier: "normal" | "advance" }
-        | null,
+      pageTranslationProviderRef: null as { kind: "local"; config: { provider: string } } | null,
     },
     translateAtom: {},
   }))
@@ -142,24 +139,6 @@ describe("translation prompt selectors", () => {
       customPromptsConfig: {
         ...testState.pageTranslation!.customPromptsConfig,
         promptId: "precision-rewrite",
-      },
-    })
-  })
-
-  it("keeps prompt selection available for Built-in AI", () => {
-    testState.pageTranslationProviderRef = {
-      kind: "system",
-      id: "read-frog-free-ai",
-      name: "Built-in AI",
-      modelTier: "normal",
-    }
-    render(<TranslatePromptSelector />)
-
-    fireEvent.click(screen.getByRole("option", { name: "Custom" }))
-    expect(setTranslateMock).toHaveBeenCalledWith({
-      customPromptsConfig: {
-        ...testState.pageTranslation!.customPromptsConfig,
-        promptId: "custom",
       },
     })
   })

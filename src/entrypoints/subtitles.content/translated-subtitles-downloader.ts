@@ -175,7 +175,7 @@ export class TranslatedSubtitlesDownloader {
     // The generation tasks (segmentation, summary) get the ref narrowed once
     // here — a translate-only provider exports the rule-based recut without a
     // doomed prompt attempt per chunk.
-    const providerRef = await resolveSubtitlesProviderRef(config, "lineTranslation")
+    const providerRef = resolveSubtitlesProviderRef(config, "lineTranslation")
     const promptableProviderRef =
       providerRef && canProviderRefGenerateText(providerRef) ? providerRef : null
     this.assertActive(operationId)

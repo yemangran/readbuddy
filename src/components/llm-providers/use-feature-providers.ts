@@ -11,10 +11,8 @@ import {
   FEATURE_PROVIDER_DEFS,
 } from "@/utils/constants/feature-providers"
 import { getSelectionToolbarActions, patchSelectionToolbarAction } from "@/utils/custom-actions"
-import { isSystemProviderSelectorItem } from "@/utils/providers/provider-display"
 import { getSelectableProvidersForCapability } from "@/utils/providers/provider-registry"
 import { providerSupportsTranslationOnlyMode } from "@/utils/providers/translation-only-gate"
-import { useHostedAiProviderOptions } from "./use-hosted-ai-provider-options"
 
 export interface FeatureProviderBinding {
   providers: ProviderSelectorOption[]
@@ -42,13 +40,9 @@ export function useFeatureProvider(featureKey: FeatureKey): FeatureProviderBindi
     if (!hideTranslationOnlyUnsupported) {
       return candidates
     }
-    return candidates.filter(
-      (option) =>
-        isSystemProviderSelectorItem(option) ||
-        providerSupportsTranslationOnlyMode(option.provider),
-    )
+    return candidates.filter((option) => providerSupportsTranslationOnlyMode(option.provider))
   }, [featureKey, providersConfig, hideTranslationOnlyUnsupported])
-  const providers = useHostedAiProviderOptions(featureKey, baseProviders)
+  const providers = baseProviders
 
   const setProviderId = useCallback(
     (id: string) => void setConfig(buildFeatureProviderPatch({ [featureKey]: id })),
@@ -77,11 +71,10 @@ export function useCustomActionProviders(): CustomActionProvidersBinding {
   const setConfig = useSetAtom(writeConfigAtom)
   const providersConfig = useAtomValue(configFieldsAtomMap.providersConfig)
 
-  const baseProviders = useMemo(
+  const providers = useMemo(
     () => getSelectableProvidersForCapability("customAction", providersConfig),
     [providersConfig],
   )
-  const providers = useHostedAiProviderOptions("customAction", baseProviders)
 
   const actions = useMemo(
     () =>

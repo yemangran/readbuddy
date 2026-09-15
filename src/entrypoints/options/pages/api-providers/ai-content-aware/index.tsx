@@ -1,12 +1,10 @@
 import type { FeatureKey } from "@/utils/constants/feature-providers"
 import { useAtom, useAtomValue } from "jotai"
 import { useMemo } from "react"
-import { useHostedAiStatus } from "@/components/llm-providers/use-hosted-ai-status"
 import { Switch } from "@/components/ui/base-ui/switch"
 import { configAtom, configFieldsAtomMap } from "@/utils/atoms/config"
 import { FEATURE_PROVIDER_DEFS, getFeatureLabelI18nKey } from "@/utils/constants/feature-providers"
 import { i18n } from "@/utils/i18n"
-import { isProviderIdDurablyUnusable } from "@/utils/providers/provider-availability"
 import { canResolvedProviderRefGenerateText } from "@/utils/providers/provider-ref"
 import { resolveProviderRefForCapability } from "@/utils/providers/provider-registry"
 import { ConfigItem } from "../../../components/config-item"
@@ -31,26 +29,16 @@ const CONTEXT_AWARE_FEATURE_KEYS = [
 function FeatureStatusList() {
   const config = useAtomValue(configAtom)
   const providersConfig = useAtomValue(configFieldsAtomMap.providersConfig)
-  const { status } = useHostedAiStatus()
 
   const statuses = useMemo(
     () =>
       CONTEXT_AWARE_FEATURE_KEYS.map((featureKey) => {
         const providerId = FEATURE_PROVIDER_DEFS[featureKey].getProviderId(config)
-        // Capability-based: Built-in AI is synthesized by the registry and is
-        // never a row in providersConfig, so a direct providersConfig lookup
-        // would report it as unconfigured forever.
         const providerRef = resolveProviderRefForCapability(featureKey, providersConfig, providerId)
         const featureName = i18n.t(getFeatureLabelI18nKey(featureKey))
-        // Context reaches the prompt only on prompt-driven providers: hosted
-        // Built-in AI or a local LLM — never pure translate (Google, DeepL…).
-        // A `kind === "system"` check alone answers "is it prompt-driven", not
-        // "does it run", so it reported every feature configured for accounts
-        // whose plan funds none of them — signed-out guests included.
-        const hasLLMProvider = providerRef
-          ? canResolvedProviderRefGenerateText(providerRef) &&
-            !isProviderIdDurablyUnusable(providerId, featureKey, status)
-          : false
+        // Context reaches the prompt only on prompt-driven providers: a local
+        // LLM — never pure translate (Google, DeepL…).
+        const hasLLMProvider = providerRef ? canResolvedProviderRefGenerateText(providerRef) : false
 
         return {
           featureKey,
@@ -60,7 +48,7 @@ function FeatureStatusList() {
             : i18n.t("options.apiProviders.aiContentAware.llmProviderNotConfigured", [featureName]),
         }
       }),
-    [config, providersConfig, status],
+    [config, providersConfig],
   )
 
   return (

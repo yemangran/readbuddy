@@ -21,10 +21,15 @@ vi.mock("../background-stream", () => {
 })
 
 const providerRef: PromptableProviderRef = {
-  kind: "system",
-  providerId: "read-frog-free-ai",
-  modelTier: "normal",
-  modelRevision: "normal-r1",
+  kind: "local",
+  config: {
+    id: "openai-default",
+    name: "OpenAI",
+    provider: "openai",
+    enabled: true,
+    model: { model: "gpt-5.6-luna", isCustomModel: false, customModel: null },
+    reasoning: "none",
+  } as never,
 }
 const request = { transcript: "Video transcript", targetLanguage: "English", providerRef }
 
@@ -60,7 +65,7 @@ describe("video summary cache handlers", () => {
 
   it("reads entries written under the existing video summary cache key", async () => {
     // Frozen key from the pre-extraction handler for the fixture above.
-    const existingKey = "958c70bddad760bf24d1fe288965fa2c3ade57aca94024932082af53c3b97494"
+    const existingKey = "307f578454d44ee854b1e6eb56946731c9910050e6102e55fee1316906f857f3"
     mocks.get.mockImplementation(async (key) =>
       key === existingKey ? { summary: "Existing summary" } : undefined,
     )

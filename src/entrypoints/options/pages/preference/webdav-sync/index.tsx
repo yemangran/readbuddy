@@ -1,7 +1,7 @@
 import type { RemoteSnapshotSummary, WebdavErrorCode } from "@/utils/local-dictionary/types"
 import { Icon } from "@iconify/react"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
 import {
@@ -74,6 +74,27 @@ export function WebdavSyncPage() {
   const [isForceOverwriteDialogOpen, setIsForceOverwriteDialogOpen] = useState(false)
   const [isFetchingRemoteSummary, setIsFetchingRemoteSummary] = useState(false)
   const [remoteSummary, setRemoteSummary] = useState<RemoteSnapshotSummary | null>(null)
+  const [isViewingRemoteSummary, setIsViewingRemoteSummary] = useState(false)
+  const [isFetchingInlineSummary, setIsFetchingInlineSummary] = useState(false)
+  const [remoteSummaryInline, setRemoteSummaryInline] = useState<RemoteSnapshotSummary | null>(null)
+  const [isSetupGuideOpen, setIsSetupGuideOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [savedConfig, setSavedConfig] = useState<{ endpoint: string; username: string } | null>(
+    null,
+  )
+  const usernameInputRef = useRef<HTMLInputElement>(null)
+
+  const canEdit = !isWebdavConfigured || isEditing
+
+  const handleApplyJianguoyunPreset = () => {
+    setWebdavEndpoint("https://dav.jianguoyun.com/dav/")
+    toastManager.add({
+      type: "info",
+      title: i18n.t("options.dictionary.webdav.jianguoyunPresetApplied"),
+      description: i18n.t("options.dictionary.webdav.jianguoyunPresetAppliedDesc"),
+    })
+    usernameInputRef.current?.focus()
+  }
 
   const [currentTime, setCurrentTime] = useState(() => Date.now())
 
@@ -108,6 +129,8 @@ export function WebdavSyncPage() {
         setWebdavUsername(config.username)
         setWebdavPassword(config.password || "")
         setIsWebdavConfigured(true)
+        setSavedConfig({ endpoint: config.endpoint, username: config.username })
+        setIsEditing(false)
       }
     })
   }, [])
@@ -145,6 +168,9 @@ export function WebdavSyncPage() {
         password: webdavPassword,
       })
       setIsWebdavConfigured(true)
+      setIsEditing(false)
+      setSavedConfig({ endpoint: trimmedEndpoint, username: trimmedUser })
+      setWebdavPassword("")
       toastManager.add({
         type: "success",
         title: i18n.t("options.dictionary.webdav.saveSuccess"),
@@ -152,6 +178,16 @@ export function WebdavSyncPage() {
     } catch (err: any) {
       setWebdavError(err?.message || "Failed to save WebDAV settings")
     }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    if (savedConfig) {
+      setWebdavEndpoint(savedConfig.endpoint)
+      setWebdavUsername(savedConfig.username)
+      setWebdavPassword("")
+    }
+    setWebdavError(null)
   }
 
   const handleTestWebdav = async () => {
@@ -236,12 +272,36 @@ export function WebdavSyncPage() {
     await handleSyncWebdav({ forceUnconditional: true, resetPaused: true })
   }
 
+  const handleToggleViewRemoteSummary = async () => {
+    if (isViewingRemoteSummary) {
+      setIsViewingRemoteSummary(false)
+      return
+    }
+    setIsViewingRemoteSummary(true)
+    setIsFetchingInlineSummary(true)
+    try {
+      const res = await getRemoteWebdavSummary()
+      if (res.ok) {
+        setRemoteSummaryInline(res.summary)
+      } else {
+        toastManager.add({
+          type: "error",
+          title: res.error.message || "Failed to inspect remote snapshot",
+        })
+      }
+    } finally {
+      setIsFetchingInlineSummary(false)
+    }
+  }
+
   const handleDisconnectWebdav = async () => {
     await clearWebdavConfig()
     setWebdavEndpoint("")
     setWebdavUsername("")
     setWebdavPassword("")
     setIsWebdavConfigured(false)
+    setSavedConfig(null)
+    setIsEditing(false)
     setWebdavError(null)
     toastManager.add({
       type: "success",
@@ -309,6 +369,7 @@ export function WebdavSyncPage() {
                   {i18n.t("options.dictionary.webdav.endpoint")}
                 </label>
                 <Input
+                  disabled={!canEdit}
                   placeholder={i18n.t("options.dictionary.webdav.endpointPlaceholder")}
                   value={webdavEndpoint}
                   onChange={(e) => setWebdavEndpoint(e.target.value)}
@@ -319,6 +380,8 @@ export function WebdavSyncPage() {
                   {i18n.t("options.dictionary.webdav.username")}
                 </label>
                 <Input
+                  ref={usernameInputRef}
+                  disabled={!canEdit}
                   placeholder="username"
                   value={webdavUsername}
                   onChange={(e) => setWebdavUsername(e.target.value)}
@@ -330,11 +393,46 @@ export function WebdavSyncPage() {
                 </label>
                 <Input
                   type="password"
-                  placeholder={isWebdavConfigured ? "••••••••" : "password"}
+                  disabled={!canEdit}
+                  placeholder={
+                    isWebdavConfigured
+                      ? i18n.t("options.dictionary.webdav.passwordKeepPlaceholder")
+                      : "password"
+                  }
                   value={webdavPassword}
                   onChange={(e) => setWebdavPassword(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground">
+              <span className="font-medium">快捷设置:</span>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                className="h-6 text-[11px]"
+                onClick={handleApplyJianguoyunPreset}
+                disabled={!canEdit}
+                aria-label="preset-jianguoyun"
+              >
+                <Icon icon="tabler:cloud" className="mr-1 size-3 text-primary" />
+                {i18n.t("options.dictionary.webdav.presetJianguoyun")}
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                className="h-6 text-[11px] text-muted-foreground hover:text-foreground"
+                onClick={() => setIsSetupGuideOpen(true)}
+                aria-label="view-setup-guide"
+              >
+                <Icon icon="tabler:help-circle" className="mr-1 size-3" />
+                {i18n.t("options.dictionary.webdav.viewSetupGuide")}
+              </Button>
+              <span className="text-[11px] text-muted-foreground/80">
+                {i18n.t("options.dictionary.webdav.jianguoyunTip")}
+              </span>
             </div>
 
             {isWebdavConfigured && syncState && (
@@ -344,23 +442,41 @@ export function WebdavSyncPage() {
                     <Icon icon="tabler:activity" className="size-4 text-primary" />
                     {i18n.t("options.dictionary.webdav.status")}
                   </span>
-                  <Badge
-                    variant={
-                      syncState.phase === "idle"
-                        ? "default"
-                        : syncState.phase === "paused" || syncState.phase === "error"
-                          ? "destructive"
-                          : "secondary"
-                    }
-                    className="text-[10px]"
-                  >
-                    {syncState.phase === "idle" && i18n.t("options.dictionary.webdav.phaseIdle")}
-                    {syncState.phase === "syncing" &&
-                      i18n.t("options.dictionary.webdav.phaseSyncing")}
-                    {syncState.phase === "paused" &&
-                      i18n.t("options.dictionary.webdav.phasePaused")}
-                    {syncState.phase === "error" && i18n.t("options.dictionary.webdav.phaseError")}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      onClick={handleToggleViewRemoteSummary}
+                      disabled={isFetchingInlineSummary}
+                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      <Icon
+                        icon={isViewingRemoteSummary ? "tabler:chevron-up" : "tabler:cloud-search"}
+                        className={cn("mr-1 size-3", isFetchingInlineSummary && "animate-spin")}
+                      />
+                      {isViewingRemoteSummary
+                        ? i18n.t("options.dictionary.webdav.hideRemoteSnapshot")
+                        : i18n.t("options.dictionary.webdav.viewRemoteSnapshot")}
+                    </Button>
+                    <Badge
+                      variant={
+                        syncState.phase === "idle"
+                          ? "default"
+                          : syncState.phase === "paused" || syncState.phase === "error"
+                            ? "destructive"
+                            : "secondary"
+                      }
+                      className="text-[10px]"
+                    >
+                      {syncState.phase === "idle" && i18n.t("options.dictionary.webdav.phaseIdle")}
+                      {syncState.phase === "syncing" &&
+                        i18n.t("options.dictionary.webdav.phaseSyncing")}
+                      {syncState.phase === "paused" &&
+                        i18n.t("options.dictionary.webdav.phasePaused")}
+                      {syncState.phase === "error" &&
+                        i18n.t("options.dictionary.webdav.phaseError")}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-muted-foreground md:grid-cols-4">
@@ -374,9 +490,16 @@ export function WebdavSyncPage() {
                   </div>
                   <div>
                     <span>{i18n.t("options.dictionary.webdav.pendingChanges")}: </span>
-                    <span className="font-medium text-foreground">
-                      {syncState.pendingChangesCount}
-                    </span>
+                    {syncState.pendingChangesCount === 0 ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                        <Icon icon="tabler:check" className="size-3" />0 (
+                        {i18n.t("options.dictionary.webdav.allSynced")})
+                      </span>
+                    ) : (
+                      <span className="font-medium text-amber-600 dark:text-amber-400">
+                        {syncState.pendingChangesCount}
+                      </span>
+                    )}
                   </div>
                   {syncState.nextRetryTime && (
                     <div className="col-span-2">
@@ -387,6 +510,57 @@ export function WebdavSyncPage() {
                     </div>
                   )}
                 </div>
+
+                {isViewingRemoteSummary && (
+                  <div className="mt-2 space-y-1.5 rounded border bg-background/50 p-2.5 text-xs">
+                    <div className="flex items-center justify-between font-semibold">
+                      <span>{i18n.t("options.dictionary.webdav.remoteSummaryTitle")}</span>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={handleToggleViewRemoteSummary}
+                        className="h-5 px-1.5 text-[10px]"
+                      >
+                        <Icon icon="tabler:x" className="size-3" />
+                      </Button>
+                    </div>
+                    {isFetchingInlineSummary ? (
+                      <div className="flex items-center gap-2 py-1 text-muted-foreground">
+                        <Icon icon="tabler:loader-2" className="size-3.5 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    ) : remoteSummaryInline ? (
+                      remoteSummaryInline.exists ? (
+                        <div className="grid grid-cols-2 gap-2 text-muted-foreground md:grid-cols-3">
+                          <div>
+                            <span>{i18n.t("options.dictionary.webdav.remoteRecords")}: </span>
+                            <span className="font-medium text-foreground">
+                              {remoteSummaryInline.recordCount ?? 0}
+                            </span>
+                          </div>
+                          <div>
+                            <span>{i18n.t("options.dictionary.webdav.remoteConflicts")}: </span>
+                            <span className="font-medium text-foreground">
+                              {remoteSummaryInline.conflictCount ?? 0}
+                            </span>
+                          </div>
+                          <div className="col-span-2 md:col-span-1">
+                            <span>{i18n.t("options.dictionary.webdav.remoteUpdatedAt")}: </span>
+                            <span className="font-medium text-foreground">
+                              {remoteSummaryInline.updatedAt
+                                ? new Date(remoteSummaryInline.updatedAt).toLocaleTimeString()
+                                : "-"}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-1 text-muted-foreground">
+                          {i18n.t("options.dictionary.webdav.remoteNotExists")}
+                        </div>
+                      )
+                    ) : null}
+                  </div>
+                )}
 
                 {syncState.pausedReason && (
                   <div className="mt-2 space-y-1.5 border-t pt-2">
@@ -446,17 +620,42 @@ export function WebdavSyncPage() {
                   ? i18n.t("options.dictionary.webdav.testing")
                   : i18n.t("options.dictionary.webdav.testConnection")}
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveWebdav}
-                disabled={
-                  !webdavEndpoint || !webdavUsername || (!webdavPassword && !isWebdavConfigured)
-                }
-                aria-label="webdav-save-settings"
-              >
-                <Icon icon="tabler:device-floppy" className="mr-1.5 size-4" />
-                {i18n.t("options.dictionary.webdav.save")}
-              </Button>
+
+              {isWebdavConfigured && !isEditing ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditing(true)}
+                  aria-label="webdav-edit-settings"
+                >
+                  <Icon icon="tabler:edit" className="mr-1.5 size-4" />
+                  {i18n.t("options.dictionary.webdav.edit")}
+                </Button>
+              ) : (
+                <>
+                  {isWebdavConfigured && isEditing && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                      aria-label="webdav-cancel-edit"
+                    >
+                      {i18n.t("options.dictionary.webdav.cancelEdit")}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={handleSaveWebdav}
+                    disabled={
+                      !webdavEndpoint || !webdavUsername || (!webdavPassword && !isWebdavConfigured)
+                    }
+                    aria-label="webdav-save-settings"
+                  >
+                    <Icon icon="tabler:device-floppy" className="mr-1.5 size-4" />
+                    {i18n.t("options.dictionary.webdav.save")}
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -535,6 +734,57 @@ export function WebdavSyncPage() {
                 aria-label="confirm-force-overwrite"
               >
                 {i18n.t("options.dictionary.webdav.forceOverwriteConfirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Jianguoyun Setup Guide Dialog */}
+        <Dialog open={isSetupGuideOpen} onOpenChange={setIsSetupGuideOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Icon icon="tabler:help-circle" className="size-5 text-primary" />
+                {i18n.t("options.dictionary.webdav.setupGuideTitle")}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                {i18n.t("options.dictionary.webdav.jianguoyunTip")}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2.5 rounded-md bg-muted/40 p-3 text-xs text-foreground">
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-primary">1.</span>
+                <span>{i18n.t("options.dictionary.webdav.setupGuideStep1")}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-primary">2.</span>
+                <span>{i18n.t("options.dictionary.webdav.setupGuideStep2")}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-primary">3.</span>
+                <span>{i18n.t("options.dictionary.webdav.setupGuideStep3")}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold text-primary">4.</span>
+                <span>{i18n.t("options.dictionary.webdav.setupGuideStep4")}</span>
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-row items-center justify-between sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  window.open("https://www.jianguoyun.com/d/home#/account/security", "_blank")
+                }
+              >
+                <Icon icon="tabler:external-link" className="mr-1.5 size-4" />
+                {i18n.t("options.dictionary.webdav.openJianguoyunWeb")}
+              </Button>
+              <Button type="button" size="sm" onClick={() => setIsSetupGuideOpen(false)}>
+                {i18n.t("options.dictionary.cancel")}
               </Button>
             </DialogFooter>
           </DialogContent>

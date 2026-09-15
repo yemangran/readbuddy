@@ -4,10 +4,8 @@ import type {
   FeatureProviderAnalytics,
 } from "@/types/analytics"
 import type { ProviderConfig } from "@/types/config/provider"
-import type { ResolvedProviderRef } from "@/utils/providers/provider-registry"
 import { ANALYTICS_PROVIDER } from "@/types/analytics"
 import { ALL_PROVIDER_TYPES, isLLMProvider, isLLMProviderConfig } from "@/types/config/provider"
-import { isBuiltInAiProviderId } from "@/utils/providers/provider-registry"
 
 const VALID_BACKEND_KINDS = new Set<AnalyticsBackendKind>(["llm", "non_llm", "unknown"])
 const VALID_CANONICAL_PROVIDERS = new Set<string>(ALL_PROVIDER_TYPES)
@@ -39,12 +37,10 @@ export function classifyProviderConfig(
 }
 
 export function classifyResolvedProvider(
-  provider: ResolvedProviderRef | null | undefined,
+  provider: { config: ProviderConfig } | null | undefined,
 ): FeatureProviderAnalytics {
   if (!provider) return UNKNOWN_FEATURE_PROVIDER
-  if (provider.kind === "local") return classifyProviderConfig(provider.config)
-  if (isBuiltInAiProviderId(provider.id)) return BUILT_IN_AI_FEATURE_PROVIDER
-  return UNKNOWN_FEATURE_PROVIDER
+  return classifyProviderConfig(provider.config)
 }
 
 export function normalizeFeatureProviderAnalytics(

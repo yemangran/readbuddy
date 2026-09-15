@@ -40,73 +40,29 @@ function capActionFieldDescriptions(
 }
 
 /**
- * Which wire envelope the model must emit. "local" is the client-owned flat
- * envelope parsed by `noteSuggestionEnvelopeSchema`; "hosted" is the contract's
- * `HostedAiNoteSuggestionObjectSchema`, which the hosted endpoint enforces via
- * structured output — the extra `action` object belongs to a richer
- * server-driven flow, so this client pins its unused fields to inert values.
+ * The wire envelope the model must emit: the client-owned flat envelope
+ * parsed by `noteSuggestionEnvelopeSchema`.
  */
-export type NoteSuggestionEnvelopeContract = "local" | "hosted"
-
-export interface NoteSuggestionPromptInput {
-  selection: string
-  paragraphs: string
-  /** English name of the user's target language. */
-  targetLanguage: string
-  webTitle: string
-  webContent: string
-  /** The single action selected in Note suggestion settings. */
-  action: SelectionToolbarCustomAction
-  envelopeContract?: NoteSuggestionEnvelopeContract
-}
-
 interface EnvelopeContractBlocks {
   shape: string
   summaryFieldRule: string
   topLevelKeysRule: string
-  extraHardRequirements: string[]
 }
 
-// Only the envelope shape differs between the two contracts; the
-// note-producing rules below stay shared so the variants cannot drift.
-const ENVELOPE_CONTRACT_BLOCKS: Record<NoteSuggestionEnvelopeContract, EnvelopeContractBlocks> = {
-  local: {
-    shape: `{
+const ENVELOPE_CONTRACT_BLOCKS: EnvelopeContractBlocks = {
+  shape: `{
   "summaryFieldName": string or null,
   "notes": [
     { "fields": [ { "name": string, "value": string or number or null } ] }
   ]
 }`,
-    summaryFieldRule:
-      'Set "summaryFieldName" to the name of a non-primary field whose value best explains the first field\'s term in one line. Use null if no field fits.',
-    topLevelKeysRule: 'Do not add any top-level keys other than "summaryFieldName" and "notes".',
-    extraHardRequirements: [],
-  },
-  hosted: {
-    shape: `{
-  "action": {
-    "createNewDictionaryAction": boolean,
-    "targetActionId": string or null,
-    "summaryFieldName": string or null
-  },
-  "notes": [
-    { "fields": [ { "name": string, "value": string or number or null } ] }
-  ]
-}`,
-    summaryFieldRule:
-      'Set "action.summaryFieldName" to the name of a non-primary field whose value best explains the first field\'s term in one line. Use null if no field fits.',
-    topLevelKeysRule: 'Do not add any top-level keys other than "action" and "notes".',
-    extraHardRequirements: [
-      'Always set "action.createNewDictionaryAction" to false and "action.targetActionId" to null; they are reserved for a flow this client does not use.',
-    ],
-  },
+  summaryFieldRule:
+    'Set "summaryFieldName" to the name of a non-primary field whose value best explains the first field\'s term in one line. Use null if no field fits.',
+  topLevelKeysRule: 'Do not add any top-level keys other than "summaryFieldName" and "notes".',
 }
 
-function buildNoteSuggestionSystemPrompt(
-  actionSystemPrompt: string,
-  envelopeContract: NoteSuggestionEnvelopeContract,
-) {
-  const contract = ENVELOPE_CONTRACT_BLOCKS[envelopeContract]
+function buildNoteSuggestionSystemPrompt(actionSystemPrompt: string) {
+  const contract = ENVELOPE_CONTRACT_BLOCKS
   const actionInstructions = actionSystemPrompt
     ? `## Selected Action System Prompt
 ${actionSystemPrompt}
@@ -118,7 +74,6 @@ ${actionSystemPrompt}
     "Use double quotes for all JSON keys and string values.",
     "Number values must be JSON numbers, never quoted strings.",
     contract.topLevelKeysRule,
-    ...contract.extraHardRequirements,
   ]
 
   return `${actionInstructions}## Note suggestion Task
@@ -141,6 +96,17 @@ ${contract.shape}
 
 ### Hard requirements
 ${hardRequirements.map((requirement, index) => `${index + 1}. ${requirement}`).join("\n")}`
+}
+
+export interface NoteSuggestionPromptInput {
+  selection: string
+  paragraphs: string
+  /** English name of the user's target language. */
+  targetLanguage: string
+  webTitle: string
+  webContent: string
+  /** The single action selected in Note suggestion settings. */
+  action: SelectionToolbarCustomAction
 }
 
 export function buildNoteSuggestionPrompts(input: NoteSuggestionPromptInput): {
@@ -166,10 +132,7 @@ export function buildNoteSuggestionPrompts(input: NoteSuggestionPromptInput): {
   const outputFields = buildStructuredOutputFieldList(action.outputSchema, tokens)
 
   return {
-    systemPrompt: buildNoteSuggestionSystemPrompt(
-      actionSystemPrompt,
-      input.envelopeContract ?? "local",
-    ),
+    systemPrompt: buildNoteSuggestionSystemPrompt(actionSystemPrompt),
     prompt: `## Selected Action User Prompt
 ${actionPrompt || "(empty)"}
 

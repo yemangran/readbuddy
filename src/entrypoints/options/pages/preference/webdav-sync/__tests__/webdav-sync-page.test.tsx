@@ -224,4 +224,128 @@ describe("WebdavSyncPage", () => {
       expect(confirmBtn).toBeDisabled()
     })
   })
+
+  it("supports Jianguoyun preset and inline remote snapshot inspection", async () => {
+    getWebdavConfigMock.mockResolvedValue({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "myuser",
+      password: "mypassword",
+    })
+    getWebdavSyncStateMock.mockResolvedValue({
+      phase: "idle",
+      lastSuccessTime: 1700000000000,
+      lastAttemptTime: null,
+      nextRetryTime: null,
+      retryCount: 0,
+      pendingChangesCount: 0,
+      lastError: null,
+      pausedReason: null,
+    })
+    getRemoteWebdavSummaryMock.mockResolvedValue({
+      ok: true,
+      summary: { exists: true, recordCount: 42, conflictCount: 2, updatedAt: 1700000000000 },
+    })
+
+    renderWithProviders(<WebdavSyncPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
+    })
+
+    const endpointInput = screen.getByPlaceholderText(
+      i18n.t("options.dictionary.webdav.endpointPlaceholder"),
+    ) as HTMLInputElement
+    // Initially locked / disabled when already configured
+    expect(endpointInput).toBeDisabled()
+
+    // Test connection is clickable while locked
+    const testBtn = screen.getByLabelText("webdav-test-connection")
+    expect(testBtn).toBeEnabled()
+
+    // Click edit to unlock editing
+    const editBtn = screen.getByLabelText("webdav-edit-settings")
+    fireEvent.click(editBtn)
+    expect(endpointInput).not.toBeDisabled()
+
+    // Check preset button works in edit mode
+    const presetBtn = screen.getByText(i18n.t("options.dictionary.webdav.presetJianguoyun"))
+    fireEvent.click(presetBtn)
+    expect(endpointInput.value).toBe("https://dav.jianguoyun.com/dav/")
+
+    const usernameInput = screen.getByPlaceholderText("username")
+    expect(document.activeElement).toBe(usernameInput)
+
+    // Save configuration
+    const saveBtn = screen.getByLabelText("webdav-save-settings")
+    fireEvent.click(saveBtn)
+
+    await waitFor(() => {
+      expect(saveWebdavConfigMock).toHaveBeenCalled()
+      // After save, cannot directly edit anymore (locked)
+      expect(endpointInput).toBeDisabled()
+    })
+
+    // After save, test connection is still clickable
+    expect(testBtn).toBeEnabled()
+    fireEvent.click(testBtn)
+    await waitFor(() => {
+      expect(testWebdavConnectionMock).toHaveBeenCalled()
+    })
+
+    // Open setup guide dialog
+    const guideBtn = screen.getByLabelText("view-setup-guide")
+    fireEvent.click(guideBtn)
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.setupGuideTitle")),
+    ).toBeInTheDocument()
+
+    // Check 0 pending changes label
+    expect(
+      screen.getByText(new RegExp(i18n.t("options.dictionary.webdav.allSynced"))),
+    ).toBeInTheDocument()
+
+    // Click toggle view remote snapshot
+    const viewSnapshotBtn = screen.getByText(i18n.t("options.dictionary.webdav.viewRemoteSnapshot"))
+    fireEvent.click(viewSnapshotBtn)
+
+    await waitFor(() => {
+      expect(getRemoteWebdavSummaryMock).toHaveBeenCalled()
+      expect(screen.getByText("42")).toBeInTheDocument()
+    })
+  })
+
+  it("restores saved configuration when canceling edit mode", async () => {
+    getWebdavConfigMock.mockResolvedValue({
+      endpoint: "https://dav.example.com/original/",
+      username: "origuser",
+      password: "origpassword",
+    })
+
+    renderWithProviders(<WebdavSyncPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
+    })
+
+    const endpointInput = screen.getByPlaceholderText(
+      i18n.t("options.dictionary.webdav.endpointPlaceholder"),
+    ) as HTMLInputElement
+    expect(endpointInput.value).toBe("https://dav.example.com/original/")
+    expect(endpointInput).toBeDisabled()
+
+    // Click edit
+    fireEvent.click(screen.getByLabelText("webdav-edit-settings"))
+    expect(endpointInput).not.toBeDisabled()
+
+    // Modify value
+    fireEvent.change(endpointInput, { target: { value: "https://changed.example.com/" } })
+    expect(endpointInput.value).toBe("https://changed.example.com/")
+
+    // Click cancel
+    fireEvent.click(screen.getByLabelText("webdav-cancel-edit"))
+
+    // Restored to original and locked again
+    expect(endpointInput.value).toBe("https://dav.example.com/original/")
+    expect(endpointInput).toBeDisabled()
+  })
 })

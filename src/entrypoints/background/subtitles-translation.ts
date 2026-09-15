@@ -43,19 +43,19 @@ export function setupSubtitlesTranslationHandlers(): void {
         text,
         langConfig,
         provider: providerRef,
-        hostedFeature: "videoSubtitles" as const,
         hash,
         scheduleAt,
         context,
       }
       result = await batchQueue.enqueue(data)
     } else {
-      // Unreachable for system refs — shouldUseBatchQueue always batches them —
-      // but it must fail loudly rather than silently mistranslate if that ever
-      // changes, since executeTranslate only understands a local config.
+      // Unreachable for non-local refs — shouldUseBatchQueue always batches
+      // them — but it must fail loudly rather than silently mistranslate if
+      // that ever changes, since executeTranslate only understands a local
+      // config.
       const localConfig = getLocalProviderConfig(providerRef)
       if (!localConfig) {
-        throw new Error("Built-in AI subtitle translation must use the batch queue")
+        throw new Error("Non-local subtitle translation must use the batch queue")
       }
       const thunk = (signal?: AbortSignal) =>
         executeTranslate(text, langConfig, localConfig, getSubtitlesTranslatePrompt, { signal })
@@ -88,7 +88,6 @@ export function setupSubtitlesTranslationHandlers(): void {
       title: videoTitle,
       textContent: subtitlesContext,
       providerRef,
-      hostedFeature: "videoSubtitles",
       // Deliberately without the title, matching the previous key: a video's
       // transcript identifies it, and including a title that players mutate
       // would miss the cache on every re-render.

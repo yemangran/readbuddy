@@ -1,16 +1,11 @@
-import type { HostedAiFeature } from "@read-frog/api-contract"
 import type { JSONValue, StreamTextOnErrorCallback } from "ai"
 import type { Browser } from "#imports"
 import type { AISDKReasoning, LLMProviderConfig } from "@/types/config/provider"
 import type { SelectionToolbarCustomActionOutputType } from "@/types/config/selection-toolbar"
-import type { BuiltInAiProviderId, HostedAiModelTier } from "@/utils/constants/provider-ids"
 import type { NoteSuggestionEnvelope } from "@/utils/note-suggestion/types"
 
 interface BaseBackgroundStreamSerializablePayload {
   providerId: string
-  modelTier?: HostedAiModelTier
-  /** Hosted billing idempotency key. Ignored by local/BYOK providers. */
-  requestId?: string
   instructions?: string
   prompt?: string
   messages?: JSONValue[]
@@ -25,42 +20,11 @@ interface BaseBackgroundStreamSerializablePayload {
   providerOptions?: Record<string, Record<string, JSONValue>>
 }
 
-/** The hosted features that stream plain text through the `stream-text` port. */
-export type HostedAiTextStreamFeature = Extract<
-  HostedAiFeature,
-  | "pageTranslation"
-  | "selectionTranslation"
-  | "videoSubtitles"
-  | "inputTranslation"
-  | "languageDetection"
->
-
-/**
- * Which hosted text route to call — normally one per feature, but video
- * subtitles has two: line/summary translation and segmentation, which is a
- * separate route because it carries a much larger output budget (and so a
- * larger credit reservation) than a subtitle line should ever reserve.
- *
- * So this is a superset of `HostedAiTextStreamFeature`: the server still bills
- * both subtitle routes against the single `videoSubtitles` feature.
- */
-export type HostedAiTextStreamRoute = HostedAiTextStreamFeature | "videoSubtitlesSegmentation"
-
-export type BackgroundStreamTextSerializablePayload = BaseBackgroundStreamSerializablePayload &
-  (
-    | {
-        providerKind: "local"
-        /** Model and generation settings captured with the caller's cache identity. */
-        providerConfig?: LLMProviderConfig
-        hostedFeature?: never
-      }
-    | {
-        providerKind: "system"
-        providerId: BuiltInAiProviderId
-        providerConfig?: never
-        hostedFeature: HostedAiTextStreamRoute
-      }
-  )
+export type BackgroundStreamTextSerializablePayload = BaseBackgroundStreamSerializablePayload & {
+  providerKind: "local"
+  /** Model and generation settings captured with the caller's cache identity. */
+  providerConfig?: LLMProviderConfig
+}
 
 export interface BackgroundStructuredObjectOutputField {
   name: string

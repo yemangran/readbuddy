@@ -25,7 +25,7 @@ function createAction(): SelectionToolbarCustomAction {
     id: "mapped-action",
     name: "Vocabulary",
     icon: "tabler:book",
-    providerId: "read-frog-free-ai",
+    providerId: "openai-default",
     systemPrompt: "Explain the selected text.",
     prompt: "{{selection}}",
     outputSchema: ["meaning", "example"].map((id) => ({

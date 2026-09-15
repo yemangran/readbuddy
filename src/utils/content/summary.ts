@@ -1,5 +1,4 @@
 import type { BackgroundGenerateTextPayload } from "@/types/background-generate-text"
-import type { ProviderRequestRouting } from "@/types/hosted-request"
 import type { PromptableProviderRef } from "@/utils/providers/provider-ref"
 import { logger } from "@/utils/logger"
 import { getArticleSummaryPrompt } from "@/utils/prompts/summary"
@@ -12,15 +11,13 @@ const MAX_TITLE_LENGTH = 200
 /**
  * Generate a brief summary of article content for translation context.
  *
- * Runs on either provider kind: `generateTextForProviderRef` picks the local
- * `generateText` call or the hosted stream. The same function serves the page
- * summary and the video summary, which is why the hosted feature is a
- * parameter rather than a constant.
+ * The same function serves the page summary and the video summary, which is
+ * why the provider ref is a parameter rather than a constant.
  */
 export async function generateArticleSummary(
   title: string,
   textContent: string,
-  routing: ProviderRequestRouting<PromptableProviderRef>,
+  providerRef: PromptableProviderRef,
   options: {
     signal?: AbortSignal
     generate: (
@@ -41,15 +38,11 @@ export async function generateArticleSummary(
       preparedText,
     )
 
-    const payload: BackgroundGenerateTextPayload =
-      routing.hostedFeature === undefined
-        ? { providerRef: routing.providerRef, instructions: systemPrompt, prompt }
-        : {
-            providerRef: routing.providerRef,
-            hostedFeature: routing.hostedFeature,
-            instructions: systemPrompt,
-            prompt,
-          }
+    const payload: BackgroundGenerateTextPayload = {
+      providerRef,
+      instructions: systemPrompt,
+      prompt,
+    }
     const summary = await options.generate(payload, { signal: options.signal })
 
     const cleanedSummary = summary.trim()

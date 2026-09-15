@@ -6,7 +6,6 @@ import { AUTH_CACHE_GROUP_KEY, DEFAULT_PROXY_CACHE_TTL_MS } from "@/utils/consta
 import { logger } from "@/utils/logger"
 import { onMessage } from "@/utils/message"
 import { SessionCacheGroupRegistry } from "../../utils/session-cache/session-cache-group-registry"
-import { clearHostedAiStatusCache } from "./hosted-ai-status"
 
 // Last-seen auth cookie values, kept in session storage so the comparison
 // survives service-worker restarts (cleared with the browser session)
@@ -40,11 +39,7 @@ export function proxyFetch() {
   // Auth-scoped cache invalidation: session cookie changes only affect the auth group
   async function invalidateAuthCache() {
     const sessionCache = await getSessionCache(AUTH_CACHE_GROUP_KEY)
-    // The hosted-AI verdict is per identity (guest vs signed-in vs Ultra) but
-    // carries no identity to check itself against, so it rides this hook rather
-    // than keying on a user id — reading one in the background costs a
-    // get-session round trip, the very traffic this listener exists to avoid.
-    await Promise.all([sessionCache.clear(), clearHostedAiStatusCache()])
+    await sessionCache.clear()
   }
 
   // Listen for cookie changes to invalidate auth-related cache

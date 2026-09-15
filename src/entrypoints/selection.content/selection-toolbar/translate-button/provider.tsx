@@ -10,7 +10,7 @@ import type { SelectionPopoverActions } from "@/components/ui/selection-popover"
 import type { BackgroundTextStreamSnapshot, ThinkingSnapshot } from "@/types/background-stream"
 import type { LLMProviderConfig, TranslateProviderConfig } from "@/types/config/provider"
 import type { PromptableProviderRef } from "@/utils/providers/provider-ref"
-import type { ResolvedProviderRef, SystemProviderRef } from "@/utils/providers/provider-registry"
+import type { ResolvedProviderRef } from "@/utils/providers/provider-registry"
 import { LANG_CODE_TO_EN_NAME } from "@read-frog/definitions"
 import { HotkeyManager } from "@tanstack/hotkeys"
 import { useAtomValue, useSetAtom } from "jotai"
@@ -24,7 +24,6 @@ import {
   useRef,
   useState,
 } from "react"
-import { useHostedAiProviderOptions } from "@/components/llm-providers/use-hosted-ai-provider-options"
 import { toastManager } from "@/components/ui/base-ui/toast"
 import { SelectionPopover } from "@/components/ui/selection-popover"
 import { ANALYTICS_FEATURE, ANALYTICS_SURFACE } from "@/types/analytics"
@@ -34,7 +33,6 @@ import { classifyResolvedProvider } from "@/utils/analytics-provider"
 import { configFieldsAtomMap, writeConfigAtom } from "@/utils/atoms/config"
 import { buildFeatureProviderPatch } from "@/utils/constants/feature-providers"
 import { streamBackgroundText } from "@/utils/content-script/background-stream-client"
-import { getRandomUUID } from "@/utils/crypto-polyfill"
 import { prepareTranslationText } from "@/utils/host/translate/text-preparation"
 import { translateTextCore } from "@/utils/host/translate/translate-text"
 import { getOrCreateWebPageContext } from "@/utils/host/translate/webpage-context"
@@ -47,7 +45,6 @@ import {
 import { getTranslatePromptFromConfig } from "@/utils/prompts/translate"
 import { resolveModelId } from "@/utils/providers/model-id"
 import { getProviderOptionsWithOverride } from "@/utils/providers/options"
-import { checkProviderAvailability } from "@/utils/providers/provider-ref"
 import { getSelectableProvidersForCapability } from "@/utils/providers/provider-registry"
 import { getTopLevelReasoning } from "@/utils/providers/reasoning"
 import { shadowWrapper } from "../.."
@@ -82,9 +79,8 @@ interface SelectionTranslatePendingOpenRequest {
 
 /**
  * Page context for the selection prompt. `summaryProviderRef` is the provider
- * the (cached, smart-context-gated) page summary runs on — hosted and local
- * LLM refs both work; pass null to skip the summary while keeping the raw
- * context (pure translate providers, hosted tier unavailable).
+ * the (cached, smart-context-gated) page summary runs on; pass null to skip
+ * the summary while keeping the raw context (pure translate providers).
  */
 async function getSelectionWebPagePromptContext(
   summaryProviderRef: PromptableProviderRef | null,
@@ -96,12 +92,7 @@ async function getSelectionWebPagePromptContext(
   }
 
   const webSummary = summaryProviderRef
-    ? await getOrGenerateWebPageSummary(
-        webPageContext,
-        summaryProviderRef,
-        enableAIContentAware,
-        "selectionTranslation",
-      )
+    ? await getOrGenerateWebPageSummary(webPageContext, summaryProviderRef, enableAIContentAware)
     : null
   return {
     webTitle: webPageContext.webTitle,
@@ -188,76 +179,6 @@ async function translateWithTextStream({
   return translatedText
 }
 
-async function translateWithHostedTextStream({
-  preparedText,
-  provider,
-  translateRequest,
-  onChunk,
-  registerAbortController,
-}: {
-  preparedText: string
-  provider: SystemProviderRef
-  translateRequest: SelectionToolbarTranslateRequestSlice
-  onChunk: (data: BackgroundTextStreamSnapshot) => void
-  registerAbortController: (abortController: AbortController) => void
-}) {
-  const targetLangName = LANG_CODE_TO_EN_NAME[translateRequest.language.targetCode]
-  const abortController = new AbortController()
-  registerAbortController(abortController)
-
-  // Smart context on hosted runs mirrors the BYOK LLM path: the summary is
-  // generated (and cached per page + provider) on the same Built-in AI
-  // provider. Fail soft — a summary the tier cannot fund degrades to raw
-  // context instead of blocking the translation, whose own stream surfaces
-  // the real error.
-  let summaryProviderRef: PromptableProviderRef | null = null
-  if (translateRequest.enableAIContentAware) {
-    const availability = await checkProviderAvailability(provider, "selectionTranslation")
-    summaryProviderRef = availability.available ? availability.providerRef : null
-  }
-  const webPageContext = await getSelectionWebPagePromptContext(
-    summaryProviderRef,
-    translateRequest.enableAIContentAware,
-  )
-  if (abortController.signal.aborted) {
-    throw new DOMException("aborted", "AbortError")
-  }
-
-  const { systemPrompt, prompt } = getTranslatePromptFromConfig(
-    { customPromptsConfig: translateRequest.customPromptsConfig },
-    targetLangName,
-    preparedText,
-    {
-      ...(webPageContext
-        ? {
-            context: {
-              webTitle: webPageContext.webTitle,
-              webDescription: webPageContext.webDescription,
-              webContent: webPageContext.webContent,
-              webSummary: webPageContext.webSummary,
-            },
-          }
-        : {}),
-    },
-  )
-
-  return streamBackgroundText(
-    {
-      providerKind: "system",
-      providerId: provider.id,
-      modelTier: provider.modelTier,
-      requestId: getRandomUUID(),
-      hostedFeature: "selectionTranslation",
-      instructions: systemPrompt,
-      prompt,
-    },
-    {
-      signal: abortController.signal,
-      onChunk,
-    },
-  )
-}
-
 async function translateWithStandardProvider({
   text,
   provider,
@@ -268,9 +189,8 @@ async function translateWithStandardProvider({
   translateRequest: SelectionToolbarTranslateRequestSlice
 }) {
   // This path is reached only for pure translate providers (the dispatch sends
-  // system refs to the hosted stream and local LLMs to the text stream), and
-  // those take no prompt — requesting a summary for them was a doomed queue
-  // task that could never generate text.
+  // local LLMs to the text stream), and those take no prompt — requesting a
+  // summary for them was a doomed queue task that could never generate text.
   const webPageContext = await getSelectionWebPagePromptContext(
     null,
     translateRequest.enableAIContentAware,
@@ -279,7 +199,6 @@ async function translateWithStandardProvider({
     text,
     langConfig: translateRequest.language,
     providerConfig: provider,
-    hostedFeature: "selectionTranslation",
     enableAIContentAware: translateRequest.enableAIContentAware,
     extraHashTags: ["selectionTranslation"],
     webPageContext,
@@ -288,18 +207,11 @@ async function translateWithStandardProvider({
   return translatedText
 }
 
-/**
- * Keeps the hosted-status hook inside SelectionPopover.Content, which stays
- * unmounted until the popover first opens — the selection app mounts on every
- * page, and merely loading a page must not fire hosted-AI session/status
- * requests. Mirrors CustomActionFooterContent.
- */
 function TranslateFooterContent({
   providers,
   ...props
 }: ComponentProps<typeof SelectionToolbarFooterContent>) {
-  const translateProviders = useHostedAiProviderOptions("selectionTranslation", providers)
-  return <SelectionToolbarFooterContent providers={translateProviders} {...props} />
+  return <SelectionToolbarFooterContent providers={providers} {...props} />
 }
 
 interface SelectionTranslationContextValue {
@@ -493,32 +405,7 @@ export function SelectionTranslationProvider({ children }: { children: ReactNode
 
       try {
         let nextTranslatedText = ""
-        if (provider.kind === "system") {
-          setThinking({
-            status: "thinking",
-            text: "",
-          })
-
-          const nextSnapshot = await translateWithHostedTextStream({
-            preparedText,
-            provider,
-            translateRequest,
-            onChunk: (data) => {
-              if (runIdRef.current === runId) {
-                setTranslatedText(data.output)
-                setThinking(data.thinking)
-              }
-            },
-            registerAbortController: (abortController) => {
-              abortControllerRef.current = abortController
-            },
-          })
-
-          nextTranslatedText = nextSnapshot.output
-          if (runIdRef.current === runId) {
-            setThinking(nextSnapshot.thinking)
-          }
-        } else if (!isTranslateProviderConfig(provider.config)) {
+        if (!isTranslateProviderConfig(provider.config)) {
           if (runIdRef.current === runId) {
             setIsTranslating(false)
             setError(createSelectionToolbarPrecheckError("translate", "providerUnavailable"))
@@ -601,16 +488,15 @@ export function SelectionTranslationProvider({ children }: { children: ReactNode
     // Kick off the note suggestion together with a translation run. The
     // suggestion runs on its own configured provider (independent of the
     // translate provider, which may be Google/Microsoft): a local provider
-    // must be enabled + LLM; a hosted (system) ref is availability-gated
-    // inside the hook via hosted status. The card renders only after the
-    // translation stream finishes.
+    // must be enabled + LLM. The card renders only after the translation
+    // stream finishes.
     const preparedText = prepareTranslationText(selectionText)
     const suggestionProvider = noteSuggestionProvider
     if (
       preparedText !== "" &&
       suggestionProvider &&
-      (suggestionProvider.kind === "system" ||
-        (suggestionProvider.config.enabled && isLLMProviderConfig(suggestionProvider.config)))
+      isLLMProviderConfig(suggestionProvider.config) &&
+      suggestionProvider.config.enabled
     ) {
       fireNoteSuggestion(preparedText, suggestionProvider)
     }

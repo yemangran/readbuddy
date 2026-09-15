@@ -47,15 +47,6 @@ vi.mock("@tanstack/hotkeys", async (importOriginal) => {
   }
 })
 
-vi.mock("@/utils/auth/auth-client", () => ({
-  authClient: {
-    useSession: () => ({
-      data: null,
-      isPending: false,
-    }),
-  },
-}))
-
 vi.mock("@/components/ui/selection-popover", async () => {
   const React = await import("react")
 
@@ -1667,7 +1658,6 @@ describe("selection toolbar requests", () => {
     })
     expect(streamBackgroundStructuredObjectMock.mock.calls[0]?.[0]).toMatchObject({
       providerId: "openai-default",
-      requestId: expect.stringMatching(/^[0-9a-f-]{36}$/i),
     })
 
     await act(async () => {
@@ -1700,9 +1690,6 @@ describe("selection toolbar requests", () => {
     await waitFor(() => {
       expect(streamBackgroundStructuredObjectMock).toHaveBeenCalledTimes(2)
     })
-    expect(streamBackgroundStructuredObjectMock.mock.calls[1]?.[0].requestId).not.toBe(
-      streamBackgroundStructuredObjectMock.mock.calls[0]?.[0].requestId,
-    )
 
     expect(screen.getByTestId("selection-popover-content")).toBe(content)
     expect(screen.getByRole("button", { name: "Unpin popover" })).toHaveAttribute(

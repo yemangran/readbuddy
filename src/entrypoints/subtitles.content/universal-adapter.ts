@@ -822,7 +822,7 @@ export class UniversalVideoAdapter implements SubtitlesProvidersAdapter {
     // and the summary are generations, so a translate-only provider keeps the
     // rule-based recut and skips the summary without a doomed prompt attempt
     // per look-ahead window.
-    const providerRef = config ? await resolveSubtitlesProviderRef(config, "lineTranslation") : null
+    const providerRef = config ? resolveSubtitlesProviderRef(config, "lineTranslation") : null
     const promptableProviderRef =
       providerRef && canProviderRefGenerateText(providerRef) ? providerRef : null
 

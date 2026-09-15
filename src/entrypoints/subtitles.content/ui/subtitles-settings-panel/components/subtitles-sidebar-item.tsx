@@ -66,11 +66,6 @@ export function SubtitlesSidebarItem() {
       if (!isCurrent()) return
       const blocked = match(availability)
         .with({ status: "ok" }, () => false)
-        // Already actionable; a settings link would point away from it.
-        .with({ status: "hostedUnavailable" }, ({ message }) => {
-          showAnchoredSubtitlesToast(message, anchor.current)
-          return true
-        })
         .with({ status: "needsModel" }, () => {
           showAnchoredSubtitlesToast(
             i18n.t("subtitles.sidebar.summary.needsModel"),

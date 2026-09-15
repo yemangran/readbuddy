@@ -9,7 +9,6 @@ import type {
 } from "@/types/background-stream"
 import type { AISDKReasoning } from "@/types/config/provider"
 import type { SelectionToolbarCustomAction } from "@/types/config/selection-toolbar"
-import type { HostedAiModelTier } from "@/utils/constants/provider-ids"
 import type { CachedWebPageContext } from "@/utils/host/translate/webpage-context"
 import type { CustomActionProviderRef } from "@/utils/providers/provider-registry"
 import { LANG_CODE_TO_EN_NAME } from "@read-frog/definitions"
@@ -18,7 +17,6 @@ import { ANALYTICS_FEATURE } from "@/types/analytics"
 import { createFeatureUsageContext, trackFeatureUsed } from "@/utils/analytics"
 import { classifyResolvedProvider } from "@/utils/analytics-provider"
 import { streamBackgroundStructuredObject } from "@/utils/content-script/background-stream-client"
-import { getRandomUUID } from "@/utils/crypto-polyfill"
 import { getOrCreateWebPageContext } from "@/utils/host/translate/webpage-context"
 import { resolveModelId } from "@/utils/providers/model-id"
 import { getProviderOptionsWithOverride } from "@/utils/providers/options"
@@ -70,7 +68,6 @@ interface CustomActionExecutionRequest {
     }>
     prompt: string
     providerId: string
-    modelTier?: HostedAiModelTier
     providerOptions?: Record<string, Record<string, JSONValue>>
     reasoning?: AISDKReasoning
     instructions: string
@@ -243,20 +240,17 @@ function buildCustomActionExecutionRequest({
   )
   const prompt = replaceSelectionToolbarCustomActionPromptTokens(action.prompt, promptTokens)
   const outputSchema = action.outputSchema.map(({ name, type }) => ({ name, type }))
-  const providerKey = provider.kind === "local" ? provider.config.provider : provider.id
-  const model = provider.kind === "local" ? provider.config.model : undefined
-  const modelName = provider.kind === "local" ? (resolveModelId(provider.config.model) ?? "") : ""
-  const reasoning = provider.kind === "local" ? getTopLevelReasoning(provider.config) : undefined
-  const providerOptions =
-    provider.kind === "local"
-      ? getProviderOptionsWithOverride(
-          modelName,
-          provider.config.provider,
-          provider.config.providerOptions,
-          reasoning,
-        )
-      : undefined
-  const temperature = provider.kind === "local" ? provider.config.temperature : undefined
+  const providerKey = provider.config.provider
+  const model = provider.config.model
+  const modelName = resolveModelId(provider.config.model) ?? ""
+  const reasoning = getTopLevelReasoning(provider.config)
+  const providerOptions = getProviderOptionsWithOverride(
+    modelName,
+    provider.config.provider,
+    provider.config.providerOptions,
+    reasoning,
+  )
+  const temperature = provider.config.temperature
 
   return {
     analytics: {
@@ -287,7 +281,6 @@ function buildCustomActionExecutionRequest({
     }),
     payload: {
       providerId: provider.id,
-      modelTier: provider.kind === "system" ? provider.modelTier : undefined,
       instructions: systemPrompt,
       prompt,
       outputSchema,
@@ -383,24 +376,18 @@ export function useCustomActionExecution({
       })
 
       try {
-        const finalResult = await streamBackgroundStructuredObject(
-          {
-            ...request.payload,
-            requestId: getRandomUUID(),
-          },
-          {
-            signal: abortController.signal,
-            onChunk: (partial: BackgroundStructuredObjectStreamSnapshot) => {
-              if (isCancelled) {
-                return
-              }
+        const finalResult = await streamBackgroundStructuredObject(request.payload, {
+          signal: abortController.signal,
+          onChunk: (partial: BackgroundStructuredObjectStreamSnapshot) => {
+            if (isCancelled) {
+              return
+            }
 
-              setResult(partial.output)
-              setThinking(partial.thinking)
-              scrollSelectionPopoverBodyToBottom(bodyRefRef.current)
-            },
+            setResult(partial.output)
+            setThinking(partial.thinking)
+            scrollSelectionPopoverBodyToBottom(bodyRefRef.current)
           },
-        )
+        })
 
         if (isCancelled) {
           return

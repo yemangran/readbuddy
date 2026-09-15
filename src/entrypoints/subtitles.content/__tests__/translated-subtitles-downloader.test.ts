@@ -103,7 +103,7 @@ describe("translatedSubtitlesDownloader", () => {
     mocks.getLocalConfig.mockResolvedValue(createConfig())
     // The export resolves one ref up front and threads it into segmentation;
     // a null here would skip the AI path entirely.
-    mocks.resolveSubtitlesProviderRef.mockResolvedValue({
+    mocks.resolveSubtitlesProviderRef.mockReturnValue({
       kind: "local",
       config: DEFAULT_PROVIDER_CONFIG.openai,
     })
@@ -368,7 +368,7 @@ describe("translatedSubtitlesDownloader", () => {
     // wider translate one — but it has no model to prompt, so the export must
     // take the rule-based path without one aiSegmentBlock round trip per chunk.
     mocks.getLocalConfig.mockResolvedValue(createConfig({ aiSegmentation: true }))
-    mocks.resolveSubtitlesProviderRef.mockResolvedValue({
+    mocks.resolveSubtitlesProviderRef.mockReturnValue({
       kind: "local",
       config: DEFAULT_PROVIDER_CONFIG["google-translate"],
     })

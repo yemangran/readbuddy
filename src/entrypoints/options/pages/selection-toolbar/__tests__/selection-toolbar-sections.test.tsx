@@ -37,7 +37,7 @@ vi.mock("@/utils/atoms/config", () => ({
 vi.mock("@/components/llm-providers/use-feature-providers", () => ({
   useFeatureProvider: () => ({
     providers: [],
-    providerId: "read-frog-free-ai",
+    providerId: "openai-default",
     providerConfig: null,
     setProviderId: vi.fn<(id: string) => void>(),
   }),
