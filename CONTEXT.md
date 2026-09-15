@@ -1,6 +1,6 @@
-# Read Toad Learning
+# Read Buddy Learning
 
-Read Toad is a browser extension for language learning. Its local-first dictionary keeps saved learning content under the user's control.
+Read Buddy is a browser extension for language learning. Its local-first dictionary keeps saved learning content under the user's control.
 
 ## Language
 
@@ -35,3 +35,18 @@ A dictionary entry marked as removed and excluded from the active dictionary. An
 
 **Restore as new entry**:
 An explicit action that creates a separate dictionary entry from retained content. The original deleted entry remains deleted.
+
+**Review Card**:
+A local study card derived from a Dictionary Record. Its prompt side presents the term, audio pronunciation, part of speech, and rating controls; upon choosing a rating, it flips to the answer side displaying full definitions and context sentences for verification.
+
+**Review State**:
+The spaced repetition tracking data for a review card (such as due date, stability, difficulty, and repetitions), maintained independently from the dictionary record content.
+
+**Review Rating**:
+The learner's self-assessed recall difficulty for a review card, categorized into four canonical grades: Again, Hard, Good, and Easy.
+
+**Review Session**:
+A focused study run presenting a subset or queue of due review cards to the learner, updating each card's review state based on the FSRS schedule.
+
+**Review Store**:
+The isolated local storage and sync unit for review states, persisted and synchronized separately from dictionary records.

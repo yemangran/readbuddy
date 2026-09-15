@@ -39,7 +39,10 @@ coverage/
 
 tsconfig.local.json
 
-docs/
+docs/*
+!docs/adr/
+!docs/agents/
+!docs/*.md
 
 /repos
 
