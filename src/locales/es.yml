@@ -1,7 +1,7 @@
-name: Read Buddy
+﻿name: Read Buddy
 extName: Read Buddy - Traduce y aprende
 extDescription: Read Buddy es una extensión de navegador de código abierto diseñada para ayudarte a aprender idiomas en profundidad desde cualquier sitio web.
-uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
+uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 account:
   login: Iniciar sesión
   webApp: Aplicación web
@@ -902,7 +902,7 @@ options:
       description: Personalizar distintos tipos de Prompts te permite ajustar tú mismo el tipo de Prompt durante la traducción. Un Prompt representa el texto que el usuario envía al LLM.
       managePrompts: Gestionar prompts
       communityPrompts: Obtener o compartir prompts de la comunidad
-      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
+      communityPromptsUrl: https://github.com/yemangran/readbuddy/discussions
       addPrompt: Añadir Prompt
       default: Predeterminado
       builtIn: Integrado

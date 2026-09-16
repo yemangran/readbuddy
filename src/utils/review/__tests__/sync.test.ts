@@ -33,18 +33,18 @@ describe("WebDAV Review Synchronization (LWW & Companion File)", () => {
   })
 
   describe("getWebdavReviewsFileUrl", () => {
-    it("derives readfrog-reviews.json path alongside readfrog.json", () => {
+    it("derives readbuddy-reviews.json path alongside readbuddy.json", () => {
       expect(getWebdavReviewsFileUrl("https://dav.example.com/webdav/")).toBe(
-        "https://dav.example.com/webdav/readfrog-reviews.json",
+        "https://dav.example.com/webdav/readbuddy-reviews.json",
       )
-      expect(getWebdavReviewsFileUrl("https://dav.example.com/webdav/readfrog.json")).toBe(
-        "https://dav.example.com/webdav/readfrog-reviews.json",
+      expect(getWebdavReviewsFileUrl("https://dav.example.com/webdav/readbuddy.json")).toBe(
+        "https://dav.example.com/webdav/readbuddy-reviews.json",
       )
       expect(getWebdavReviewsFileUrl("https://dav.example.com/webdav")).toBe(
-        "https://dav.example.com/webdav/readfrog-reviews.json",
+        "https://dav.example.com/webdav/readbuddy-reviews.json",
       )
       expect(getWebdavReviewsFileUrl("https://dav.jianguoyun.com/dav")).toBe(
-        "https://dav.jianguoyun.com/dav/readfrog/readfrog-reviews.json",
+        "https://dav.jianguoyun.com/dav/readbuddy/readbuddy-reviews.json",
       )
     })
   })
@@ -230,7 +230,7 @@ describe("WebDAV Review Synchronization (LWW & Companion File)", () => {
   })
 
   describe("syncReviewsWithWebdav Round-trip", () => {
-    it("Scenario 1: First sync when remote 404 -> uploads local review states to readfrog-reviews.json", async () => {
+    it("Scenario 1: First sync when remote 404 -> uploads local review states to readbuddy-reviews.json", async () => {
       inMemoryStates = {
         "card-1": {
           recordId: "card-1",
@@ -249,7 +249,7 @@ describe("WebDAV Review Synchronization (LWW & Companion File)", () => {
       let putBody = ""
       let putHeaders: Record<string, string> = {}
       const mockFetch = vi.fn<typeof fetch>(async (url: any, opts?: any) => {
-        if (url.endsWith("readfrog-reviews.json")) {
+        if (url.endsWith("readbuddy-reviews.json")) {
           if (opts?.method === "GET") {
             return new Response(null, { status: 404 })
           }
@@ -297,7 +297,7 @@ describe("WebDAV Review Synchronization (LWW & Companion File)", () => {
       }
 
       const mockFetch = vi.fn<typeof fetch>(async (url: any, opts?: any) => {
-        if (url.endsWith("readfrog-reviews.json") && opts?.method === "GET") {
+        if (url.endsWith("readbuddy-reviews.json") && opts?.method === "GET") {
           return new Response(JSON.stringify(remoteSnapshot), {
             status: 200,
             headers: { ETag: '"etag-remote-2"' },
@@ -366,7 +366,7 @@ describe("WebDAV Review Synchronization (LWW & Companion File)", () => {
       let putUploaded = false
       let putBody = ""
       const mockFetch = vi.fn<typeof fetch>(async (url: any, opts?: any) => {
-        if (url.endsWith("readfrog-reviews.json")) {
+        if (url.endsWith("readbuddy-reviews.json")) {
           if (opts?.method === "GET") {
             return new Response(JSON.stringify(remoteSnapshot), {
               status: 200,

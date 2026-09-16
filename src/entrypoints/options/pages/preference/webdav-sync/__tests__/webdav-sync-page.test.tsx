@@ -252,9 +252,9 @@ describe("WebdavSyncPage", () => {
       expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
     })
 
-    const endpointInput = screen.getByPlaceholderText(
+    const endpointInput = screen.getByPlaceholderText<HTMLInputElement>(
       i18n.t("options.dictionary.webdav.endpointPlaceholder"),
-    ) as HTMLInputElement
+    )
     // Initially locked / disabled when already configured
     expect(endpointInput).toBeDisabled()
 
@@ -327,9 +327,9 @@ describe("WebdavSyncPage", () => {
       expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
     })
 
-    const endpointInput = screen.getByPlaceholderText(
+    const endpointInput = screen.getByPlaceholderText<HTMLInputElement>(
       i18n.t("options.dictionary.webdav.endpointPlaceholder"),
-    ) as HTMLInputElement
+    )
     expect(endpointInput.value).toBe("https://dav.example.com/original/")
     expect(endpointInput).toBeDisabled()
 

@@ -37,6 +37,7 @@ import {
 import { requestWebdavHostPermission } from "@/utils/local-dictionary/webdav"
 import { cn } from "@/utils/styles/utils"
 import { queryClient } from "@/utils/tanstack-query"
+import { WebdavSetupGuideDialog } from "./components/webdav-setup-guide-dialog"
 
 const WEBDAV_ERROR_I18N_KEYS: Record<WebdavErrorCode, I18nKey> = {
   AUTH_FAILED: "options.dictionary.webdav.authFailed",
@@ -332,6 +333,16 @@ export function WebdavSyncPage() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsSetupGuideOpen(true)}
+                aria-label="view-setup-guide"
+              >
+                <Icon icon="tabler:book-2" className="mr-1.5 size-4" />
+                {i18n.t("options.dictionary.webdav.viewSetupGuide")}
+              </Button>
               {isWebdavConfigured && (
                 <>
                   <Button
@@ -419,20 +430,6 @@ export function WebdavSyncPage() {
                 <Icon icon="tabler:cloud" className="mr-1 size-3 text-primary" />
                 {i18n.t("options.dictionary.webdav.presetJianguoyun")}
               </Button>
-              <Button
-                type="button"
-                size="xs"
-                variant="ghost"
-                className="h-6 text-[11px] text-muted-foreground hover:text-foreground"
-                onClick={() => setIsSetupGuideOpen(true)}
-                aria-label="view-setup-guide"
-              >
-                <Icon icon="tabler:help-circle" className="mr-1 size-3" />
-                {i18n.t("options.dictionary.webdav.viewSetupGuide")}
-              </Button>
-              <span className="text-[11px] text-muted-foreground/80">
-                {i18n.t("options.dictionary.webdav.jianguoyunTip")}
-              </span>
             </div>
 
             {isWebdavConfigured && syncState && (
@@ -739,56 +736,21 @@ export function WebdavSyncPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Jianguoyun Setup Guide Dialog */}
-        <Dialog open={isSetupGuideOpen} onOpenChange={setIsSetupGuideOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Icon icon="tabler:help-circle" className="size-5 text-primary" />
-                {i18n.t("options.dictionary.webdav.setupGuideTitle")}
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                {i18n.t("options.dictionary.webdav.jianguoyunTip")}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-2.5 rounded-md bg-muted/40 p-3 text-xs text-foreground">
-              <div className="flex items-start gap-2">
-                <span className="font-semibold text-primary">1.</span>
-                <span>{i18n.t("options.dictionary.webdav.setupGuideStep1")}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-semibold text-primary">2.</span>
-                <span>{i18n.t("options.dictionary.webdav.setupGuideStep2")}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-semibold text-primary">3.</span>
-                <span>{i18n.t("options.dictionary.webdav.setupGuideStep3")}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-semibold text-primary">4.</span>
-                <span>{i18n.t("options.dictionary.webdav.setupGuideStep4")}</span>
-              </div>
-            </div>
-
-            <DialogFooter className="flex flex-row items-center justify-between sm:justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  window.open("https://www.jianguoyun.com/d/home#/account/security", "_blank")
-                }
-              >
-                <Icon icon="tabler:external-link" className="mr-1.5 size-4" />
-                {i18n.t("options.dictionary.webdav.openJianguoyunWeb")}
-              </Button>
-              <Button type="button" size="sm" onClick={() => setIsSetupGuideOpen(false)}>
-                {i18n.t("options.dictionary.cancel")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* WebDAV Multi-Vendor Setup Guide Dialog */}
+        <WebdavSetupGuideDialog
+          open={isSetupGuideOpen}
+          onOpenChange={setIsSetupGuideOpen}
+          canApplyPreset={canEdit}
+          onApplyPreset={(endpoint) => {
+            setWebdavEndpoint(endpoint)
+            toastManager.add({
+              type: "info",
+              title: "已填入端点服务地址",
+              description: "请输入该服务商的账号与密码进行连接",
+            })
+            usernameInputRef.current?.focus()
+          }}
+        />
       </ConfigDetailSection>
     </PageLayout>
   )

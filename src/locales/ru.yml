@@ -1,7 +1,7 @@
-name: Read Buddy
+﻿name: Read Buddy
 extName: Read Buddy - Переводи и учись
 extDescription: Read Buddy — расширение браузера с открытым исходным кодом, которое поможет вам глубоко изучать языки на любом веб-сайте.
-uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
+uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 account:
   login: Войти
   webApp: Веб-приложение
@@ -786,7 +786,7 @@ options:
       description: Настройка различных типов промптов позволяет вам самостоятельно изменять тип промпта во время перевода. Промпт — это текст, который пользователь отправляет LLM.
       managePrompts: Управление промптами
       communityPrompts: Получайте или делитесь промптами с сообществом
-      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
+      communityPromptsUrl: https://github.com/yemangran/readbuddy/discussions
       addPrompt: Добавить промпт
       default: По умолчанию
       builtIn: Встроенный

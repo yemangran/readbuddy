@@ -594,7 +594,7 @@ export function DictionaryPage() {
       const res = await exportDictionarySnapshot()
       if (res.ok) {
         const blob = new Blob([res.data], { type: "application/json" })
-        saveAs(blob, "readfrog.json")
+        saveAs(blob, "readbuddy.json")
         toastManager.add({
           type: "success",
           title: i18n.t("options.dictionary.exportSuccess"),

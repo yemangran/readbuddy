@@ -4,12 +4,13 @@ import {
   getWebdavAuthHeader,
   getWebdavParentCollectionUrl,
   normalizeWebdavEndpoint,
+  WEBDAV_DICTIONARY_FILENAME,
 } from "@/utils/local-dictionary/webdav"
 import { reviewStore, type createReviewStore } from "./store"
 
 export const REVIEWS_SNAPSHOT_FORMAT = "readfrog-reviews"
 export const REVIEWS_SNAPSHOT_VERSION = 1
-export const REVIEWS_REMOTE_FILENAME = "readfrog-reviews.json"
+export const REVIEWS_REMOTE_FILENAME = "readbuddy-reviews.json"
 
 export interface ReviewsSnapshotV1 {
   format: "readfrog-reviews"
@@ -21,8 +22,11 @@ export interface ReviewsSnapshotV1 {
 export function getWebdavReviewsFileUrl(endpoint: string): string {
   const normalized = normalizeWebdavEndpoint(endpoint)
   const url = new URL(normalized)
-  if (url.pathname.endsWith("/readfrog.json")) {
-    url.pathname = url.pathname.replace(/\/readfrog\.json$/, `/${REVIEWS_REMOTE_FILENAME}`)
+  if (url.pathname.endsWith(`/${WEBDAV_DICTIONARY_FILENAME}`)) {
+    url.pathname = url.pathname.replace(
+      new RegExp(`/${WEBDAV_DICTIONARY_FILENAME}$`),
+      `/${REVIEWS_REMOTE_FILENAME}`,
+    )
     return url.toString()
   }
   if (url.pathname.endsWith(`/${REVIEWS_REMOTE_FILENAME}`)) {

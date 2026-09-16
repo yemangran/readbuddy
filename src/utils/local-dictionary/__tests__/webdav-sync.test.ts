@@ -46,18 +46,18 @@ describe("WebDAV Configuration, Connection & Security", () => {
     db.close()
   })
 
-  it("normalizes WebDAV endpoints and constructs readfrog.json URL safely", () => {
+  it("normalizes WebDAV endpoints and constructs readbuddy.json URL safely", () => {
     expect(normalizeWebdavEndpoint("https://dav.example.com/webdav/")).toBe(
       "https://dav.example.com/webdav/",
     )
     expect(getWebdavFileUrl("https://dav.example.com/webdav/")).toBe(
-      "https://dav.example.com/webdav/readfrog.json",
+      "https://dav.example.com/webdav/readbuddy.json",
     )
     expect(getWebdavFileUrl("https://dav.example.com/webdav")).toBe(
-      "https://dav.example.com/webdav/readfrog.json",
+      "https://dav.example.com/webdav/readbuddy.json",
     )
-    expect(getWebdavFileUrl("https://dav.example.com/webdav/readfrog.json")).toBe(
-      "https://dav.example.com/webdav/readfrog.json",
+    expect(getWebdavFileUrl("https://dav.example.com/webdav/readbuddy.json")).toBe(
+      "https://dav.example.com/webdav/readbuddy.json",
     )
     expect(() => getWebdavFileUrl("ftp://example.com")).toThrow("Unsupported protocol")
     expect(() => getWebdavFileUrl("")).toThrow("WebDAV endpoint cannot be empty")
@@ -99,7 +99,7 @@ describe("WebDAV Configuration, Connection & Security", () => {
     const result = await testWebdavConnection(sampleConfig, mockFetch as any)
     expect(result.ok).toBe(true)
     expect(mockFetch).toHaveBeenCalledWith(
-      "https://dav.example.com/webdav/readfrog.json",
+      "https://dav.example.com/webdav/readbuddy.json",
       expect.objectContaining({ method: "GET" }),
     )
   })

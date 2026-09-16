@@ -1,7 +1,7 @@
-name: Read Buddy
+﻿name: Read Buddy
 extName: Read Buddy - 翻訳して学ぶ
 extDescription: Read Buddyは、あらゆるウェブサイトから言語を深く学ぶために設計されたオープンソースのブラウザ拡張機能です。
-uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
+uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 account:
   login: ログイン
   webApp: ウェブアプリ
@@ -786,7 +786,7 @@ options:
       description: 異なるタイプのプロンプトをカスタマイズすることで、翻訳時にプロンプトタイプを自ら調整できます。プロンプトとは、ユーザーがLLMに送信するテキストを指します。
       managePrompts: プロンプトを管理
       communityPrompts: コミュニティからプロンプトを取得・共有
-      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
+      communityPromptsUrl: https://github.com/yemangran/readbuddy/discussions
       addPrompt: プロンプトを追加
       default: デフォルト
       builtIn: 組み込み

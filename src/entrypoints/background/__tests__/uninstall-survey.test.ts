@@ -6,7 +6,7 @@ const setUninstallURLMock = vi.fn<(url: string) => void>()
 
 const { mockState } = vi.hoisted(() => ({
   mockState: {
-    surveyUrl: "https://github.com/yemangran/read-toad/issues",
+    surveyUrl: "https://github.com/yemangran/readbuddy/issues",
   },
 }))
 
@@ -42,15 +42,15 @@ describe("setupUninstallSurvey", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(browser.runtime as any).setUninstallURL = setUninstallURLMock
-    mockState.surveyUrl = "https://github.com/yemangran/read-toad/issues"
+    mockState.surveyUrl = "https://github.com/yemangran/readbuddy/issues"
   })
 
   it("sets clean GitHub URL without poll parameters when surveyUrl points to GitHub", async () => {
-    mockState.surveyUrl = "https://github.com/yemangran/read-toad/issues"
+    mockState.surveyUrl = "https://github.com/yemangran/readbuddy/issues"
     await setupUninstallSurvey()
 
     expect(setUninstallURLMock).toHaveBeenCalledWith(
-      "https://github.com/yemangran/read-toad/issues",
+      "https://github.com/yemangran/readbuddy/issues",
     )
   })
 

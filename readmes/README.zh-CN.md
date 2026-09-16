@@ -59,7 +59,7 @@
 
 无需在第三方服务器上传或备份您的学习记录，数据牢牢掌握在自己手中：
 
-- **独立伴随文件机制**：词典主数据 (`readfrog.json`) 与复习记忆状态 (`readfrog-reviews.json`) 分离同步，互不污染。
+- **独立伴随文件机制**：词典主数据 (`readbuddy.json`) 与复习记忆状态 (`readbuddy-reviews.json`) 分离同步，互不污染。
 - **最后复习优胜 (Last-Review-Wins)**：多设备并发复习同一单词时，自动比对最后复习时间戳智能合并，确保学习进度永不丢失。
 - **回收站级联清理**：在生词本回收站中彻底粉碎单词时，自动清理关联的复习进度，告别垃圾孤儿数据。
 
@@ -103,8 +103,8 @@
 ### 安装依赖
 
 ```bash
-git clone https://github.com/yemangran/read-toad.git
-cd read-toad
+git clone https://github.com/yemangran/readbuddy.git
+cd readbuddy
 pnpm install
 ```
 
@@ -138,7 +138,7 @@ pnpm dev
    - Edge：`edge://extensions`
 2. 打开右上角的 **「开发者模式 (Developer Mode)」**。
 3. 点击左上角 **「加载已解压的扩展程序 (Load unpacked)」**。
-4. 选中项目中的构建产物目录：`read-toad/.output/chrome-mv3`。
+4. 选中项目中的构建产物目录：`readbuddy/.output/chrome-mv3`。
 5. 在浏览器插件栏固定 **伴读书童 (Read Buddy)** 即可开启高效学习！
 
 ---

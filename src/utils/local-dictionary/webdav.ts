@@ -19,6 +19,7 @@ import {
 
 export { getWebdavReviewsFileUrl }
 
+export const WEBDAV_DICTIONARY_FILENAME = "readbuddy.json"
 export const WEBDAV_CONFIG_STORAGE_KEY = "local:webdavConfig"
 export const WEBDAV_SYNC_STATE_STORAGE_KEY = "local:webdavSyncState"
 export const MAX_CONDITIONAL_RETRIES = 3
@@ -72,11 +73,11 @@ export function normalizeWebdavEndpoint(endpoint: string): string {
     throw new Error(`Unsupported protocol: ${url.protocol}`)
   }
   // Jianguoyun root path (/dav or /dav/) cannot host bare files directly.
-  // Auto-append dedicated app directory /readfrog/
+  // Auto-append dedicated app directory /readbuddy/
   if (url.hostname === "dav.jianguoyun.com") {
     const cleanPath = url.pathname.replace(/\/+$/, "")
     if (cleanPath === "/dav" || cleanPath === "") {
-      url.pathname = "/dav/readfrog/"
+      url.pathname = "/dav/readbuddy/"
     }
   }
   return url.toString()
@@ -100,13 +101,13 @@ export function getWebdavParentCollectionUrl(fileUrl: string): string | null {
 export function getWebdavFileUrl(endpoint: string): string {
   const normalized = normalizeWebdavEndpoint(endpoint)
   const url = new URL(normalized)
-  if (url.pathname.endsWith("/readfrog.json")) {
+  if (url.pathname.endsWith(`/${WEBDAV_DICTIONARY_FILENAME}`)) {
     return url.toString()
   }
   if (!url.pathname.endsWith("/")) {
     url.pathname += "/"
   }
-  url.pathname += "readfrog.json"
+  url.pathname += WEBDAV_DICTIONARY_FILENAME
   return url.toString()
 }
 
@@ -592,7 +593,7 @@ export async function syncWithWebdav(
       const isJianguoyun = fileUrl.includes("dav.jianguoyun.com")
       const errorMsg =
         isJianguoyun || bodySnippet.includes("ObjectNotFound")
-          ? "WebDAV 目标目录不存在（坚果云根目录不支持直接放置文件，请在服务地址中包含同步文件夹如 /dav/readfrog/）"
+          ? "WebDAV 目标目录不存在（坚果云根目录不支持直接放置文件，请在服务地址中包含同步文件夹如 /dav/readbuddy/）"
           : "WebDAV server returned HTTP 404 on upload: parent collection does not exist"
 
       return {

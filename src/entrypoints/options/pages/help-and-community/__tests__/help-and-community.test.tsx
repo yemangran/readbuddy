@@ -26,7 +26,7 @@ vi.mock("../../../components/config-section", () => ({
 }))
 
 describe("HelpAndCommunityPage", () => {
-  it("renders all help and community links pointing to read-toad repository", () => {
+  it("renders all help and community links pointing to readbuddy repository", () => {
     render(<HelpAndCommunityPage />)
 
     const links = screen.getAllByRole("link")
@@ -34,7 +34,7 @@ describe("HelpAndCommunityPage", () => {
 
     for (const link of links) {
       const href = link.getAttribute("href") ?? ""
-      expect(href).toMatch(/^https:\/\/github\.com\/yemangran\/read-toad/)
+      expect(href).toMatch(/^https:\/\/github\.com\/yemangran\/readbuddy/)
       expect(href).not.toContain("readfrog.app")
       expect(href).not.toContain("discord.gg")
       expect(href).not.toContain("tally.so")

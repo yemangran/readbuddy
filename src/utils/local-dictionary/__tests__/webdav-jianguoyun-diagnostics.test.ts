@@ -28,12 +28,12 @@ describe("Diagnosing Bug: Jianguoyun 404 ObjectNotFound on upload", () => {
     await saveStoredWebdavSyncState(INITIAL_WEBDAV_SYNC_STATE)
   })
 
-  it("auto-normalizes Jianguoyun root endpoint to include /readfrog/ directory", () => {
+  it("auto-normalizes Jianguoyun root endpoint to include /readbuddy/ directory", () => {
     expect(normalizeWebdavEndpoint("https://dav.jianguoyun.com/dav/")).toBe(
-      "https://dav.jianguoyun.com/dav/readfrog/",
+      "https://dav.jianguoyun.com/dav/readbuddy/",
     )
     expect(normalizeWebdavEndpoint("https://dav.jianguoyun.com/dav")).toBe(
-      "https://dav.jianguoyun.com/dav/readfrog/",
+      "https://dav.jianguoyun.com/dav/readbuddy/",
     )
     expect(normalizeWebdavEndpoint("https://dav.jianguoyun.com/dav/custom-folder/")).toBe(
       "https://dav.jianguoyun.com/dav/custom-folder/",
@@ -106,7 +106,7 @@ describe("Diagnosing Bug: Jianguoyun 404 ObjectNotFound on upload", () => {
 
     expect(result.ok).toBe(true)
     expect(mkcolCalled).toBe(true)
-    expect(mkcolUrl).toBe("https://dav.jianguoyun.com/dav/readfrog/")
+    expect(mkcolUrl).toBe("https://dav.jianguoyun.com/dav/readbuddy/")
     expect(result.etag).toBe('"new-etag"')
   })
 

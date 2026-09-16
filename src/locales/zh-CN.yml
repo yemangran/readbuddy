@@ -1,7 +1,7 @@
-name: 伴读书童
+﻿name: 伴读书童
 extName: 伴读书童 - 翻译与学习
 extDescription: 伴读书童是一款开放源代码的浏览器插件，旨在帮助您从任何网站深入学习语言。
-uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
+uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 account:
   login: 登录
   webApp: 网页应用
@@ -226,7 +226,7 @@ options:
       jianguoyunPresetApplied: 已填入坚果云服务地址
       jianguoyunPresetAppliedDesc: 请输入坚果云注册邮箱（用户名）与第三方应用授权密码
       viewSetupGuide: 查看配置教程
-      setupGuideTitle: 坚果云 WebDAV 配置指南
+      setupGuideTitle: WebDAV 服务配置指南
       setupGuideStep1: 登录坚果云网页版官网 (jianguoyun.com)。
       setupGuideStep2: 进入「账户信息」➜「安全选项」。
       setupGuideStep3: 找到「第三方应用管理」，点击「添加应用密码」，名称填写「伴读书童」。
@@ -1031,7 +1031,7 @@ options:
       description: 自定义不同类型的 Prompt，可以在翻译时自行调整 Prompt 类型。Prompt 表示以用户身份发送给 LLM 的文本。
       managePrompts: 管理 Prompt
       communityPrompts: 获取或分享社区 Prompt
-      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
+      communityPromptsUrl: https://github.com/yemangran/readbuddy/discussions
       addPrompt: 添加 Prompt
       default: 通用
       builtIn: 内置

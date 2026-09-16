@@ -1,7 +1,7 @@
-name: Read Buddy
+﻿name: Read Buddy
 extName: "Read Buddy - Translate & Learn"
 extDescription: Read Buddy is an open source browser extension designed to help you learn languages deeply from any website.
-uninstallSurveyUrl: https://github.com/yemangran/read-toad/issues
+uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 account:
   login: Log in
   webApp: Web app
@@ -226,7 +226,7 @@ options:
       jianguoyunPresetApplied: Jianguoyun endpoint applied
       jianguoyunPresetAppliedDesc: Please enter your Jianguoyun email (username) and app authorization password
       viewSetupGuide: Setup Guide
-      setupGuideTitle: Jianguoyun WebDAV Setup Guide
+      setupGuideTitle: WebDAV Setup Guide
       setupGuideStep1: Log in to Jianguoyun web portal (jianguoyun.com).
       setupGuideStep2: Navigate to Account Information ➜ Security.
       setupGuideStep3: Under Third-party App Management, click Add App Password and name it "Read Buddy".
@@ -1031,7 +1031,7 @@ options:
       description: Customizing different types of Prompts allows you to adjust the Prompt type yourself during translation. A Prompt represents the text that the user sends to the LLM.
       managePrompts: Manage prompts
       communityPrompts: Get or share prompts from community
-      communityPromptsUrl: https://github.com/yemangran/read-toad/discussions
+      communityPromptsUrl: https://github.com/yemangran/readbuddy/discussions
       addPrompt: Add prompt
       default: Default
       builtIn: Built-in

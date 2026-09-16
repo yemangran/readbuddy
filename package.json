@@ -1,6 +1,6 @@
 {
   "name": "@read-buddy/extension",
-  "version": "1.46.8",
+  "version": "1.0.0",
   "private": true,
   "description": "Read Buddy browser extension for language learning",
   "type": "module",

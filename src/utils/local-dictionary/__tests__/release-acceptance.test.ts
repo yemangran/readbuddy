@@ -399,7 +399,7 @@ describe("Issue #15: Release Acceptance Verification", () => {
 
       server = http.createServer((req, res) => {
         const url = new URL(req.url || "/", `http://${req.headers.host}`)
-        if (url.pathname !== "/readfrog.json") {
+        if (url.pathname !== "/readbuddy.json") {
           res.writeHead(404)
           res.end("Not Found")
           return

@@ -243,7 +243,7 @@ describe("WebDAV Dual-file Sync & Recycle Bin Purge Cascade", () => {
     expect(await reviewStoreInstance.getState("phantom-orphan")).toBeNull()
   })
 
-  it("dual-file WebDAV synchronization uploads readfrog.json and readfrog-reviews.json concurrently", async () => {
+  it("dual-file WebDAV synchronization uploads readbuddy.json and readbuddy-reviews.json concurrently", async () => {
     // 1. Create a vocabulary record and a review state
     const item: CreateVocabularyItem = {
       id: "dual-vocab-1",
@@ -278,28 +278,28 @@ describe("WebDAV Dual-file Sync & Recycle Bin Purge Cascade", () => {
 
     const mockFetch = vi.fn<typeof fetch>(async (url: any, opts?: any) => {
       const method = opts?.method || "GET"
-      if (url.endsWith("readfrog.json")) {
+      if (url.endsWith("readbuddy.json")) {
         if (method === "GET") {
-          const file = remoteFiles.get("readfrog.json")
+          const file = remoteFiles.get("readbuddy.json")
           if (!file) return new Response(null, { status: 404 })
           return new Response(file.body, { status: 200, headers: { ETag: file.etag } })
         }
         if (method === "PUT") {
           const etag = `"vocab-etag-${Date.now()}"`
-          remoteFiles.set("readfrog.json", { body: opts.body, etag })
+          remoteFiles.set("readbuddy.json", { body: opts.body, etag })
           return new Response(null, { status: 201, headers: { ETag: etag } })
         }
       }
 
-      if (url.endsWith("readfrog-reviews.json")) {
+      if (url.endsWith("readbuddy-reviews.json")) {
         if (method === "GET") {
-          const file = remoteFiles.get("readfrog-reviews.json")
+          const file = remoteFiles.get("readbuddy-reviews.json")
           if (!file) return new Response(null, { status: 404 })
           return new Response(file.body, { status: 200, headers: { ETag: file.etag } })
         }
         if (method === "PUT") {
           const etag = `"reviews-etag-${Date.now()}"`
-          remoteFiles.set("readfrog-reviews.json", { body: opts.body, etag })
+          remoteFiles.set("readbuddy-reviews.json", { body: opts.body, etag })
           return new Response(null, { status: 201, headers: { ETag: etag } })
         }
       }
@@ -319,11 +319,11 @@ describe("WebDAV Dual-file Sync & Recycle Bin Purge Cascade", () => {
     expect(syncRes.remoteUploaded).toBe(true)
 
     // 4. Verify both files were uploaded to WebDAV
-    expect(remoteFiles.has("readfrog.json")).toBe(true)
-    expect(remoteFiles.has("readfrog-reviews.json")).toBe(true)
+    expect(remoteFiles.has("readbuddy.json")).toBe(true)
+    expect(remoteFiles.has("readbuddy-reviews.json")).toBe(true)
 
-    const vocabContent = remoteFiles.get("readfrog.json")!.body
-    const reviewsContent = remoteFiles.get("readfrog-reviews.json")!.body
+    const vocabContent = remoteFiles.get("readbuddy.json")!.body
+    const reviewsContent = remoteFiles.get("readbuddy-reviews.json")!.body
 
     expect(vocabContent).toContain("dual-vocab-1")
     expect(vocabContent).toContain("dual-sync")
