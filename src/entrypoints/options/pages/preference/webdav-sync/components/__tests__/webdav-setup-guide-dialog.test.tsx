@@ -24,6 +24,7 @@ describe("WebdavSetupGuideDialog", () => {
     expect(screen.getByText("坚果云 (Jianguoyun)")).toBeInTheDocument()
     expect(screen.getByText("https://dav.jianguoyun.com/dav/")).toBeInTheDocument()
     expect(screen.getByText(/第三方应用管理/)).toBeInTheDocument()
+    expect(screen.getAllByText(/readbuddy/).length).toBeGreaterThanOrEqual(1)
   })
 
   it("switches vendor tutorial when clicking a vendor tab", () => {
@@ -46,23 +47,24 @@ describe("WebdavSetupGuideDialog", () => {
     expect(screen.getByText(/启用 HTTPS \(端口 5006\)/)).toBeInTheDocument()
   })
 
-  it("triggers onApplyPreset and closes modal when clicking apply endpoint", () => {
-    const onApplyPreset = vi.fn<(endpoint: string) => void>()
+  it("does not render apply preset button and provides copy address button", () => {
     const onOpenChange = vi.fn<(open: boolean) => void>()
+    const writeTextMock = vi.fn<(...args: any[]) => Promise<void>>().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    })
 
-    render(
-      <WebdavSetupGuideDialog
-        open={true}
-        onOpenChange={onOpenChange}
-        onApplyPreset={onApplyPreset}
-        canApplyPreset={true}
-      />,
-    )
+    render(<WebdavSetupGuideDialog open={true} onOpenChange={onOpenChange} />)
 
-    const applyBtn = screen.getByText("一键填入端点")
-    fireEvent.click(applyBtn)
+    // "一键填入端点" button should no longer exist
+    expect(screen.queryByText("一键填入端点")).not.toBeInTheDocument()
 
-    expect(onApplyPreset).toHaveBeenCalledWith("https://dav.jianguoyun.com/dav/")
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    // "复制地址" button should be available and clickable
+    const copyBtn = screen.getByText("复制地址")
+    expect(copyBtn).toBeInTheDocument()
+    fireEvent.click(copyBtn)
+    expect(writeTextMock).toHaveBeenCalledWith("https://dav.jianguoyun.com/dav/")
   })
 })

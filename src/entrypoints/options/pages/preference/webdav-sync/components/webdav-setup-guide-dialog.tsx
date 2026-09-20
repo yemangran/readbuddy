@@ -43,11 +43,12 @@ const WEBDAV_VENDORS: WebdavVendorGuide[] = [
       "登录坚果云网页版官网 (jianguoyun.com)。",
       "点击右上角账号进入「账户信息」➜「安全选项」。",
       "找到「第三方应用管理」，点击「添加应用密码」，应用名称填写「伴读书童」或「Read Buddy」。",
+      "在坚果云用户根目录（「我的文件」）中手动创建一个名为「readbuddy」的文件夹（重要：用户需要在坚果云用户根目录中手动创建一个 readbuddy 的目录才可以正常进行同步）。",
       "将注册邮箱填入插件「用户名」，生成的应用授权密码填入「密码」，服务地址填入「https://dav.jianguoyun.com/dav/」。",
     ],
     tips: [
       "必须使用坚果云生成的「应用授权密码」，不能使用普通的网页登录密码。",
-      "坚果云根目录不支持直接放置文件，插件会自动在其下创建专属「readbuddy」目录进行隔离同步。",
+      "【必须手动创建目录】用户需要在坚果云用户根目录中手动创建一个「readbuddy」的目录才可以正常进行同步（坚果云根目录不支持直接放置文件，也不允许客户端通过接口直接创建根文件夹）。",
     ],
   },
   {
@@ -142,16 +143,9 @@ const WEBDAV_VENDORS: WebdavVendorGuide[] = [
 interface WebdavSetupGuideDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onApplyPreset?: (endpoint: string) => void
-  canApplyPreset?: boolean
 }
 
-export function WebdavSetupGuideDialog({
-  open,
-  onOpenChange,
-  onApplyPreset,
-  canApplyPreset = true,
-}: WebdavSetupGuideDialogProps) {
+export function WebdavSetupGuideDialog({ open, onOpenChange }: WebdavSetupGuideDialogProps) {
   const [selectedVendorId, setSelectedVendorId] = useState<string>("jianguoyun")
 
   const currentVendor: WebdavVendorGuide =
@@ -163,13 +157,6 @@ export function WebdavSetupGuideDialog({
       type: "success",
       title: "已复制端点地址到剪贴板",
     })
-  }
-
-  const handleApply = (endpoint: string) => {
-    if (onApplyPreset) {
-      onApplyPreset(endpoint)
-      onOpenChange(false)
-    }
   }
 
   return (
@@ -280,19 +267,6 @@ export function WebdavSetupGuideDialog({
                     <Icon icon="tabler:copy" className="mr-1 size-3" />
                     复制地址
                   </Button>
-                  {currentVendor.defaultEndpoint && onApplyPreset && (
-                    <Button
-                      type="button"
-                      variant="default"
-                      size="xs"
-                      className="h-6 text-[11px]"
-                      disabled={!canApplyPreset}
-                      onClick={() => handleApply(currentVendor.defaultEndpoint!)}
-                    >
-                      <Icon icon="tabler:check" className="mr-1 size-3" />
-                      一键填入端点
-                    </Button>
-                  )}
                 </div>
               </div>
               <code className="block rounded bg-background px-2.5 py-1.5 font-mono text-xs text-primary selection:bg-primary/20">

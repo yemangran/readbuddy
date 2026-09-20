@@ -417,16 +417,16 @@ describe("DictionaryPage", () => {
     expect(navigateMock).toHaveBeenCalledWith("/preference/webdav-sync")
   })
 
-  it("opens word detail modal when row or view button is clicked", async () => {
+  it("opens word detail modal when table row is clicked and does not show view-detail button in actions", async () => {
     renderWithQuery(<DictionaryPage />)
 
     await waitFor(() => {
       expect(screen.getByText("frog")).toBeInTheDocument()
-      expect(screen.getByLabelText("view-record-detail")).toBeInTheDocument()
+      expect(screen.queryByLabelText("view-record-detail")).not.toBeInTheDocument()
     })
 
-    const viewBtn = screen.getByLabelText("view-record-detail")
-    fireEvent.click(viewBtn)
+    const termEl = screen.getByText("frog")
+    fireEvent.click(termEl)
 
     await waitFor(() => {
       const defs = screen.getAllByText("an amphibian")
@@ -528,6 +528,11 @@ describe("DictionaryPage", () => {
       expect(getPartOfSpeechBadge("形容词").abbr).toBe("adj.")
       expect(getPartOfSpeechBadge("名词").abbr).toBe("n.")
       expect(getPartOfSpeechBadge("动词").abbr).toBe("v.")
+      expect(getPartOfSpeechBadge("verb phrase").abbr).toBe("v. phr.")
+      expect(getPartOfSpeechBadge("Verb Phrase").abbr).toBe("v. phr.")
+      expect(getPartOfSpeechBadge("动词短语").abbr).toBe("v. phr.")
+      expect(getPartOfSpeechBadge("phrasal verb").abbr).toBe("v. phr.")
+      expect(getPartOfSpeechBadge("noun phrase").abbr).toBe("n. phr.")
     })
 
     it("renders abbreviated part of speech tag on the word card", async () => {
@@ -575,6 +580,72 @@ describe("DictionaryPage", () => {
         expect(screen.getByText("闪卡复习")).toBeInTheDocument()
         expect(screen.getByText("FSRS 间隔记忆")).toBeInTheDocument()
       })
+    })
+  })
+
+  it("does not render example sentence in the table row but shows it in detail modal", async () => {
+    const baseRecord = mockRecords[0]!
+    const recordWithSentence: LocalDictionaryRecord = {
+      ...baseRecord,
+      id: "rec-sentence-1",
+      columns: [...baseRecord.columns, { id: "c-sentence", name: "Sentence", position: 2 }],
+      cells: {
+        ...baseRecord.cells,
+        "c-sentence": "The frog leaped into the pond.",
+      },
+    }
+
+    listRecordsMock.mockResolvedValue({
+      ok: true,
+      data: { records: [recordWithSentence], total: 1, page: 1, pageSize: 15 },
+      changeSequence: 1,
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("frog")).toBeInTheDocument()
+    })
+
+    // Sentence should not be rendered in the table row
+    expect(screen.queryByText('"The frog leaped into the pond."')).not.toBeInTheDocument()
+
+    // Open detail dialog by clicking the word
+    fireEvent.click(screen.getByText("frog"))
+
+    // Now sentence should be visible in the detail dialog
+    await waitFor(() => {
+      expect(screen.getByText('"The frog leaped into the pond."')).toBeInTheDocument()
+    })
+  })
+
+  it("renders enhanced pagination and allows page navigation", async () => {
+    listRecordsMock.mockResolvedValue({
+      ok: true,
+      data: { records: mockRecords, total: 45, page: 1, pageSize: 15 },
+      changeSequence: 1,
+    })
+
+    renderWithQuery(<DictionaryPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("frog")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/Total:/)).toHaveTextContent("Total: 45")
+    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument()
+    expect(screen.getByLabelText("page-1")).toBeInTheDocument()
+    expect(screen.getByLabelText("page-2")).toBeInTheDocument()
+    expect(screen.getByLabelText("page-3")).toBeInTheDocument()
+    expect(screen.getByLabelText("previous-page")).toBeDisabled()
+    expect(screen.getByLabelText("next-page")).not.toBeDisabled()
+
+    fireEvent.click(screen.getByLabelText("page-2"))
+
+    await waitFor(() => {
+      expect(listRecordsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2, pageSize: 15 }),
+      )
     })
   })
 })

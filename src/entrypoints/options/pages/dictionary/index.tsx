@@ -334,6 +334,70 @@ const POS_MAP: Record<string, PartOfSpeechMeta> = {
     abbr: "idiom",
     colorClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
   },
+
+  // 动词短语 (Verb Phrase / Phrasal Verb) -> v. phr. (Emerald)
+  "verb phrase": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  "phrasal verb": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  "v. phr": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  "v phr": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  "v.phr": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  "phr. v": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  "phr v": {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  动词短语: {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  动词词组: {
+    abbr: "v. phr.",
+    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+
+  // 名词短语 (Noun Phrase) -> n. phr. (Blue)
+  "noun phrase": {
+    abbr: "n. phr.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  "n. phr": {
+    abbr: "n. phr.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  "n phr": {
+    abbr: "n. phr.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  "n.phr": {
+    abbr: "n. phr.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  名词短语: {
+    abbr: "n. phr.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  名词词组: {
+    abbr: "n. phr.",
+    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
 }
 
 export function getPartOfSpeechBadge(rawPos: string): PartOfSpeechMeta {
@@ -346,7 +410,7 @@ export function getPartOfSpeechBadge(rawPos: string): PartOfSpeechMeta {
   }
 
   const normalized = trimmed.toLowerCase().replace(/\.+$/, "")
-  const matched = POS_MAP[normalized]
+  const matched = POS_MAP[normalized] || POS_MAP[normalized.replace(/[\s\-_]+/g, " ")]
   if (matched) {
     return matched
   }
@@ -386,6 +450,51 @@ function playWordPronunciation(text: string, e?: React.MouseEvent) {
   } catch (err) {
     console.error("Speech synthesis failed:", err)
   }
+}
+
+type PageItem =
+  | { type: "page"; page: number; key: string }
+  | { type: "ellipsis"; key: "ellipsis-start" | "ellipsis-end" }
+
+function getPageItems(currentPage: number, totalPages: number): PageItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => ({
+      type: "page",
+      page: i + 1,
+      key: `page-${i + 1}`,
+    }))
+  }
+  if (currentPage <= 4) {
+    return [
+      { type: "page", page: 1, key: "page-1" },
+      { type: "page", page: 2, key: "page-2" },
+      { type: "page", page: 3, key: "page-3" },
+      { type: "page", page: 4, key: "page-4" },
+      { type: "page", page: 5, key: "page-5" },
+      { type: "ellipsis", key: "ellipsis-end" },
+      { type: "page", page: totalPages, key: `page-${totalPages}` },
+    ]
+  }
+  if (currentPage >= totalPages - 3) {
+    return [
+      { type: "page", page: 1, key: "page-1" },
+      { type: "ellipsis", key: "ellipsis-start" },
+      { type: "page", page: totalPages - 4, key: `page-${totalPages - 4}` },
+      { type: "page", page: totalPages - 3, key: `page-${totalPages - 3}` },
+      { type: "page", page: totalPages - 2, key: `page-${totalPages - 2}` },
+      { type: "page", page: totalPages - 1, key: `page-${totalPages - 1}` },
+      { type: "page", page: totalPages, key: `page-${totalPages}` },
+    ]
+  }
+  return [
+    { type: "page", page: 1, key: "page-1" },
+    { type: "ellipsis", key: "ellipsis-start" },
+    { type: "page", page: currentPage - 1, key: `page-${currentPage - 1}` },
+    { type: "page", page: currentPage, key: `page-${currentPage}` },
+    { type: "page", page: currentPage + 1, key: `page-${currentPage + 1}` },
+    { type: "ellipsis", key: "ellipsis-end" },
+    { type: "page", page: totalPages, key: `page-${totalPages}` },
+  ]
 }
 
 export function DictionaryPage() {
@@ -941,7 +1050,7 @@ export function DictionaryPage() {
                 <TableHead className="w-[22%]">
                   {i18n.t("options.dictionary.columns.sourceAndTime")}
                 </TableHead>
-                <TableHead className="w-[18%] text-right">
+                <TableHead className="w-[18%]">
                   {i18n.t("options.dictionary.columns.actions")}
                 </TableHead>
               </TableRow>
@@ -1004,20 +1113,6 @@ export function DictionaryPage() {
                           </div>
                         )}
 
-                        {/* Sentence quote */}
-                        {fields.sentence && (
-                          <div className="border-l-2 border-primary/40 pl-2.5 text-xs text-muted-foreground">
-                            <span className="font-serif text-foreground/80 italic">
-                              "{fields.sentence}"
-                            </span>
-                            {fields.sentenceTranslation && (
-                              <span className="ml-2 text-muted-foreground/80">
-                                ({fields.sentenceTranslation})
-                              </span>
-                            )}
-                          </div>
-                        )}
-
                         {/* Extra metadata fields as tags */}
                         {fields.otherFields.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
@@ -1059,20 +1154,11 @@ export function DictionaryPage() {
                     </TableCell>
 
                     {/* Right Column: Actions */}
-                    <TableCell className="py-3.5 text-right align-top">
-                      <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          aria-label="view-record-detail"
-                          title={i18n.t("options.dictionary.viewDetail")}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setViewingRecord(record)
-                          }}
-                        >
-                          <Icon icon="tabler:eye" className="size-3.5" />
-                        </Button>
+                    <TableCell className="py-3.5 align-top">
+                      <div
+                        className="flex justify-start gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           variant="ghost"
                           size="xs"
@@ -1121,29 +1207,71 @@ export function DictionaryPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {page} / {totalPages} (total: {total})
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="xs"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="xs"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </Button>
+      {total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>
+              Total: <strong className="font-semibold text-foreground">{total}</strong>
+            </span>
+            <span className="text-muted-foreground/60">•</span>
+            <span>
+              Page {page} of {totalPages}
+            </span>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="previous-page"
+              >
+                <Icon icon="tabler:chevron-left" className="mr-1 size-3.5" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {getPageItems(page, totalPages).map((item) => {
+                  if (item.type === "ellipsis") {
+                    return (
+                      <span
+                        key={item.key}
+                        className="px-1 text-center font-mono text-xs text-muted-foreground"
+                      >
+                        ...
+                      </span>
+                    )
+                  }
+                  const isCurrent = item.page === page
+                  return (
+                    <Button
+                      key={item.key}
+                      variant={isCurrent ? "default" : "outline"}
+                      size="xs"
+                      className="size-7 p-0 font-medium"
+                      aria-label={`page-${item.page}`}
+                      aria-current={isCurrent ? "page" : undefined}
+                      onClick={() => setPage(item.page)}
+                    >
+                      {item.page}
+                    </Button>
+                  )
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="next-page"
+              >
+                Next
+                <Icon icon="tabler:chevron-right" className="ml-1 size-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1552,7 +1680,7 @@ export function DictionaryPage() {
                     <TableHead className="w-[25%]">
                       {i18n.t("options.dictionary.columns.sourceAndTime")}
                     </TableHead>
-                    <TableHead className="w-[20%] text-right">
+                    <TableHead className="w-[20%]">
                       {i18n.t("options.dictionary.columns.actions")}
                     </TableHead>
                   </TableRow>
@@ -1632,8 +1760,8 @@ export function DictionaryPage() {
                         </TableCell>
 
                         {/* Right: Actions */}
-                        <TableCell className="py-3 text-right align-top">
-                          <div className="flex items-center justify-end gap-1">
+                        <TableCell className="py-3 align-top">
+                          <div className="flex items-center justify-start gap-1">
                             <Button
                               size="xs"
                               variant="outline"

@@ -737,20 +737,7 @@ export function WebdavSyncPage() {
         </Dialog>
 
         {/* WebDAV Multi-Vendor Setup Guide Dialog */}
-        <WebdavSetupGuideDialog
-          open={isSetupGuideOpen}
-          onOpenChange={setIsSetupGuideOpen}
-          canApplyPreset={canEdit}
-          onApplyPreset={(endpoint) => {
-            setWebdavEndpoint(endpoint)
-            toastManager.add({
-              type: "info",
-              title: "已填入端点服务地址",
-              description: "请输入该服务商的账号与密码进行连接",
-            })
-            usernameInputRef.current?.focus()
-          }}
-        />
+        <WebdavSetupGuideDialog open={isSetupGuideOpen} onOpenChange={setIsSetupGuideOpen} />
       </ConfigDetailSection>
     </PageLayout>
   )
