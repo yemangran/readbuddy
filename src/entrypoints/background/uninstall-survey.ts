@@ -1,79 +1,41 @@
 import { browser } from "#imports"
-import { EXTENSION_VERSION } from "@/utils/constants/app"
 import { i18n } from "@/utils/i18n"
 
-const EDGE_VERSION_RE = /Edg(?:e|A|iOS)?\/([\d.]+)/i
-const EDGE_LEGACY_VERSION_RE = /Edge\/([\d.]+)/i
-const FIREFOX_VERSION_RE = /Firefox\/([\d.]+)/i
-const CHROME_VERSION_RE = /Chrome\/([\d.]+)/i
-const ANY_BROWSER_VERSION_RE = /(?:Edg|Edge|Firefox|Chrome)\/([\d.]+)/i
-const IOS_PLATFORM_RE = /iPhone|iPad|iPod|iOS/i
-const ANDROID_PLATFORM_RE = /Android/i
-const WINDOWS_PLATFORM_RE = /Windows/i
-const MAC_PLATFORM_RE = /Mac/i
-const LINUX_PLATFORM_RE = /Linux/i
+/**
+ * Origin and path of the canonical open-source issue tracker — the only place the
+ * uninstall URL may point. MUST stay in sync with `uninstallSurveyUrl` in
+ * `src/locales/*.yml` (see docs/specs/remove-upstream-website-links.md).
+ */
+const CANONICAL_TRACKER_ORIGIN = "https://github.com"
+const CANONICAL_TRACKER_PATH = "/yemangran/readbuddy"
 
-type BrowserType = "chrome" | "edge" | "firefox"
-
-function getBrowserVersion(browserType: string): string {
-  const ua = globalThis.navigator?.userAgent ?? ""
-  const type = browserType.toLowerCase() as BrowserType
-
-  if (type === "edge") {
-    return ua.match(EDGE_VERSION_RE)?.[1] ?? ua.match(EDGE_LEGACY_VERSION_RE)?.[1] ?? "unknown"
-  }
-
-  if (type === "firefox") return ua.match(FIREFOX_VERSION_RE)?.[1] ?? "unknown"
-
-  if (type === "chrome") return ua.match(CHROME_VERSION_RE)?.[1] ?? "unknown"
-
-  return ua.match(ANY_BROWSER_VERSION_RE)?.[1] ?? "unknown"
-}
-
-function getOS(): string {
-  const nav = globalThis.navigator as Navigator & {
-    userAgentData?: {
-      platform?: string
-    }
-  }
-  const platform = `${nav.userAgentData?.platform ?? ""} ${nav.platform ?? ""} ${nav.userAgent ?? ""}`
-
-  if (IOS_PLATFORM_RE.test(platform)) return "iOS"
-  if (ANDROID_PLATFORM_RE.test(platform)) return "Android"
-  if (WINDOWS_PLATFORM_RE.test(platform)) return "Windows"
-  if (MAC_PLATFORM_RE.test(platform)) return "MacOS"
-  if (LINUX_PLATFORM_RE.test(platform)) return "Linux"
-  return "Unknown"
-}
-
-function getUILang(): string {
-  try {
-    const uiLang = browser.i18n?.getUILanguage?.()
-    return uiLang || globalThis.navigator?.language || "unknown"
-  } catch {
-    return globalThis.navigator?.language || "unknown"
-  }
-}
-
+/**
+ * The uninstall lifecycle seam: the single URL the browser opens after the extension is
+ * removed.
+ *
+ * Uninstalling must stay private, so no environment fingerprint is ever collected here —
+ * no extension version, browser type/version, OS or UI language is appended. The target is
+ * either the parameterless canonical issue tracker or nothing at all: any other value
+ * (blank, malformed, a leftover survey host) clears the registration so uninstall opens
+ * no page instead of navigating the user to an unknown host.
+ */
 export async function setupUninstallSurvey() {
-  const surveyUrl = i18n.t("uninstallSurveyUrl")
-  const browserType = import.meta.env.BROWSER || "chrome"
+  void browser.runtime.setUninstallURL(resolveUninstallURL(i18n.t("uninstallSurveyUrl")))
+}
 
+function resolveUninstallURL(localizedUrl: string): string {
   try {
-    const url = new URL(surveyUrl)
-    if (url.hostname.includes("github.com")) {
-      void browser.runtime.setUninstallURL(url.toString())
-      return
-    }
+    const url = new URL(localizedUrl)
+    const isCanonicalTracker =
+      url.origin === CANONICAL_TRACKER_ORIGIN && url.pathname.startsWith(CANONICAL_TRACKER_PATH)
+    if (!isCanonicalTracker) return ""
 
-    url.searchParams.set("version", EXTENSION_VERSION)
-    url.searchParams.set("browser_type", browserType)
-    url.searchParams.set("browser_version", getBrowserVersion(browserType))
-    url.searchParams.set("os", getOS())
-    url.searchParams.set("ui_lang", getUILang())
-
-    void browser.runtime.setUninstallURL(url.toString())
+    // Drop every query parameter so no tracking metadata can survive into the uninstall
+    // URL, however the localized value was authored.
+    url.search = ""
+    return url.toString()
   } catch {
-    void browser.runtime.setUninstallURL(surveyUrl)
+    // Not a URL at all: no page to open on uninstall.
+    return ""
   }
 }
