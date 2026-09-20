@@ -269,6 +269,7 @@ options:
     apiKey:
       showAPIKey: API anahtarını göster
       getAPIKey: API anahtarı al
+    howToConfigure: Nasıl yapılandırılır?
     testConnection:
       button: Bağlantıyı test et
       testing: Test ediliyor...

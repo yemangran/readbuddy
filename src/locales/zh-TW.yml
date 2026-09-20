@@ -270,6 +270,7 @@ options:
     apiKey:
       showAPIKey: 顯示 API 金鑰
       getAPIKey: 取得 API 金鑰
+    howToConfigure: 如何設定？
     testConnection:
       button: 測試連線
       testing: 測試中…

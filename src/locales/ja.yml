@@ -269,6 +269,7 @@ options:
     apiKey:
       showAPIKey: APIキーを表示
       getAPIKey: APIキーを取得
+    howToConfigure: 設定方法
     testConnection:
       button: 接続テスト
       testing: テスト中...

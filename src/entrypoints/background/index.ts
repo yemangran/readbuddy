@@ -29,7 +29,6 @@ import {
   setupLocalDictionarySyncEngine,
 } from "./local-dictionary"
 import { initMockData } from "./mock-data"
-import { newUserGuide } from "./new-user-guide"
 import { setupPageTranslationHandlers } from "./page-translation"
 import { proxyFetch } from "./proxy-fetch"
 import { setupSidePanelMessageHandler } from "./side-panel"
@@ -86,7 +85,6 @@ export default defineBackground({
       await cleanupAllAiSegmentationCache()
     })
 
-    newUserGuide()
     setupAnalyticsMessageHandlers()
     translationMessage()
     registerActionIconListeners()

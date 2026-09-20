@@ -269,6 +269,7 @@ options:
     apiKey:
       showAPIKey: Показать API-ключ
       getAPIKey: Получить API-ключ
+    howToConfigure: Как настроить?
     testConnection:
       button: Проверить соединение
       testing: Тестирование...

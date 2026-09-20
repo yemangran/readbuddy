@@ -16,7 +16,6 @@ import deeplxLogoDark from "@/assets/providers/deeplx-dark.svg?url&no-inline"
 import deeplxLogoLight from "@/assets/providers/deeplx-light.svg?url&no-inline"
 import jalapenoCloudLogo from "@/assets/providers/jalapeno-cloud.png?url&no-inline"
 import tensdaqLogoColor from "@/assets/providers/tensdaq-color.svg?url&no-inline"
-import { env } from "@/env"
 import {
   API_PROVIDER_TYPES,
   DEDICATED_LLM_PROVIDER_TYPES,
@@ -30,6 +29,7 @@ import {
   isCustomModelOnlyProvider,
 } from "@/types/config/provider"
 import { omit, pick } from "@/types/utils"
+import { GITHUB_REPO_URL } from "@/utils/constants/app"
 import { i18n } from "@/utils/i18n"
 import { getLobeIconsCDNUrlFn } from "../logo"
 
@@ -659,7 +659,9 @@ export const MICROSOFT_TRANSLATE_PROVIDER_ID = DEFAULT_PROVIDER_CONFIG["microsof
  */
 export const FORCED_PROVIDER_HEADERS: Partial<Record<LLMProviderTypes, Record<string, string>>> = {
   openrouter: {
-    "HTTP-Referer": env.WXT_WEBSITE_URL,
+    // OpenRouter's app attribution, pointed at this open-source repository rather
+    // than the upstream commercial website the fork no longer depends on.
+    "HTTP-Referer": GITHUB_REPO_URL,
     "X-OpenRouter-Title": APP_NAME,
   },
   // Anthropic's API refuses direct browser calls without this, so it is not a default the user

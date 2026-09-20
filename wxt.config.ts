@@ -3,11 +3,7 @@ import process from "node:process"
 import ViteYaml from "@modyfi/vite-plugin-yaml"
 import { defineConfig } from "wxt"
 import { z } from "zod"
-import {
-  createExtensionClientEnvSchema,
-  isLocalPackagesEnabled,
-  resolveExtensionEnv,
-} from "./src/env/shared"
+import { createExtensionClientEnvSchema, isLocalPackagesEnabled } from "./src/env/shared"
 
 const WXT_API_KEY_PATTERN = /^WXT_.*API_KEY/
 const ALLOWED_BUNDLED_API_KEYS = new Set(["WXT_POSTHOG_API_KEY"])
@@ -45,7 +41,6 @@ export default defineConfig({
       "storage",
       "tabs",
       "alarms",
-      "cookies",
       "contextMenus",
       "identity",
       "scripting",
@@ -150,7 +145,7 @@ export default defineConfig({
                     configEnv.mode === "production",
                     shouldSkipEnvValidation,
                   ),
-                ).parse(resolveExtensionEnv(process.env))
+                ).parse(process.env)
 
                 const apiKeyVars = Object.keys(process.env)
                   .filter((key) => WXT_API_KEY_PATTERN.test(key))

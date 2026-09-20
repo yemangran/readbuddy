@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { APIProviderTypes } from "@/types/config/provider"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { ConfigHeader } from "../config-header"
@@ -13,7 +12,10 @@ describe("ConfigHeader", () => {
   it("links a provider's logo to its own canonical homepage", () => {
     render(<ConfigHeader providerType="jalapenocloud" />)
 
-    expect(screen.getByRole("link")).toHaveAttribute("href", "https://www.jalapeno-cloud.ai")
+    expect(screen.getByRole("link", { name: /Jalapeno Cloud/ })).toHaveAttribute(
+      "href",
+      "https://www.jalapeno-cloud.ai",
+    )
   })
 
   it("renders no sponsor call to action for a former sponsor without an API key", () => {
@@ -25,18 +27,23 @@ describe("ConfigHeader", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("renders no external tutorial link for any provider", () => {
-    for (const providerType of ["azure", "openrouter", "deepl"] as APIProviderTypes[]) {
-      const { unmount } = render(<ConfigHeader providerType={providerType} />)
+  it("redirects the tutorial link to the open source repository documentation", () => {
+    render(<ConfigHeader providerType="azure" />)
 
-      expect(screen.queryByText("options.apiProviders.howToConfigure")).not.toBeInTheDocument()
-      unmount()
-    }
+    const tutorialLink = screen.getByText("options.apiProviders.howToConfigure")
+    expect(tutorialLink.closest("a")).toHaveAttribute(
+      "href",
+      "https://github.com/yemangran/readbuddy#readme",
+    )
   })
 
-  it("renders no link at all for the protocol adapters, whose guidance is local", () => {
+  it("renders tutorial link and logo link without upstream commercial domain", () => {
     render(<ConfigHeader providerType="openai-compatible" />)
 
-    expect(screen.queryByRole("link")).not.toBeInTheDocument()
+    const links = screen.getAllByRole("link")
+    expect(links.length).toBeGreaterThanOrEqual(1)
+    for (const link of links) {
+      expect(link.getAttribute("href")).not.toContain("readfrog.app")
+    }
   })
 })

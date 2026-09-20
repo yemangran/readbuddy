@@ -268,7 +268,8 @@ options:
         huggingface: Hugging Face 추론 API, 수천 개의 오픈소스 모델 접근 제공
     apiKey:
       showAPIKey: API Key 표시
-      getAPIKey: API Key 받기
+      getAPIKey: API Key 가져오기
+    howToConfigure: 설정 방법
     testConnection:
       button: 연결 테스트
       testing: 테스트 중...

@@ -399,6 +399,7 @@ options:
     apiKey:
       showAPIKey: Show API key
       getAPIKey: Get API key
+    howToConfigure: How to configure?
     testConnection:
       button: Test connection
       testing: Testing...

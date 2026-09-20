@@ -399,6 +399,7 @@ options:
     apiKey:
       showAPIKey: 显示 API Key
       getAPIKey: 获取 API Key
+    howToConfigure: 如何配置?
     testConnection:
       button: 测试连接
       testing: 测试中...

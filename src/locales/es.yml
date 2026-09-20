@@ -270,6 +270,7 @@ options:
     apiKey:
       showAPIKey: Mostrar clave API
       getAPIKey: Obtener clave API
+    howToConfigure: ¿Cómo configurar?
     testConnection:
       button: Probar conexión
       testing: Probando...

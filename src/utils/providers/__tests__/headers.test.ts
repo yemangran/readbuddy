@@ -46,7 +46,9 @@ describe("provider headers", () => {
     it("keeps OpenRouter attribution when the user adds their own", () => {
       expect(getProviderHeadersWithOverride("openrouter", { "X-Test": "1" })).toEqual({
         "X-Test": "1",
-        "HTTP-Referer": "https://www.readfrog.app",
+        // Attribution points at this open-source repository, never at the
+        // upstream commercial website the fork no longer depends on.
+        "HTTP-Referer": "https://github.com/yemangran/readbuddy",
         "X-OpenRouter-Title": "Read Frog",
       })
     })

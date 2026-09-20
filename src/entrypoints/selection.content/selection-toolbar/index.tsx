@@ -1,21 +1,13 @@
-import type {
-  EbookBridgeSelectionDirection,
-  EbookBridgeSelectionPayload,
-} from "@read-frog/definitions"
 import type { ModalDialogHostController } from "./modal-dialog-host"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react"
 import {
   SELECTION_CONTENT_OVERLAY_LAYERS,
   SELECTION_CONTENT_OVERLAY_ROOT_ATTRIBUTE,
 } from "@/entrypoints/selection.content/overlay-layers"
 import { configFieldsAtomMap } from "@/utils/atoms/config"
 import { NOTRANSLATE_CLASS } from "@/utils/constants/dom-labels"
-import {
-  EXTERNAL_SELECTION_CLEAR_EVENT,
-  EXTERNAL_SELECTION_OPEN_EVENT,
-  MARGIN,
-} from "@/utils/constants/selection"
+import { MARGIN } from "@/utils/constants/selection"
 import { getSelectionToolbarActions } from "@/utils/custom-actions"
 import { cn } from "@/utils/styles/utils"
 import { matchDomainPattern } from "@/utils/url"
@@ -36,14 +28,6 @@ import {
 } from "./positioning"
 import { SpeakButton } from "./speak-button"
 import { TranslateButton } from "./translate-button"
-
-const EXTERNAL_SELECTION_DIRECTION_MAP: Record<EbookBridgeSelectionDirection, SelectionDirection> =
-  {
-    "top-left": SelectionDirection.TOP_LEFT,
-    "top-right": SelectionDirection.TOP_RIGHT,
-    "bottom-left": SelectionDirection.BOTTOM_LEFT,
-    "bottom-right": SelectionDirection.BOTTOM_RIGHT,
-  }
 
 const SELECTION_GUARD_INTERACTIVE_SELECTOR = [
   "button",
@@ -219,9 +203,6 @@ export function SelectionToolbar() {
   const isSelectionToolbarVisible =
     isSelectionToolbarOpen && selectionToolbar.enabled && !isSiteDisabled && hasAnyEnabledFeature
   const dropdownOpenRef = useRef(false)
-  // Bumped per external (ebook bridge) selection so the position is re-applied
-  // even when the toolbar is already visible (visibility doesn't flip then).
-  const [externalSelectionTick, setExternalSelectionTick] = useState(0)
 
   const placeHostForSelection = useCallback(
     (ranges: Parameters<ModalDialogHostController["placeForRanges"]>[0]) => {
@@ -300,7 +281,7 @@ export function SelectionToolbar() {
   useLayoutEffect(() => {
     updatePosition({ remeasureSelection: true })
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the dependencies are re-run triggers, not values the effect body reads
-  }, [updatePosition, externalSelectionTick])
+  }, [updatePosition])
 
   useEffect(() => {
     if (!isSelectionToolbarVisible) {
@@ -511,61 +492,6 @@ export function SelectionToolbar() {
     window.addEventListener(DropEvent, handler)
     return () => window.removeEventListener(DropEvent, handler)
   }, [])
-
-  // External selections (e.g. the readfrog.app ebook reader) relay in-book
-  // selections that never touch this frame's Selection API, so they enter
-  // through CustomEvents and reuse the same state mutations as handleMouseUp
-  useEffect(() => {
-    const handleExternalSelectionOpen = (e: Event) => {
-      const detail = (e as CustomEvent<EbookBridgeSelectionPayload>).detail
-      if (!detail) {
-        return
-      }
-
-      const paragraphs =
-        detail.contextParagraphs.length > 0 ? detail.contextParagraphs : [detail.text]
-
-      preserveSelectionStateRef.current = false
-      setSelectionState({
-        selection: { text: detail.text, ranges: [] },
-        context: {
-          text: paragraphs.join("\n\n"),
-          paragraphs,
-        },
-      })
-      selectionDirectionRef.current = EXTERNAL_SELECTION_DIRECTION_MAP[detail.direction]
-      selectionPositionRef.current = detail.anchor
-      selectionAnchorTrackerRef.current = null
-      selectionScrollTargetsRef.current = []
-      setIsSelectionToolbarOpen(true)
-      // Force a reposition: the toolbar may already be open, in which case the
-      // updatePosition layout effect would not re-run on its own.
-      setExternalSelectionTick((tick) => tick + 1)
-    }
-
-    const handleExternalSelectionClear = () => {
-      // Bridged clears only fire for in-book actions (mousedown, collapsed
-      // selection, page turn) — the same intent as a top-frame mousedown
-      // outside the overlay, so reset the preserve flag like handleMouseDown
-      // does instead of letting a stale flag swallow the dismissal.
-      preserveSelectionStateRef.current = false
-
-      clearSelectionState()
-      selectionPositionRef.current = null
-      selectionAnchorTrackerRef.current = null
-      selectionScrollTargetsRef.current = []
-      // Don't hide toolbar when dropdown is open to prevent unwanted dismissal
-      if (!dropdownOpenRef.current) setIsSelectionToolbarOpen(false)
-    }
-
-    window.addEventListener(EXTERNAL_SELECTION_OPEN_EVENT, handleExternalSelectionOpen)
-    window.addEventListener(EXTERNAL_SELECTION_CLEAR_EVENT, handleExternalSelectionClear)
-
-    return () => {
-      window.removeEventListener(EXTERNAL_SELECTION_OPEN_EVENT, handleExternalSelectionOpen)
-      window.removeEventListener(EXTERNAL_SELECTION_CLEAR_EVENT, handleExternalSelectionClear)
-    }
-  }, [clearSelectionState, setIsSelectionToolbarOpen, setSelectionState])
 
   return (
     <div
