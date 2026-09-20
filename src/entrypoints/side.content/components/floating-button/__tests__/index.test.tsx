@@ -13,7 +13,6 @@ vi.mock("#imports", () => ({
   browser: {
     runtime: {
       getURL: (path = "") => `chrome-extension://test-extension${path}`,
-      getManifest: () => ({ version: "1.43.3" }),
     },
   },
   i18n: {
@@ -44,7 +43,6 @@ vi.mock("@/utils/atoms/config", () => {
     configFieldsAtomMap: {
       floatingButton: floatingButtonAtom,
       sideContent: atom({ width: 360 }),
-      uiLanguage: atom("en"),
     },
   }
 })
@@ -63,10 +61,6 @@ vi.mock("@/utils/message", () => ({
   sendMessage: vi.fn<(...args: any[]) => any>(),
 }))
 
-vi.mock("@/utils/i18n/locale-map", () => ({
-  resolveUiLocale: (uiLanguage: string) => (uiLanguage === "auto" ? "en" : uiLanguage),
-}))
-
 vi.mock("@/components/ui/base-ui/toast", () => ({
   anchoredToastManager: {
     add: (...args: unknown[]) => toastAddMock(...args),
@@ -74,8 +68,6 @@ vi.mock("@/components/ui/base-ui/toast", () => ({
 }))
 
 beforeAll(() => {
-  vi.stubEnv("BROWSER", "chrome")
-
   class ResizeObserverMock {
     observe() {}
     unobserve() {}
@@ -318,7 +310,9 @@ describe("floatingButton controls", () => {
     expect(sendMessage).toHaveBeenCalledWith("toggleSidePanel", undefined)
   })
 
-  it("places feedback after settings and opens a localized Featurebase URL with safe metadata", () => {
+  it("places feedback after settings and opens the parameterless open-source issue tracker", () => {
+    // Stage a page whose URL would leak a token if it were serialized into the
+    // outbound link; the exact-URL assertion below catches any such regression.
     window.history.replaceState({}, "", "/private/path?token=secret#section")
     renderFloatingButton()
 
@@ -335,23 +329,11 @@ describe("floatingButton controls", () => {
 
     fireEvent.click(feedbackButton)
 
-    const openPageCall = vi
-      .mocked(sendMessage)
-      .mock.calls.find(([message]) => message === "openPage")
-    const openPagePayload = openPageCall?.[1] as { active: boolean; url: string } | undefined
-    expect(openPagePayload).toBeDefined()
-    const openedUrl = new URL(openPagePayload!.url)
-
-    expect(openedUrl.origin).toBe("https://feedback.readfrog.app")
-    expect(openedUrl.pathname).toBe("/en")
-    expect(JSON.parse(openedUrl.searchParams.get("metaData")!)).toEqual({
-      browser: "chrome",
-      extension_version: "1.0.0",
-      // The intent is query/hash stripping, not the origin itself.
-      page_url: `${window.location.origin}/private/path`,
-    })
-    expect(openPagePayload).toEqual({
-      url: openedUrl.toString(),
+    // Canonical, parameterless tracker URL: no locale prefix and no metaData
+    // payload, so the current page URL, browser name and extension version are
+    // never serialized into an outbound link.
+    expect(sendMessage).toHaveBeenCalledWith("openPage", {
+      url: "https://github.com/yemangran/readbuddy/issues",
       active: true,
     })
   })
