@@ -1,25 +1,16 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import * as React from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { GITHUB_REPO_URL } from "@/utils/constants/app"
+import { version } from "../../../../../package.json"
 import { WhatsNewFooter } from "../whats-new-footer"
-
-const getBlogLocaleFromUILanguageMock = vi.fn<(...args: any[]) => any>(() => "zh")
-const getLastViewedBlogDateMock = vi.fn<(...args: any[]) => any>()
-const getLatestBlogDateMock = vi.fn<(...args: any[]) => any>()
-const saveLastViewedBlogDateMock = vi.fn<(...args: any[]) => any>()
 
 vi.mock("#imports", () => ({
   i18n: {
     t: (key: string) => key,
   },
-}))
-
-vi.mock("jotai", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("jotai")>()),
-  useAtomValue: () => "zh-CN",
 }))
 
 vi.mock("@iconify/react", () => ({
@@ -86,7 +77,6 @@ vi.mock("@/components/ui/base-ui/popover", async () => {
     if (renderElement && React.isValidElement(renderElement)) {
       const originalOnClick = renderElement.props.onClick
 
-      // eslint-disable-next-line react/no-clone-element
       return React.cloneElement(renderElement, {
         children,
         onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -118,187 +108,44 @@ vi.mock("@/components/ui/base-ui/popover", async () => {
   }
 })
 
-vi.mock("@/utils/blog", async () => {
-  return {
-    buildBilibiliEmbedUrl: vi.fn<(...args: any[]) => any>(() => null),
-    getBlogLocaleFromUILanguage: (...args: unknown[]) => getBlogLocaleFromUILanguageMock(...args),
-    getLastViewedBlogDate: (...args: unknown[]) => getLastViewedBlogDateMock(...args),
-    getLatestBlogDate: (...args: unknown[]) => getLatestBlogDateMock(...args),
-    hasNewBlogPost: (latestViewedDate: Date | null, latestDate: Date | null) => {
-      if (!latestDate) {
-        return false
-      }
-
-      if (!latestViewedDate) {
-        return true
-      }
-
-      return latestDate > latestViewedDate
-    },
-    saveLastViewedBlogDate: (...args: unknown[]) => saveLastViewedBlogDateMock(...args),
-  }
-})
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-
-  return {
-    promise,
-    resolve,
-  }
-}
-
-function createQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        gcTime: 0,
-        retry: false,
-      },
-    },
-  })
-}
-
-function renderWhatsNewFooter() {
-  const queryClient = createQueryClient()
-
-  return {
-    queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <WhatsNewFooter />
-      </QueryClientProvider>,
-    ),
-  }
-}
-
-const latestBlogPost = {
-  date: new Date("2026-03-20T12:00:00.000Z"),
-  description: "Latest updates",
-  imageUrl: "https://www.readfrog.app/blog/landing-page-refresh/cover-en.png",
-  title: "Spring release",
-  url: "/blog/spring-release",
-}
-
 afterEach(() => {
   vi.clearAllMocks()
 })
 
 describe("whatsNewFooter", () => {
-  it("auto-opens and marks the post as viewed when unread status arrives after the post", async () => {
-    const latestBlogPostDeferred = createDeferred<typeof latestBlogPost | null>()
-    const lastViewedDateDeferred = createDeferred<Date | null>()
+  it("renders the static What's New trigger button without auto-opening", () => {
+    render(<WhatsNewFooter />)
 
-    getLatestBlogDateMock.mockReturnValueOnce(latestBlogPostDeferred.promise)
-    getLastViewedBlogDateMock
-      .mockReturnValueOnce(lastViewedDateDeferred.promise)
-      .mockResolvedValueOnce(latestBlogPost.date)
-    saveLastViewedBlogDateMock.mockResolvedValue(undefined)
-
-    renderWhatsNewFooter()
-
-    await waitFor(() => {
-      expect(getBlogLocaleFromUILanguageMock).toHaveBeenCalledWith("zh-CN")
-      expect(getLatestBlogDateMock).toHaveBeenCalledWith(
-        "https://www.readfrog.app/api/blog/latest",
-        "zh",
-        expect.stringMatching(/^\d+\.\d+\.\d+$/),
-      )
-    })
-
-    await act(async () => {
-      latestBlogPostDeferred.resolve(latestBlogPost)
-    })
-
-    await screen.findByRole("button", { name: "options.whatsNew.title" })
+    const trigger = screen.getByRole("button", { name: "options.whatsNew.title" })
+    expect(trigger).toBeInTheDocument()
     expect(screen.queryByTestId("whats-new-popover-content")).not.toBeInTheDocument()
-    expect(saveLastViewedBlogDateMock).not.toHaveBeenCalled()
-
-    await act(async () => {
-      lastViewedDateDeferred.resolve(null)
-    })
-
-    await screen.findByTestId("whats-new-popover-content")
-    await waitFor(() => {
-      expect(saveLastViewedBlogDateMock).toHaveBeenCalledTimes(1)
-      expect(saveLastViewedBlogDateMock).toHaveBeenCalledWith(latestBlogPost.date)
-    })
   })
 
-  it("does not auto-open or mark the post as viewed when it is already read", async () => {
-    getLatestBlogDateMock.mockResolvedValue(latestBlogPost)
-    getLastViewedBlogDateMock.mockResolvedValue(new Date("2026-03-21T12:00:00.000Z"))
-    saveLastViewedBlogDateMock.mockResolvedValue(undefined)
+  it("opens the static local changelog popover on click and shows version", () => {
+    render(<WhatsNewFooter />)
 
-    renderWhatsNewFooter()
-
-    await screen.findByRole("button", { name: "options.whatsNew.title" })
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(screen.queryByTestId("whats-new-popover-content")).not.toBeInTheDocument()
-    expect(saveLastViewedBlogDateMock).not.toHaveBeenCalled()
-  })
-
-  it("renders the latest blog image in the popover", async () => {
-    getLatestBlogDateMock.mockResolvedValue(latestBlogPost)
-    getLastViewedBlogDateMock.mockResolvedValue(latestBlogPost.date)
-    saveLastViewedBlogDateMock.mockResolvedValue(undefined)
-
-    renderWhatsNewFooter()
-
-    const trigger = await screen.findByRole("button", { name: "options.whatsNew.title" })
+    const trigger = screen.getByRole("button", { name: "options.whatsNew.title" })
     fireEvent.click(trigger)
 
-    const image = await screen.findByRole("img", { name: latestBlogPost.title })
-    expect(image).toHaveAttribute("src", latestBlogPost.imageUrl)
+    expect(screen.getByTestId("whats-new-popover-content")).toBeInTheDocument()
+    expect(screen.getByText(`v${version}`)).toBeInTheDocument()
   })
 
-  it("uses the override URL for the latest blog title and image links", async () => {
-    const urlOverride = "https://www.readfrog.app"
-    getLatestBlogDateMock.mockResolvedValue({ ...latestBlogPost, urlOverride })
-    getLastViewedBlogDateMock.mockResolvedValue(latestBlogPost.date)
-    saveLastViewedBlogDateMock.mockResolvedValue(undefined)
+  it("links to GitHub Releases and contains no commercial blog links or network fetches", () => {
+    render(<WhatsNewFooter />)
 
-    renderWhatsNewFooter()
-
-    const trigger = await screen.findByRole("button", { name: "options.whatsNew.title" })
+    const trigger = screen.getByRole("button", { name: "options.whatsNew.title" })
     fireEvent.click(trigger)
 
-    const links = await screen.findAllByRole("link", { name: latestBlogPost.title })
-    expect(links).toHaveLength(2)
-    const expectedHref = new URL(urlOverride).toString()
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([expectedHref, expectedHref])
-  })
+    const releaseLink = screen.getByRole("link", { name: /releases/i })
+    expect(releaseLink).toHaveAttribute("href", `${GITHUB_REPO_URL}/releases`)
+    expect(releaseLink).toHaveAttribute("target", "_blank")
 
-  it("marks the post as viewed after a manual open once the unread query finishes", async () => {
-    const lastViewedDateDeferred = createDeferred<Date | null>()
-
-    getLatestBlogDateMock.mockResolvedValue(latestBlogPost)
-    getLastViewedBlogDateMock
-      .mockReturnValueOnce(lastViewedDateDeferred.promise)
-      .mockResolvedValueOnce(latestBlogPost.date)
-    saveLastViewedBlogDateMock.mockResolvedValue(undefined)
-
-    renderWhatsNewFooter()
-
-    const trigger = await screen.findByRole("button", { name: "options.whatsNew.title" })
-    fireEvent.click(trigger)
-
-    expect(await screen.findByTestId("whats-new-popover-content")).toBeInTheDocument()
-    expect(saveLastViewedBlogDateMock).not.toHaveBeenCalled()
-
-    await act(async () => {
-      lastViewedDateDeferred.resolve(null)
-    })
-
-    await waitFor(() => {
-      expect(saveLastViewedBlogDateMock).toHaveBeenCalledTimes(1)
-      expect(saveLastViewedBlogDateMock).toHaveBeenCalledWith(latestBlogPost.date)
-    })
+    // Ensure no commercial blog links
+    const allLinks = screen.getAllByRole("link")
+    for (const link of allLinks) {
+      expect(link.getAttribute("href")).not.toContain("readfrog.app")
+      expect(link.getAttribute("href")).not.toContain("/api/blog")
+    }
   })
 })

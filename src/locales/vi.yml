@@ -1,4 +1,4 @@
-﻿name: Read Buddy
+name: Read Buddy
 extName: Read Buddy - Dịch và học
 extDescription: Read Buddy là tiện ích mở rộng trình duyệt mã nguồn mở được thiết kế để giúp bạn học ngôn ngữ sâu từ bất kỳ trang web nào.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: Dịch văn bản với nhiều mô hình đồng thời
   discord:
     tooltip: Tham gia Discord để kết nối với các nhà phát triển và truy cập sớm các tính năng mới
-  blog:
-    notification: Có gì mới trong Read Buddy
   aiSmartContext: Ngữ cảnh thông minh AI
   aiSmartContextDescription: Sử dụng ngữ cảnh trang web để cải thiện chất lượng dịch. Yêu cầu nhà cung cấp dịch LLM.
   more:
@@ -1066,6 +1064,8 @@ options:
           description: Tất cả kết quả AI phân đoạn đã lưu trong bộ nhớ đệm sẽ bị xóa. Lần tới khi phát video có bật AI phân đoạn, phụ đề sẽ được xử lý lại.
   whatsNew:
     title: Có gì mới
+    description: Tiện ích mở rộng ưu tiên cục bộ để học ngôn ngữ và dịch trang web. Dữ liệu được lưu trữ an toàn trên thiết bị và đám mây riêng của bạn.
+    releases: GitHub Releases
   rateUs:
     title: Đánh giá chúng tôi
   configMigration:

@@ -1,4 +1,4 @@
-﻿name: Read Buddy
+name: Read Buddy
 extName: Read Buddy - 翻訳して学ぶ
 extDescription: Read Buddyは、あらゆるウェブサイトから言語を深く学ぶために設計されたオープンソースのブラウザ拡張機能です。
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: 複数の翻訳モデルで同時にテキストを翻訳
   discord:
     tooltip: Discordに参加して開発者とつながり、新機能を先行体験しましょう
-  blog:
-    notification: Read Buddyの最新情報
   aiSmartContext: AI スマートコンテキスト
   aiSmartContextDescription: ウェブページのコンテキストを使用して翻訳品質を向上させます。LLM翻訳プロバイダーが必要です。
   more:
@@ -1066,6 +1064,8 @@ options:
           description: すべてのキャッシュされたAI区切り結果が削除されます。次回AI区切りを有効にして動画を再生すると、字幕が再処理されます。
   whatsNew:
     title: 新機能
+    description: 言語学習とウェブ翻訳のためのローカルファーストな拡張機能。データはローカルとプライベートクラウドに安全に保存されます。
+    releases: GitHub Releases
   rateUs:
     title: レビューを書く
   configMigration:

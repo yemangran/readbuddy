@@ -1,4 +1,4 @@
-﻿name: Read Buddy
+name: Read Buddy
 extName: Read Buddy - 번역하고 배우기
 extDescription: Read Buddy는 모든 웹사이트에서 언어를 깊이 있게 학습할 수 있도록 도와주는 오픈 소스 브라우저 확장 프로그램입니다.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: 여러 번역 모델로 동시에 텍스트 번역
   discord:
     tooltip: Discord에 참여하여 개발자와 소통하고 새 기능을 먼저 체험하세요
-  blog:
-    notification: Read Buddy의 새로운 소식
   aiSmartContext: AI 스마트 컨텍스트
   aiSmartContextDescription: 웹페이지 컨텍스트를 사용하여 번역 품질을 향상시킵니다. LLM 번역 제공자가 필요합니다.
   more:
@@ -1066,6 +1064,8 @@ options:
           description: 모든 캐시된 AI 분할 결과가 삭제됩니다. 다음에 AI 분할이 활성화된 비디오를 재생하면 자막이 다시 처리됩니다.
   whatsNew:
     title: 새로운 기능
+    description: 언어 학습과 웹 번역을 위한 로컬 우선 확장 프로그램입니다. 데이터는 기기와 프라이ベート 클라우드에 안전하게 보관됩니다.
+    releases: GitHub Releases
   rateUs:
     title: 리뷰 남기기
   configMigration:

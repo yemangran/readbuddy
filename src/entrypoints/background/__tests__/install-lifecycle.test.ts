@@ -11,18 +11,17 @@ import { setupInstallLifecycle } from "../install-lifecycle"
  * is replaced with spies, so the assertions only cover what the lifecycle does with the
  * browser tab API: installing must stay silent and open no tab.
  */
-const { mockState, removeCacheGroupMock } = vi.hoisted(() => ({
+const { mockState } = vi.hoisted(() => ({
   mockState: {
     isFreshInstalledConfig: false,
   },
-  removeCacheGroupMock: vi.fn<(group: string) => void>(),
 }))
 
 type InstalledDetails = { reason?: string }
 
 // fake-browser augments the WebExtension event with test-only helpers.
 type FakeInstalledEvent = {
-  trigger: (details: InstalledDetails) => Promise<unknown[]>
+  trigger: (details?: InstalledDetails) => Promise<unknown[]>
   removeAllListeners: () => void
   hasListeners: () => boolean
 }
@@ -46,12 +45,6 @@ vi.mock("../config", () => ({
 
 vi.mock("@/utils/config/default-translate-provider", () => ({
   selectFreshTranslateProviders: vi.fn<() => void>(),
-}))
-
-vi.mock("@/utils/session-cache/session-cache-group-registry", () => ({
-  SessionCacheGroupRegistry: {
-    removeCacheGroup: (group: string) => removeCacheGroupMock(group),
-  },
 }))
 
 describe("setupInstallLifecycle", () => {
@@ -95,11 +88,5 @@ describe("setupInstallLifecycle", () => {
 
     expect(vi.mocked(selectFreshTranslateProviders)).toHaveBeenCalledTimes(1)
     expect(tabsCreate).not.toHaveBeenCalled()
-  })
-
-  it("still clears the blog cache when the extension is updated", async () => {
-    await installedEvent.trigger({ reason: "update" })
-
-    expect(removeCacheGroupMock).toHaveBeenCalledWith("blog-fetch")
   })
 })

@@ -18,9 +18,6 @@ vi.mock("../components/translation-hub-button", () => ({
 vi.mock("../components/discord-button", () => ({
   DiscordButton: () => <div data-testid="discord">Discord</div>,
 }))
-vi.mock("../components/blog-notification", () => ({
-  default: () => <div data-testid="blog">Blog</div>,
-}))
 vi.mock("../components/language-options-selector", () => ({
   default: () => <div data-testid="language-options">Languages</div>,
 }))
@@ -117,6 +114,7 @@ describe("Popup App Component", () => {
     expect(screen.getByText("翻译配置")).toBeInTheDocument()
     expect(screen.getByText("本地学习")).toBeInTheDocument()
     expect(screen.getByTestId("language-options")).toBeInTheDocument()
+    expect(screen.queryByTestId("blog")).not.toBeInTheDocument()
 
     // Due count badge should be visible once loaded
     await waitFor(() => {

@@ -1,4 +1,4 @@
-﻿name: Read Buddy
+name: Read Buddy
 extName: Read Buddy - Traduce y aprende
 extDescription: Read Buddy es una extensión de navegador de código abierto diseñada para ayudarte a aprender idiomas en profundidad desde cualquier sitio web.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: Traduce texto con varios modelos al mismo tiempo
   discord:
     tooltip: Únete a Discord para conectar con desarrolladores y obtener acceso anticipado a nuevas funciones
-  blog:
-    notification: Novedades de Read Buddy
   aiSmartContext: Contexto inteligente de IA
   aiSmartContextDescription: Usa el contexto de la página web para mejorar la calidad de la traducción. Requiere un proveedor de traducción LLM.
   more:
@@ -1182,6 +1180,8 @@ options:
           description: Esto eliminará todos los resultados de segmentación AI en caché. La próxima vez que reproduzcas un video con segmentación AI activada, se volverán a procesar los subtítulos.
   whatsNew:
     title: Novedades
+    description: Una extensión local-first para aprender idiomas y traducir páginas web. Tus datos permanecen seguros en tu dispositivo y nube privada.
+    releases: GitHub Releases
   rateUs:
     title: Calificarnos
   configMigration:

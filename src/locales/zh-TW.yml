@@ -1,4 +1,4 @@
-﻿name: 伴讀書童
+name: 伴讀書童
 extName: 伴讀書童 - 翻譯與學習
 extDescription: 伴讀書童是一款開放原始碼的瀏覽器擴充功能，能協助使用者在任何網站上深入學習語言。
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: 一次使用多個翻譯模型翻譯文字
   discord:
     tooltip: 加入 Discord 與開發者討論，搶先體驗新功能
-  blog:
-    notification: 伴讀書童更新動態
   aiSmartContext: AI 智慧上下文
   aiSmartContextDescription: 結合網頁前後文提升翻譯品質。需要設定 LLM 翻譯服務提供者。
   more:
@@ -1182,6 +1180,8 @@ options:
           description: 這將刪除所有已快取的 AI 斷句結果。下次播放啟用 AI 斷句的影片時，將重新處理字幕。
   whatsNew:
     title: 最近更新
+    description: 專注於沉浸式語言學習與網頁翻譯的本地優先擴充功能。資料完全保存在本機與私有雲中，零外部商業網路輪詢。
+    releases: GitHub Releases 發行日誌
   rateUs:
     title: 給予好評
   configMigration:

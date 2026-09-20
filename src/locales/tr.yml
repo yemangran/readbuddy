@@ -1,4 +1,4 @@
-﻿name: Read Buddy
+name: Read Buddy
 extName: Read Buddy - Çevir ve Öğren
 extDescription: Read Buddy, herhangi bir web sitesinden dilleri derinlemesine öğrenmenize yardımcı olmak için tasarlanmış açık kaynaklı bir tarayıcı uzantısıdır.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: Birden fazla çeviri modeliyle aynı anda metin çevirin
   discord:
     tooltip: Geliştiricilerle bağlantı kurmak ve yeni özelliklere erken erişim sağlamak için Discord'a katılın
-  blog:
-    notification: Read Buddy'da yenilikler
   aiSmartContext: AI Akıllı Bağlam
   aiSmartContextDescription: Çeviri kalitesini artırmak için web sayfası bağlamını kullanır. LLM çeviri sağlayıcısı gerektirir.
   more:
@@ -1066,6 +1064,8 @@ options:
           description: Tüm önbelleğe alınmış AI bölümlendirme sonuçları silinecektir. AI bölümlendirme etkinleştirilmiş bir video oynatıldığında altyazılar yeniden işlenecektir.
   whatsNew:
     title: Yenilikler
+    description: Dil öğrenimi ve web sayfası çevirisi için yerel öncelikli bir uzantı. Verileriniz cihazınızda ve özel bulutta güvende kalır.
+    releases: GitHub Releases
   rateUs:
     title: Bizi Değerlendirin
   configMigration:

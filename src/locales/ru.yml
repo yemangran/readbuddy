@@ -1,4 +1,4 @@
-﻿name: Read Buddy
+name: Read Buddy
 extName: Read Buddy - Переводи и учись
 extDescription: Read Buddy — расширение браузера с открытым исходным кодом, которое поможет вам глубоко изучать языки на любом веб-сайте.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
@@ -50,8 +50,6 @@ popup:
     tooltip: Переводите текст несколькими моделями одновременно
   discord:
     tooltip: Присоединяйтесь к Discord, чтобы связаться с разработчиками и получить ранний доступ к новым функциям
-  blog:
-    notification: Что нового в Read Buddy
   aiSmartContext: Умный контекст ИИ
   aiSmartContextDescription: Использует контекст веб-страницы для улучшения качества перевода. Требуется LLM-провайдер перевода.
   more:
@@ -1066,6 +1064,8 @@ options:
           description: Все кэшированные результаты AI сегментации будут удалены. При следующем воспроизведении видео с включенной AI сегментацией субтитры будут обработаны заново.
   whatsNew:
     title: Что нового
+    description: Локальное расширение для изучения языков и перевода веб-страниц. Данные хранятся на вашем устройстве и в приватном облаке.
+    releases: GitHub Releases
   rateUs:
     title: Оцените нас
   configMigration:

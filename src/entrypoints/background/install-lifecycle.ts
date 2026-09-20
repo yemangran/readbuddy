@@ -1,7 +1,5 @@
 import { browser } from "#imports"
 import { selectFreshTranslateProviders } from "@/utils/config/default-translate-provider"
-import { logger } from "@/utils/logger"
-import { SessionCacheGroupRegistry } from "@/utils/session-cache/session-cache-group-registry"
 import { ensureInitializedConfig, isFreshInstalledConfig } from "./config"
 
 /**
@@ -13,7 +11,7 @@ import { ensureInitializedConfig, isFreshInstalledConfig } from "./config"
  * host being reachable (see docs/specs/remove-upstream-website-links.md).
  */
 export function setupInstallLifecycle() {
-  browser.runtime.onInstalled.addListener(async (details) => {
+  browser.runtime.onInstalled.addListener(async () => {
     await ensureInitializedConfig()
 
     // Deliberately last: probing Google Translate can hang for seconds on networks that
@@ -25,12 +23,6 @@ export function setupInstallLifecycle() {
     // update deserves the same provider selection a fresh install gets.
     if (await isFreshInstalledConfig()) {
       await selectFreshTranslateProviders()
-    }
-
-    // Clear blog cache on extension update to fetch latest blog posts
-    if (details.reason === "update") {
-      logger.info("[Background] Extension updated, clearing blog cache")
-      await SessionCacheGroupRegistry.removeCacheGroup("blog-fetch")
     }
   })
 }

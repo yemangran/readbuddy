@@ -1,7 +1,5 @@
 import { Icon } from "@iconify/react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useAtomValue } from "jotai"
-import { useCallback, useEffect, useEffectEvent, useState } from "react"
+import { useState } from "react"
 import {
   Popover,
   PopoverContent,
@@ -11,103 +9,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/base-ui/popover"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/base-ui/sidebar"
-import { env } from "@/env"
-import { configFieldsAtomMap } from "@/utils/atoms/config"
-import {
-  buildBilibiliEmbedUrl,
-  getBlogLocaleFromUILanguage,
-  getLastViewedBlogDate,
-  getLatestBlogDate,
-  hasNewBlogPost,
-  saveLastViewedBlogDate,
-} from "@/utils/blog"
+import { GITHUB_REPO_URL } from "@/utils/constants/app"
 import { i18n } from "@/utils/i18n"
 import { version } from "../../../../package.json"
 
 export function WhatsNewFooter() {
-  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const uiLanguage = useAtomValue(configFieldsAtomMap.uiLanguage)
-  const blogLocale = getBlogLocaleFromUILanguage(uiLanguage)
-
-  const { data: lastViewedDate, isFetched: isLastViewedDateFetched } = useQuery({
-    queryKey: ["last-viewed-blog-date"],
-    queryFn: getLastViewedBlogDate,
-  })
-
-  const { data: latestBlogPost, isFetched: isLatestBlogPostFetched } = useQuery({
-    queryKey: ["latest-blog-post", blogLocale],
-    queryFn: () => getLatestBlogDate(`${env.WXT_WEBSITE_URL}/api/blog/latest`, blogLocale, version),
-  })
-
-  const markLatestBlogPostViewed = useEffectEvent(async () => {
-    if (!latestBlogPost) {
-      return
-    }
-
-    if (!isLastViewedDateFetched) {
-      return
-    }
-
-    if (lastViewedDate && lastViewedDate.getTime() >= latestBlogPost.date.getTime()) {
-      return
-    }
-
-    await saveLastViewedBlogDate(latestBlogPost.date)
-    await queryClient.invalidateQueries({ queryKey: ["last-viewed-blog-date"] })
-  })
-
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen)
-  }, [])
-
-  const openPopover = useEffectEvent(() => {
-    // eslint-disable-next-line react/set-state-in-effect
-    setOpen(true)
-  })
-
-  const latestBlogPostDate = latestBlogPost?.date ?? null
-  const latestBlogPostKey = latestBlogPost
-    ? `${latestBlogPost.url}:${latestBlogPost.date.toISOString()}`
-    : null
-  const lastViewedDateTimestamp = lastViewedDate?.getTime() ?? null
-  const shouldAutoOpenPopover =
-    isLastViewedDateFetched &&
-    isLatestBlogPostFetched &&
-    hasNewBlogPost(lastViewedDate ?? null, latestBlogPostDate)
-
-  useEffect(() => {
-    if (!shouldAutoOpenPopover) {
-      return
-    }
-
-    // oxlint-disable-next-line react/set-state-in-effect -- auto-opens the popover once the gate flips
-    openPopover()
-  }, [shouldAutoOpenPopover])
-
-  // Persist the visible post so it doesn't reopen on the next visit.
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    void markLatestBlogPostViewed()
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the dependencies are re-run triggers, not values the effect body reads
-  }, [isLastViewedDateFetched, lastViewedDateTimestamp, latestBlogPostKey, open])
-
-  if (!latestBlogPost) {
-    return null
-  }
-
-  const blogUrl = new URL(
-    latestBlogPost.urlOverride ?? latestBlogPost.url,
-    env.WXT_WEBSITE_URL,
-  ).toString()
-  const embedUrl = latestBlogPost.videoUrl ? buildBilibiliEmbedUrl(latestBlogPost.videoUrl) : null
-  const imageUrl = embedUrl ? null : latestBlogPost.imageUrl
 
   return (
-    <Popover key={latestBlogPostKey} open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <SidebarMenu>
         <SidebarMenuItem>
           <PopoverTrigger
@@ -118,7 +28,7 @@ export function WhatsNewFooter() {
               />
             }
           >
-            <Icon icon="tabler:rss" />
+            <Icon icon="tabler:sparkles" />
             <span>{i18n.t("options.whatsNew.title")}</span>
           </PopoverTrigger>
         </SidebarMenuItem>
@@ -129,61 +39,34 @@ export function WhatsNewFooter() {
         initialFocus={(openType) => openType === "keyboard"}
         side="top"
         sideOffset={8}
-        className="w-[min(24rem,calc(100vw-2rem))] gap-4 p-3"
+        className="w-[min(22rem,calc(100vw-2rem))] gap-3 p-4"
       >
-        {embedUrl && (
-          <div className="overflow-hidden rounded-md border bg-black">
-            <iframe
-              title={latestBlogPost.title}
-              src={embedUrl}
-              className="aspect-video w-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              loading="eager"
-              referrerPolicy="strict-origin-when-cross-origin"
-              sandbox="allow-popups allow-presentation allow-scripts"
-            />
+        <PopoverHeader className="gap-1.5">
+          <div className="flex items-center justify-between">
+            <PopoverTitle className="text-sm font-semibold">
+              {i18n.t("options.whatsNew.title")}
+            </PopoverTitle>
+            <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-muted-foreground">
+              v{version}
+            </span>
           </div>
-        )}
-        {imageUrl && (
-          <a
-            href={blogUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block overflow-hidden rounded-md border bg-muted"
-          >
-            <img
-              src={imageUrl}
-              alt={latestBlogPost.title}
-              className="aspect-[1200/630] w-full object-cover"
-              loading="eager"
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          </a>
-        )}
-
-        <PopoverHeader className="gap-2">
-          <PopoverTitle>
-            <a
-              href={blogUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group hover:underline"
-            >
-              <span className="min-w-0">
-                {latestBlogPost.title}
-                <Icon
-                  aria-hidden="true"
-                  icon="tabler:external-link"
-                  className="ml-1 inline size-[1em] align-[-0.125em] text-muted-foreground transition-colors group-hover:text-foreground"
-                />
-              </span>
-            </a>
-          </PopoverTitle>
-          {latestBlogPost.description && (
-            <PopoverDescription>{latestBlogPost.description}</PopoverDescription>
-          )}
+          <PopoverDescription className="text-xs leading-relaxed text-muted-foreground">
+            {i18n.t("options.whatsNew.description")}
+          </PopoverDescription>
         </PopoverHeader>
+
+        <a
+          href={`${GITHUB_REPO_URL}/releases`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted"
+        >
+          <span className="flex items-center gap-2">
+            <Icon icon="tabler:brand-github" className="size-4 text-muted-foreground" />
+            <span>{i18n.t("options.whatsNew.releases")}</span>
+          </span>
+          <Icon icon="tabler:external-link" className="size-3.5 text-muted-foreground" />
+        </a>
       </PopoverContent>
     </Popover>
   )
