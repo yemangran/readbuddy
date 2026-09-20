@@ -48,8 +48,6 @@ popup:
         action: Click to switch to bilingual
   hub:
     tooltip: Translate text with multiple models simultaneously
-  discord:
-    tooltip: Join Discord to connect with developers and get early access to new features
   aiSmartContext: AI Smart Context
   aiSmartContextDescription: Uses webpage context to improve translation quality. Requires LLM translation provider.
   more:
@@ -280,14 +278,10 @@ options:
         videoSubtitles: Video subtitles
         inputTranslation: Input translation
         languageDetection: Language detection
-    sponsorCta: Get fast, cost-effective AI
-    sponsorCtaJalapenoCloud: Get 50% Off GLM 5.2
     setApiKeyWarning:
       message: Please set your API key on the $1 page
     badges:
       featureCount: $1 features
-      sponsor: Sponsor
-      sponsorJalapenoCloud: $$2 Free
     dialog:
       title: Add new provider
       groups:
@@ -379,7 +373,7 @@ options:
         anthropic: Claude models known for safety and reasoning excellence
         xai: Elon Musk's AI company offering Grok models with real-time data access
         atlascloud: Unified OpenAI-compatible access to newer DeepSeek, Kimi, Qwen, Doubao, GLM, and other models
-        jalapenocloud: Enterprise-grade AI used by top teams — now made for you!
+        jalapenocloud: OpenAI-compatible access to GLM, DeepSeek, Kimi, MiniMax, Qwen, and other newer models
         siliconflow: High-performance inference platform for Chinese and international models
         tensdaq: Revolutionary bidding AI MaaS platform with market-driven pricing, eliminating high-cost fixed pricing
         openaiCompatible: Connect to a custom endpoint compatible with the OpenAI Chat Completions API
@@ -405,7 +399,6 @@ options:
     apiKey:
       showAPIKey: Show API key
       getAPIKey: Get API key
-    howToConfigure: How to configure?
     testConnection:
       button: Test connection
       testing: Testing...
@@ -1015,7 +1008,8 @@ options:
               padding: 2px 4px;
               border-radius: 4px;
             }
-          docsLink: How to configure?
+
+            /* Selectors you can use: .read-frog-translated-block-content, [data-read-frog-custom-translation-style='custom'] */
           saveButton: Save
           savedButton: Saved
           validation:
@@ -1258,7 +1252,6 @@ options:
             }
 
             /* Selectors you can use: .read-frog-subtitles-box, .subtitles-main, .subtitles-translation */
-          docsLink: How to configure?
           saveButton: Save
           savedButton: Saved
           validation:

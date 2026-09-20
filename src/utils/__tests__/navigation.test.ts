@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { browser } from "#imports"
 import {
   buildProviderConfigRoute,
-  buildProviderTypeConfigRoute,
   getRequestedProviderType,
   openOptionsPage,
   shouldHighlightApiKey,
@@ -51,24 +50,20 @@ describe("provider config routes", () => {
     )
   })
 
-  it("addresses a provider by type", () => {
-    expect(buildProviderTypeConfigRoute("openai")).toBe(
-      "/api-providers?section=provider-config&providerType=openai",
-    )
-  })
-
   it("asks for the API key highlight only when requested", () => {
-    expect(buildProviderTypeConfigRoute("openai", { highlightApiKey: true })).toBe(
-      "/api-providers?section=provider-config&providerType=openai&highlight=apiKey",
+    expect(buildProviderConfigRoute("provider-1", { highlightApiKey: true })).toBe(
+      "/api-providers?section=provider-config&provider=provider-1&highlight=apiKey",
     )
     expect(buildProviderConfigRoute("provider-1", { highlightApiKey: false })).not.toContain(
       "highlight",
     )
   })
 
-  it("reads back what it wrote", () => {
+  it("reads back a provider-type link someone else wrote", () => {
+    // Nothing in the app builds a providerType route any more — the partner bridge that did is
+    // gone — but the options page still honours one, so bookmarked links keep working.
     const search = new URL(
-      `https://x${buildProviderTypeConfigRoute("deepseek", { highlightApiKey: true })}`,
+      "https://x/api-providers?section=provider-config&providerType=deepseek&highlight=apiKey",
     ).search
 
     expect(getRequestedProviderType(search)).toBe("deepseek")

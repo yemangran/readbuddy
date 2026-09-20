@@ -6,7 +6,6 @@ import type {
   LLMProviderTypes,
   ProviderConfig,
   ProvidersConfig,
-  ProviderSponsorConfig,
 } from "@/types/config/provider"
 import type { Theme } from "@/types/config/theme"
 import { APP_NAME } from "@read-frog/definitions"
@@ -192,8 +191,11 @@ export const PROVIDER_ITEMS: Record<
   {
     logo: (theme: Theme) => string
     name: string
-    website: string
-    sponsor?: ProviderSponsorConfig
+    /**
+     * The provider's own homepage, linked from the config form's logo. Absent means no
+     * link, for providers that have no page of their own to send someone to.
+     */
+    website?: string
     /**
      * Where someone signs up for or copies this provider's key. Only providers that set it get
      * the "Get API key" button next to the API key field — absent means no button, because most
@@ -225,35 +227,22 @@ export const PROVIDER_ITEMS: Record<
   jalapenocloud: {
     logo: () => jalapenoCloudLogo,
     name: "Jalapeno Cloud",
-    website: "https://www.jalapeno-cloud.ai/readfrog",
-    apiKeyUrl: "https://www.jalapeno-cloud.ai/readfrog",
-    sponsor: {
-      sponsoring: true,
-      referUrl: "https://www.jalapeno-cloud.ai/readfrog",
-      // Both default to the generic sponsor wording; Jalapeno names its actual offer instead.
-      badgeI18nKey: "options.apiProviders.badges.sponsorJalapenoCloud",
-      ctaI18nKey: "options.apiProviders.sponsorCtaJalapenoCloud",
-    },
+    website: "https://www.jalapeno-cloud.ai",
+    apiKeyUrl: "https://www.jalapeno-cloud.ai",
   },
   atlascloud: {
     logo: getLobeIconsCDNUrlFn("atlascloud"),
     name: "Atlas Cloud",
-    website: "https://readfrog.s.gy/altas",
-    apiKeyUrl: "https://readfrog.s.gy/altas",
-    sponsor: {
-      sponsoring: true,
-      referUrl: "https://readfrog.s.gy/altas",
-    },
+    website: "https://atlascloud.ai",
+    apiKeyUrl: "https://atlascloud.ai",
   },
   "openai-compatible": {
     logo: () => customProviderLogo,
     name: "Custom Chat Complete",
-    website: `${env.WXT_WEBSITE_URL}/docs/providers/openai-compatible-providers`,
   },
   "open-responses": {
     logo: () => customResponsesLogo,
     name: "Custom Responses",
-    website: `${env.WXT_WEBSITE_URL}/docs/providers/openai-compatible-providers`,
   },
   openrouter: {
     logo: getLobeIconsCDNUrlFn("openrouter"),
@@ -669,10 +658,6 @@ export const MICROSOFT_TRANSLATE_PROVIDER_ID = DEFAULT_PROVIDER_CONFIG["microsof
  * owns it.
  */
 export const FORCED_PROVIDER_HEADERS: Partial<Record<LLMProviderTypes, Record<string, string>>> = {
-  jalapenocloud: {
-    "HTTP-Referer": env.WXT_WEBSITE_URL,
-    "X-Jalapeno-Title": APP_NAME,
-  },
   openrouter: {
     "HTTP-Referer": env.WXT_WEBSITE_URL,
     "X-OpenRouter-Title": APP_NAME,
@@ -780,20 +765,11 @@ export function getProviderItemName(providerType: APIProviderTypes): string {
 export const PROVIDER_GROUPS = {
   builtInProviders: {
     types: DEDICATED_LLM_PROVIDER_TYPES,
-    tutorialSlug: "built-in-providers",
   },
   compatibleProviders: {
     types: PROTOCOL_COMPATIBLE_LLM_PROVIDER_TYPES,
-    tutorialSlug: "openai-compatible-providers",
   },
   pureTranslationProviders: {
     types: PURE_API_PROVIDER_TYPES,
-    tutorialSlug: "pure-translation-providers",
   },
-} as const satisfies Record<string, { types: readonly APIProviderTypes[]; tutorialSlug: string }>
-
-export const SPECIFIC_TUTORIAL_PROVIDER_TYPES = [
-  "ollama",
-  "deeplx",
-  "deepl",
-] as const satisfies readonly APIProviderTypes[]
+} as const satisfies Record<string, { types: readonly APIProviderTypes[] }>

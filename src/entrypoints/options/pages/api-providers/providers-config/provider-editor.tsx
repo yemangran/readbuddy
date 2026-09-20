@@ -254,8 +254,7 @@ function Attribution({ children }: { children: React.ReactNode }) {
 function ConfigHeader() {
   const form = useApiProviderForm()
   const providerType = useSelector(form.store, (state) => state.values.provider)
-  const apiKey = useSelector(form.store, (state) => state.values.apiKey)
-  return <ProviderConfigHeader providerType={providerType} apiKey={apiKey} />
+  return <ProviderConfigHeader providerType={providerType} />
 }
 
 function NameField() {

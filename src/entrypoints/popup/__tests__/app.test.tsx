@@ -15,9 +15,6 @@ vi.mock("../components/brand-header", () => ({
 vi.mock("../components/translation-hub-button", () => ({
   TranslationHubButton: () => <div data-testid="translation-hub">Hub</div>,
 }))
-vi.mock("../components/discord-button", () => ({
-  DiscordButton: () => <div data-testid="discord">Discord</div>,
-}))
 vi.mock("../components/language-options-selector", () => ({
   default: () => <div data-testid="language-options">Languages</div>,
 }))
@@ -120,6 +117,19 @@ describe("Popup App Component", () => {
     await waitFor(() => {
       expect(screen.getByText("5")).toBeInTheDocument()
     })
+  })
+
+  it("exposes no private Discord community entry", () => {
+    render(<App />)
+
+    // Community entry stays on the public open-source side (the GitHub-backed
+    // more menu); the upstream private chat server must not be reachable here.
+    expect(document.querySelector('[data-icon="logos:discord-icon"]')).toBeNull()
+    expect(screen.queryByText("popup.discord.tooltip")).not.toBeInTheDocument()
+    const externalAnchors = Array.from(document.querySelectorAll("a[href]"))
+    expect(externalAnchors.some((anchor) => anchor.getAttribute("href")?.includes("discord"))).toBe(
+      false,
+    )
   })
 
   it("switches to learning tab and persists selection to storage", async () => {

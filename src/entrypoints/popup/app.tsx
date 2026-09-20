@@ -12,7 +12,6 @@ import { version } from "../../../package.json"
 import { AISmartContext } from "./components/ai-smart-context"
 import { AlwaysTranslate } from "./components/always-translate"
 import { PopupBrandHeader } from "./components/brand-header"
-import { DiscordButton } from "./components/discord-button"
 import LanguageOptionsSelector from "./components/language-options-selector"
 import { LearningTab } from "./components/learning-tab"
 import { MoreMenu } from "./components/more-menu"
@@ -80,7 +79,6 @@ function App() {
           <PopupBrandHeader />
           <div className="flex shrink-0 items-center">
             <TranslationHubButton />
-            <DiscordButton />
           </div>
         </div>
 

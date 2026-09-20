@@ -1,4 +1,3 @@
-import type { APIProviderTypes } from "@/types/config/provider"
 import { browser } from "#imports"
 
 export interface OpenOptionsPageOptions {
@@ -52,18 +51,6 @@ export function buildProviderConfigRoute(
   const params = new URLSearchParams({
     [SECTION_QUERY_PARAM]: PROVIDER_CONFIG_SECTION_ID,
     [PROVIDER_QUERY_PARAM]: providerId,
-  })
-  return buildProviderConfigRouteFrom(params, options)
-}
-
-/** The same destination addressed by provider type rather than by id. */
-export function buildProviderTypeConfigRoute(
-  providerType: APIProviderTypes,
-  options?: ProviderConfigRouteOptions,
-): `/${string}` {
-  const params = new URLSearchParams({
-    [SECTION_QUERY_PARAM]: PROVIDER_CONFIG_SECTION_ID,
-    [PROVIDER_TYPE_QUERY_PARAM]: providerType,
   })
   return buildProviderConfigRouteFrom(params, options)
 }

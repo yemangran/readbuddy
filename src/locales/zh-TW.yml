@@ -48,8 +48,6 @@ popup:
         action: 點選切換為雙語對照
   hub:
     tooltip: 一次使用多個翻譯模型翻譯文字
-  discord:
-    tooltip: 加入 Discord 與開發者討論，搶先體驗新功能
   aiSmartContext: AI 智慧上下文
   aiSmartContextDescription: 結合網頁前後文提升翻譯品質。需要設定 LLM 翻譯服務提供者。
   more:
@@ -151,14 +149,10 @@ options:
         videoSubtitles: 影片字幕
         inputTranslation: 輸入翻譯
         languageDetection: 語言偵測
-    sponsorCta: 取得高速高性價比 AI
-    sponsorCtaJalapenoCloud: 取得 GLM 5.2 五折優惠
     setApiKeyWarning:
       message: 請在 $1 頁面設定 API 金鑰
     badges:
       featureCount: $1 個功能
-      sponsor: 贊助
-      sponsorJalapenoCloud: $$2 免費額度
     dialog:
       title: 新增提供者
       groups:
@@ -250,7 +244,7 @@ options:
         anthropic: 以安全性和推理能力著稱的 Claude 模型
         xai: 馬斯克的 AI 公司，提供具有即時資料存取能力的 Grok 模型
         atlascloud: 統一的 OpenAI 相容模型平台，提供 DeepSeek、Kimi、Qwen、豆包、GLM 等較新模型
-        jalapenocloud: 頂尖團隊都在用的企業級 AI，現在為你而來！
+        jalapenocloud: 統一的 OpenAI 相容模型平台，提供 GLM、DeepSeek、Kimi、MiniMax、Qwen 等較新模型
         siliconflow: 針對中國和國際模型的高效能推理平台
         tensdaq: 革命性競價 AI MaaS 平台，價格由市場供需決定，告別高成本固定定價
         openaiCompatible: 連接與 OpenAI Chat Completions API 相容的自訂端點
@@ -276,7 +270,6 @@ options:
     apiKey:
       showAPIKey: 顯示 API 金鑰
       getAPIKey: 取得 API 金鑰
-    howToConfigure: 如何設定？
     testConnection:
       button: 測試連線
       testing: 測試中…
@@ -886,7 +879,8 @@ options:
               padding: 2px 4px;
               border-radius: 4px;
             }
-          docsLink: 如何設定？
+
+            /* 可用的選擇器：.read-frog-translated-block-content, [data-read-frog-custom-translation-style='custom'] */
           saveButton: 儲存
           savedButton: 已儲存
           validation:
@@ -1129,7 +1123,6 @@ options:
             }
 
             /* 可用的選擇器：.read-frog-subtitles-box、.subtitles-main、.subtitles-translation */
-          docsLink: 如何設定？
           saveButton: 儲存
           savedButton: 已儲存
           validation:

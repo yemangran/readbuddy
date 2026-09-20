@@ -13,6 +13,7 @@ import {
 } from "@/types/config/provider"
 import {
   DEFAULT_PROVIDER_CONFIG,
+  FORCED_PROVIDER_HEADERS,
   PROVIDER_GROUPS,
   PROVIDER_ITEMS,
   PROVIDER_URL_PLACEHOLDERS,
@@ -57,6 +58,33 @@ describe("provider constants", () => {
     expect(apiProviderConfigItemSchema.parse(DEFAULT_PROVIDER_CONFIG.azure)).toEqual(
       DEFAULT_PROVIDER_CONFIG.azure,
     )
+  })
+
+  it("keeps every provider link free of upstream promotion and referral targets", () => {
+    for (const item of Object.values(PROVIDER_ITEMS)) {
+      // The sponsor badge/CTA machinery is gone, so no provider carries one.
+      expect(item).not.toHaveProperty("sponsor")
+
+      for (const url of [item.website, item.apiKeyUrl]) {
+        if (!url) continue
+        // Upstream commercial domains and referral short links must never appear.
+        expect(url).not.toContain("readfrog")
+        expect(url).not.toContain("s.gy")
+      }
+    }
+
+    // The two protocol adapters carry no homepage link at all: their guidance is
+    // the form's own fields rather than an external tutorial.
+    expect(PROVIDER_ITEMS["openai-compatible"]).not.toHaveProperty("website")
+    expect(PROVIDER_ITEMS["open-responses"]).not.toHaveProperty("website")
+
+    // The two former sponsors resolve to their own canonical homepages.
+    expect(PROVIDER_ITEMS.jalapenocloud.website).toBe("https://www.jalapeno-cloud.ai")
+    expect(PROVIDER_ITEMS.atlascloud.website).toBe("https://atlascloud.ai")
+  })
+
+  it("drops the Jalapeno sponsorship attribution from forced provider headers", () => {
+    expect(FORCED_PROVIDER_HEADERS.jalapenocloud).toBeUndefined()
   })
 
   it("defines provider-specific URL placeholders", () => {

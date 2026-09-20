@@ -26,30 +26,12 @@ describe("provider headers", () => {
   })
 
   describe("forced headers", () => {
-    const jalapeno = {
-      "HTTP-Referer": "https://www.readfrog.app",
-      "X-Jalapeno-Title": "Read Frog",
-    }
-
-    it("sends them when the user has configured no headers", () => {
-      expect(getProviderHeadersWithOverride("jalapenocloud", undefined)).toEqual(jalapeno)
-    })
-
-    it("keeps them alongside the user's own headers", () => {
+    it("forces nothing for a former sponsorship provider", () => {
+      // Jalapeno's partnership attribution headers are gone with the sponsor deal.
+      expect(getProviderHeadersWithOverride("jalapenocloud", undefined)).toBeUndefined()
       expect(getProviderHeadersWithOverride("jalapenocloud", { "X-Test": "1" })).toEqual({
         "X-Test": "1",
-        ...jalapeno,
       })
-    })
-
-    it("survives a user override that clears every header", () => {
-      expect(getProviderHeadersWithOverride("jalapenocloud", {})).toEqual(jalapeno)
-    })
-
-    it("wins over a user header of the same name", () => {
-      expect(
-        getProviderHeadersWithOverride("jalapenocloud", { "HTTP-Referer": "https://evil.test" }),
-      ).toEqual(jalapeno)
     })
 
     // Regression: this header used to be a config-time default, so adding any header of your own

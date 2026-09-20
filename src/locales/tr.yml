@@ -48,8 +48,6 @@ popup:
         action: İki dilli moda geçmek için tıklayın
   hub:
     tooltip: Birden fazla çeviri modeliyle aynı anda metin çevirin
-  discord:
-    tooltip: Geliştiricilerle bağlantı kurmak ve yeni özelliklere erken erişim sağlamak için Discord'a katılın
   aiSmartContext: AI Akıllı Bağlam
   aiSmartContextDescription: Çeviri kalitesini artırmak için web sayfası bağlamını kullanır. LLM çeviri sağlayıcısı gerektirir.
   more:
@@ -151,14 +149,10 @@ options:
         videoSubtitles: Video altyazıları
         inputTranslation: Giriş çevirisi
         languageDetection: Dil algılama
-    sponsorCta: Hızlı ve uygun maliyetli yapay zekâ al
-    sponsorCtaJalapenoCloud: GLM 5.2ʼde %50 indirim al
     setApiKeyWarning:
       message: API anahtarınızı $1 sayfasında ayarlayın
     badges:
       featureCount: $1 özellik
-      sponsor: Sponsor
-      sponsorJalapenoCloud: $$2 ücretsiz
     dialog:
       title: Yeni sağlayıcı ekle
       groups:
@@ -249,7 +243,7 @@ options:
         anthropic: Güvenlik ve akıl yürütme mükemmelliğiyle tanınan Claude modelleri
         xai: Gerçek zamanlı veri erişimli Grok modelleri sunan Elon Musk'ın AI şirketi
         atlascloud: DeepSeek, Kimi, Qwen, Doubao ve GLM gibi yeni modellere OpenAI uyumlu birleşik erişim platformu
-        jalapenocloud: En iyi ekiplerin kullandığı kurumsal düzeyde yapay zekâ, şimdi sizin için!
+        jalapenocloud: GLM, DeepSeek, Kimi, MiniMax, Qwen ve diğer yeni modellere OpenAI uyumlu birleşik erişim platformu
         siliconflow: Çin ve uluslararası modeller için yüksek performanslı çıkarım platformu
         tensdaq: Yüksek maliyetli sabit fiyatlandırmayı ortadan kaldıran pazar odaklı fiyatlandırma ile devrimci açık artırma AI MaaS platformu
         openaiCompatible: OpenAI Chat Completions API ile uyumlu özel bir uç noktaya bağlanın
@@ -275,7 +269,6 @@ options:
     apiKey:
       showAPIKey: API anahtarını göster
       getAPIKey: API anahtarı al
-    howToConfigure: Nasıl yapılandırılır?
     testConnection:
       button: Bağlantıyı test et
       testing: Test ediliyor...
@@ -770,7 +763,8 @@ options:
               padding: 2px 4px;
               border-radius: 4px;
             }
-          docsLink: Nasıl yapılandırılır?
+
+            /* Kullanabileceğiniz seçiciler: .read-frog-translated-block-content, [data-read-frog-custom-translation-style='custom'] */
           saveButton: Kaydet
           savedButton: Kaydedildi
           validation:
@@ -1013,7 +1007,6 @@ options:
             }
 
             /* Kullanabileceğiniz seçiciler: .read-frog-subtitles-box, .subtitles-main, .subtitles-translation */
-          docsLink: Nasıl yapılandırılır?
           saveButton: Kaydet
           savedButton: Kaydedildi
           validation:
