@@ -1,20 +1,17 @@
 import "@/utils/zod-config"
 import type { Config, UiLanguage } from "@/types/config/config"
 import { browser, defineBackground } from "#imports"
-import { env } from "@/env"
 import { storageAdapter } from "@/utils/atoms/storage-adapter"
-import { selectFreshTranslateProviders } from "@/utils/config/default-translate-provider"
 import { CONFIG_STORAGE_KEY } from "@/utils/constants/config"
 import { initI18n, setUiLanguage } from "@/utils/i18n"
 import { logger } from "@/utils/logger"
 import { onMessage } from "@/utils/message"
 import { openOptionsPage } from "@/utils/navigation"
-import { SessionCacheGroupRegistry } from "@/utils/session-cache/session-cache-group-registry"
 import { runAiSegmentSubtitles } from "./ai-segmentation"
 import { setupAnalyticsMessageHandlers } from "./analytics"
 import { dispatchBackgroundStreamPort } from "./background-stream"
 import { initializeActionIcons, registerActionIconListeners } from "./browser-action-icon"
-import { ensureInitializedConfig, isFreshInstalledConfig } from "./config"
+import { ensureInitializedConfig } from "./config"
 import { setUpConfigBackup } from "./config-backup"
 import { initializeContextMenu, registerContextMenuListeners } from "./context-menu"
 import {
@@ -25,6 +22,7 @@ import {
 } from "./db-cleanup"
 import { setupEdgeTTSMessageHandlers } from "./edge-tts"
 import { setupIframeInjection } from "./iframe-injection"
+import { setupInstallLifecycle } from "./install-lifecycle"
 import { setupLLMGenerateTextMessageHandlers } from "./llm-generate-text"
 import {
   setupLocalDictionaryMessageHandlers,
@@ -46,33 +44,8 @@ export default defineBackground({
   main: () => {
     logger.info("Hello background!", { id: browser.runtime.id })
 
-    browser.runtime.onInstalled.addListener(async (details) => {
-      await ensureInitializedConfig()
-
-      // Open tutorial page when extension is installed
-      if (details.reason === "install") {
-        await browser.tabs.create({
-          url: `${env.WXT_WEBSITE_URL}/guide/step-1`,
-        })
-      }
-
-      // Deliberately last: probing Google Translate can hang for seconds on networks that
-      // block it, and nothing above should wait for that. Awaiting inside the listener
-      // keeps the service worker alive until the probe settles. Guarded by the config
-      // actually being new rather than by the install reason: reloading an unpacked
-      // extension reports "install" while the developer's provider choice is still in
-      // storage, and a config rebuilt from defaults after failing validation during an
-      // update deserves the same provider selection a fresh install gets.
-      if (await isFreshInstalledConfig()) {
-        await selectFreshTranslateProviders()
-      }
-
-      // Clear blog cache on extension update to fetch latest blog posts
-      if (details.reason === "update") {
-        logger.info("[Background] Extension updated, clearing blog cache")
-        await SessionCacheGroupRegistry.removeCacheGroup("blog-fetch")
-      }
-    })
+    // Installation is silent: the lifecycle listener opens no onboarding tab.
+    setupInstallLifecycle()
 
     onMessage("openPage", async (message) => {
       const { url, active } = message.data
