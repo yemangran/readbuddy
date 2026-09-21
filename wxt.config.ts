@@ -42,7 +42,6 @@ export default defineConfig({
       "tabs",
       "alarms",
       "contextMenus",
-      "identity",
       "scripting",
       "webNavigation",
       ...(browser !== "firefox" ? ["offscreen", "sidePanel"] : []),

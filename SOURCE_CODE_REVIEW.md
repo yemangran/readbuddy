@@ -22,7 +22,11 @@ pnpm zip:firefox
 
 The `.env.production` file is included in this archive. It contains:
 
-- `WXT_GOOGLE_CLIENT_ID` — A public Google OAuth Client ID used for Google Sign-In. This is **not** a secret; OAuth Client IDs are designed to be embedded in client-side applications.
+- `WXT_POSTHOG_HOST` / `WXT_POSTHOG_API_KEY` — Opt-in analytics endpoint and public write key. Analytics stays off unless the user enables it in preferences.
+- `WXT_ANALYTICS_DAILY_FEATURE_CACHE_ENABLED` — Toggles the analytics daily-feature cache.
+
+No Google OAuth client ID is required: the extension makes no calls to Google APIs for
+configuration sync, so it holds no Google credentials at all.
 
 ## Build Output
 

@@ -77,20 +77,16 @@ describe("ConfigManagementSection", () => {
     )
   })
 
-  it("no longer renders the Google Drive sync card or its conflict dialog", async () => {
+  it("presents only the unified WebDAV sync entry, with no second cloud provider", async () => {
     renderSection()
 
     await waitFor(() => {
-      expect(screen.getByText(i18n.t("options.dictionary.webdav.connected"))).toBeInTheDocument()
+      expect(screen.getByLabelText("webdav-sync-now")).toBeInTheDocument()
     })
 
-    expect(
-      screen.queryByText(i18n.t("options.preference.config.googleDrive.title")),
-    ).not.toBeInTheDocument()
+    // One cloud sync row: WebDAV. The Google Drive card and its conflict dialog
+    // were removed, so no other provider may appear in this section.
     expect(document.getElementById("google-drive-sync")).toBeNull()
-    expect(
-      screen.queryByText(i18n.t("options.preference.config.googleDrive.sync")),
-    ).not.toBeInTheDocument()
   })
 
   it("keeps every core preference config row", async () => {

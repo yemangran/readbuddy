@@ -3,7 +3,6 @@ import { z } from "zod"
 import { createExtensionClientEnvSchema, isLocalPackagesEnabled } from "../shared"
 
 const PRODUCTION_REQUIRED_ENV = {
-  WXT_GOOGLE_CLIENT_ID: "test-google-client-id",
   WXT_POSTHOG_HOST: "https://us.i.posthog.com",
   WXT_POSTHOG_API_KEY: "phc_test",
 } as const
@@ -12,7 +11,6 @@ const PRODUCTION_REQUIRED_ENV = {
 // this list must not survive parsing, so a removed upstream var cannot linger
 // as a silent fallback.
 const SUPPORTED_ENV_VARS = [
-  "WXT_GOOGLE_CLIENT_ID",
   "WXT_POSTHOG_HOST",
   "WXT_POSTHOG_API_KEY",
   "WXT_POSTHOG_TEST_UUID",
@@ -66,7 +64,6 @@ describe("extension env schema", () => {
 describe("extension env parsing", () => {
   it("keeps optional analytics vars optional outside production", () => {
     expect(parseExtensionEnv({})).toEqual({
-      WXT_GOOGLE_CLIENT_ID: undefined,
       WXT_POSTHOG_HOST: undefined,
       WXT_POSTHOG_API_KEY: undefined,
       WXT_POSTHOG_TEST_UUID: undefined,
@@ -74,11 +71,10 @@ describe("extension env parsing", () => {
     })
   })
 
-  it("requires Google and PostHog env vars when PROD is true", () => {
+  it("requires PostHog env vars when PROD is true", () => {
     expect(() =>
       parseExtensionEnv(
         {
-          WXT_GOOGLE_CLIENT_ID: "test-google-client-id",
           WXT_POSTHOG_HOST: "https://us.i.posthog.com",
         },
         true,
@@ -86,9 +82,8 @@ describe("extension env parsing", () => {
     ).toThrowError("expected string, received undefined")
   })
 
-  it("accepts Google and PostHog env vars when PROD is true", () => {
+  it("accepts PostHog env vars when PROD is true", () => {
     expect(parseExtensionEnv({ ...PRODUCTION_REQUIRED_ENV }, true)).toEqual({
-      WXT_GOOGLE_CLIENT_ID: PRODUCTION_REQUIRED_ENV.WXT_GOOGLE_CLIENT_ID,
       WXT_POSTHOG_HOST: PRODUCTION_REQUIRED_ENV.WXT_POSTHOG_HOST,
       WXT_POSTHOG_API_KEY: PRODUCTION_REQUIRED_ENV.WXT_POSTHOG_API_KEY,
       WXT_POSTHOG_TEST_UUID: undefined,
@@ -96,9 +91,8 @@ describe("extension env parsing", () => {
     })
   })
 
-  it("lets production parsing skip only the required Google and PostHog env vars", () => {
+  it("lets production parsing skip only the required PostHog env vars", () => {
     expect(parseExtensionEnv({}, true, true)).toEqual({
-      WXT_GOOGLE_CLIENT_ID: undefined,
       WXT_POSTHOG_HOST: undefined,
       WXT_POSTHOG_API_KEY: undefined,
       WXT_POSTHOG_TEST_UUID: undefined,
