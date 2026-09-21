@@ -71,8 +71,8 @@ describe("ReviewSessionView", () => {
       />,
     )
 
-    // First card: apple
-    expect(screen.getByText("apple")).toBeInTheDocument()
+    // First card: apple (appears in queue sidebar and main card)
+    expect(screen.getAllByText("apple").length).toBeGreaterThan(0)
     expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument()
 
     // Rate "良好" (3) and flip
@@ -85,7 +85,7 @@ describe("ReviewSessionView", () => {
     expect(handleRatingSubmit).toHaveBeenCalledWith("rec-1", 3)
 
     // Second card: banana
-    expect(await screen.findByText("banana")).toBeInTheDocument()
+    expect((await screen.findAllByText("banana")).length).toBeGreaterThan(0)
     expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument()
 
     // Rate "简单" (4) and flip

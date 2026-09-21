@@ -28,14 +28,12 @@ import {
   getRemoteWebdavSummary,
   getWebdavConfig,
   saveWebdavConfig,
-  syncWebdavConfig,
   testWebdavConnection,
   triggerWebdavSync,
 } from "@/utils/local-dictionary/client"
 import { requestWebdavHostPermission } from "@/utils/local-dictionary/webdav"
 import { cn } from "@/utils/styles/utils"
 import { queryClient } from "@/utils/tanstack-query"
-import { WebdavConfigSyncOverview } from "./components/config-sync-overview"
 import { WebdavSetupGuideDialog } from "./components/webdav-setup-guide-dialog"
 import { useWebdavSyncState } from "./use-webdav-sync-state"
 import { getWebdavErrorMessage } from "./webdav-error-message"
@@ -47,7 +45,6 @@ export function WebdavSyncPage() {
   const [isWebdavConfigured, setIsWebdavConfigured] = useState(false)
   const [isTestingWebdav, setIsTestingWebdav] = useState(false)
   const [isSyncingWebdav, setIsSyncingWebdav] = useState(false)
-  const [isSyncingConfig, setIsSyncingConfig] = useState(false)
   const [webdavError, setWebdavError] = useState<string | null>(null)
   const [isForceOverwriteDialogOpen, setIsForceOverwriteDialogOpen] = useState(false)
   const [isFetchingRemoteSummary, setIsFetchingRemoteSummary] = useState(false)
@@ -213,43 +210,6 @@ export function WebdavSyncPage() {
       }
     } finally {
       setIsSyncingWebdav(false)
-    }
-  }
-
-  /**
-   * Independent trigger for the preference component: reconciles
-   * `readbuddy-config.json` alone, leaving the dictionary and review files to
-   * the global "Sync Now" above.
-   */
-  const handleSyncConfig = async () => {
-    setIsSyncingConfig(true)
-    setWebdavError(null)
-    try {
-      const reply = await syncWebdavConfig()
-      if (reply?.ok) {
-        toastManager.add({
-          type: "success",
-          title: i18n.t("options.dictionary.webdav.configSyncSuccess"),
-        })
-      } else if (reply) {
-        const msg = getWebdavErrorMessage(
-          reply.error,
-          i18n.t("options.dictionary.webdav.networkError"),
-        )
-        setWebdavError(msg)
-        toastManager.add({
-          type: "error",
-          title: msg,
-        })
-      } else {
-        // The engine was busy: the pass already running covers preferences too.
-        toastManager.add({
-          type: "info",
-          title: i18n.t("options.dictionary.webdav.syncInProgress"),
-        })
-      }
-    } finally {
-      setIsSyncingConfig(false)
     }
   }
 
@@ -604,17 +564,6 @@ export function WebdavSyncPage() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Preference component of the unified sync, with its own trigger */}
-            {isWebdavConfigured && syncState && (
-              <WebdavConfigSyncOverview
-                state={syncState}
-                // A pass already running covers preferences too, so the
-                // independent trigger waits for it instead of racing it.
-                isSyncing={isSyncingConfig || isSyncingWebdav || syncState.phase === "syncing"}
-                onSync={() => void handleSyncConfig()}
-              />
             )}
 
             {webdavError && (

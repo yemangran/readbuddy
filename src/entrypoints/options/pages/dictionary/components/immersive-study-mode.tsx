@@ -139,7 +139,7 @@ export function ImmersiveStudyMode({
         )}
 
         {phase === "reviewing" && queue.length > 0 && (
-          <div className="w-full max-w-xl">
+          <div className="w-full">
             <ReviewSessionView
               cards={queue}
               onComplete={(res) => {

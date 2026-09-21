@@ -12,7 +12,6 @@ const clearWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const testWebdavConnectionMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const getWebdavSyncStateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const triggerWebdavSyncMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
-const syncWebdavConfigMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const getRemoteWebdavSummaryMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const watchWebdavSyncStateMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
 const requestWebdavHostPermissionMock = vi.hoisted(() => vi.fn<(...args: any[]) => any>())
@@ -24,7 +23,6 @@ vi.mock("@/utils/local-dictionary/client", () => ({
   testWebdavConnection: testWebdavConnectionMock,
   getWebdavSyncState: getWebdavSyncStateMock,
   triggerWebdavSync: triggerWebdavSyncMock,
-  syncWebdavConfig: syncWebdavConfigMock,
   getRemoteWebdavSummary: getRemoteWebdavSummaryMock,
   watchWebdavSyncState: watchWebdavSyncStateMock,
 }))
@@ -69,7 +67,6 @@ describe("WebdavSyncPage", () => {
       configLastError: null,
     })
     triggerWebdavSyncMock.mockResolvedValue({ ok: true })
-    syncWebdavConfigMock.mockResolvedValue({ ok: true })
     getRemoteWebdavSummaryMock.mockResolvedValue({
       ok: true,
       summary: { exists: true, recordCount: 5, conflictCount: 0, updatedAt: 1000 },
@@ -320,153 +317,6 @@ describe("WebdavSyncPage", () => {
       expect(getRemoteWebdavSummaryMock).toHaveBeenCalled()
       expect(screen.getByText("42")).toBeInTheDocument()
     })
-  })
-
-  it("shows the preference sync overview with its last action and timestamp", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-    getWebdavSyncStateMock.mockResolvedValue({
-      phase: "idle",
-      lastSuccessTime: 1700000000000,
-      lastAttemptTime: null,
-      nextRetryTime: null,
-      retryCount: 0,
-      pendingChangesCount: 0,
-      lastError: null,
-      pausedReason: null,
-      reviewsLastSuccessTime: 1700000000000,
-      configSyncStatus: "synced",
-      configLastSuccessTime: 1700000000000,
-      configLastAction: "uploaded",
-      configLastError: null,
-    })
-
-    renderWithProviders(<WebdavSyncPage />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(i18n.t("options.dictionary.webdav.configSyncTitle")),
-      ).toBeInTheDocument()
-    })
-
-    expect(
-      screen.getByText(i18n.t("options.dictionary.webdav.configSyncSynced")),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(i18n.t("options.dictionary.webdav.configSyncActionUploaded")),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(new RegExp(i18n.t("options.dictionary.webdav.lastSync"))),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(new RegExp(i18n.t("options.dictionary.webdav.reviewsLastSuccess"))),
-    ).toBeInTheDocument()
-    // The global trigger stays separate from the preferences-only one.
-    expect(screen.getByLabelText("webdav-sync-now")).toBeInTheDocument()
-    expect(screen.getByLabelText("config-sync-now")).toBeInTheDocument()
-  })
-
-  it("runs a preferences-only pass from the detail page without touching the dictionary", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-
-    renderWithProviders(<WebdavSyncPage />)
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("config-sync-now")).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByLabelText("config-sync-now"))
-
-    await waitFor(() => {
-      expect(syncWebdavConfigMock).toHaveBeenCalledTimes(1)
-    })
-    // The unified pipeline is NOT re-run: preferences are reconciled alone.
-    expect(triggerWebdavSyncMock).not.toHaveBeenCalled()
-  })
-
-  it("reports a preference sync failure next to a healthy dictionary status", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-    getWebdavSyncStateMock.mockResolvedValue({
-      phase: "idle",
-      lastSuccessTime: 1700000000000,
-      lastAttemptTime: 1700000000000,
-      nextRetryTime: null,
-      retryCount: 0,
-      pendingChangesCount: 0,
-      lastError: null,
-      pausedReason: null,
-      reviewsLastSuccessTime: null,
-      configSyncStatus: "failed",
-      configLastSuccessTime: null,
-      configLastAction: null,
-      configLastError: {
-        code: "AUTH_FAILED",
-        message: "Authentication failed. Invalid username or password.",
-        retryable: false,
-      },
-    })
-
-    renderWithProviders(<WebdavSyncPage />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(i18n.t("options.dictionary.webdav.configSyncFailed")),
-      ).toBeInTheDocument()
-    })
-
-    expect(screen.getByText(i18n.t("options.dictionary.webdav.authFailed"))).toBeInTheDocument()
-    // The dictionary component is unaffected: still idle, no pause.
-    expect(screen.getByText(i18n.t("options.dictionary.webdav.phaseIdle"))).toBeInTheDocument()
-    expect(screen.queryByLabelText("webdav-force-overwrite")).not.toBeInTheDocument()
-  })
-
-  it("waits for a running pass instead of racing it with the preferences trigger", async () => {
-    getWebdavConfigMock.mockResolvedValue({
-      endpoint: "https://dav.example.com/webdav/",
-      username: "myuser",
-      password: "mypassword",
-    })
-    getWebdavSyncStateMock.mockResolvedValue({
-      phase: "syncing",
-      lastSuccessTime: null,
-      lastAttemptTime: 1700000000000,
-      nextRetryTime: null,
-      retryCount: 0,
-      pendingChangesCount: 1,
-      lastError: null,
-      pausedReason: null,
-      reviewsLastSuccessTime: null,
-      configSyncStatus: "idle",
-      configLastSuccessTime: null,
-      configLastAction: null,
-      configLastError: null,
-    })
-
-    renderWithProviders(<WebdavSyncPage />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(i18n.t("options.dictionary.webdav.configSyncTitle")),
-      ).toBeInTheDocument()
-    })
-
-    // The pass already running reconciles preferences too, so the independent
-    // trigger stays disabled rather than queueing a second, redundant pass.
-    expect(screen.getByLabelText("config-sync-now")).toBeDisabled()
-
-    fireEvent.click(screen.getByLabelText("config-sync-now"))
-    expect(syncWebdavConfigMock).not.toHaveBeenCalled()
   })
 
   it("restores saved configuration when canceling edit mode", async () => {

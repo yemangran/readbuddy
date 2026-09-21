@@ -103,10 +103,10 @@ describe("ImmersiveStudyMode Component", () => {
     render(<ImmersiveStudyMode records={mockRecords} onExit={onExitMock} />)
 
     await waitFor(() => {
-      expect(screen.getByText("serendipity")).toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: "serendipity" })).toBeInTheDocument()
     })
 
-    expect(screen.getByText("n.")).toBeInTheDocument()
+    expect(screen.getAllByText("n.").length).toBeGreaterThan(0)
     // Front card shows rating buttons with keyboard shortcut hints [1], [2], [3], [4]
     expect(screen.getByText("重来")).toBeInTheDocument()
     expect(screen.getByText("简单")).toBeInTheDocument()
@@ -155,7 +155,7 @@ describe("ImmersiveStudyMode Component", () => {
     render(<ImmersiveStudyMode records={mockRecords} onExit={onExitMock} />)
 
     await waitFor(() => {
-      expect(screen.getByText("serendipity")).toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: "serendipity" })).toBeInTheDocument()
     })
 
     // Press '3' for Good rating
