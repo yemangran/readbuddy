@@ -15,6 +15,13 @@ import {
 } from "../webdav"
 import "fake-indexeddb/auto"
 
+/** Fetch inputs arrive as a string, a URL, or a Request depending on the caller. */
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input
+  if (input instanceof URL) return input.href
+  return input.url
+}
+
 describe("WebdavSyncEngine", () => {
   let repo: LocalDictionaryRepository
 
@@ -152,6 +159,11 @@ describe("WebdavSyncEngine", () => {
 
     const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
       if (init?.method === "GET") {
+        // The preference component reads its own file, which never blocks this
+        // test: only the dictionary GET is held pending to keep the pass open.
+        if (requestUrl(url).endsWith("readbuddy-config.json")) {
+          return Promise.resolve(new Response("Not Found", { status: 404 }))
+        }
         getCalls++
         return new Promise<Response>((resolve) => {
           resolvers.push(resolve)

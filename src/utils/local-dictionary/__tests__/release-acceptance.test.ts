@@ -17,6 +17,13 @@ import {
 } from "../webdav"
 import "fake-indexeddb/auto"
 
+/** Fetch inputs arrive as a string, a URL, or a Request depending on the caller. */
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input
+  if (input instanceof URL) return input.href
+  return input.url
+}
+
 describe("Issue #15: Release Acceptance Verification", () => {
   let repo: LocalDictionaryRepository
 
@@ -192,6 +199,10 @@ describe("Issue #15: Release Acceptance Verification", () => {
       //  PUT sends If-Match: "remote-etag-1" -> returns 200 with new ETag "remote-etag-2"
       const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
         if (init?.method === "GET") {
+          if (!requestUrl(url).endsWith("readbuddy.json")) {
+            // The preference component reads its own file: none exists yet
+            return Promise.resolve(new Response("Not Found", { status: 404 }))
+          }
           getCount++
           if (getCount === 1) {
             return Promise.resolve(new Response("Not Found", { status: 404 }))
@@ -224,6 +235,10 @@ describe("Issue #15: Release Acceptance Verification", () => {
         }
 
         if (init?.method === "PUT") {
+          if (!requestUrl(url).endsWith("readbuddy.json")) {
+            // Preference upload of the same pass, not under assertion here
+            return Promise.resolve(new Response("", { status: 201 }))
+          }
           putCount++
           putHeadersList.push(init.headers)
           if (putCount === 1) {

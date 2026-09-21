@@ -1,5 +1,10 @@
 import type { LocalDictionaryRepository } from "./repository"
-import type { WebdavErrorCode, WebdavSyncResult, WebdavSyncState } from "./types"
+import type {
+  WebdavConfigSyncReport,
+  WebdavErrorCode,
+  WebdavSyncResult,
+  WebdavSyncState,
+} from "./types"
 import { browser } from "#imports"
 import { logger } from "@/utils/logger"
 import {
@@ -32,6 +37,27 @@ export function calculateExponentialBackoff(
 ): number {
   const backoff = baseMs * Math.pow(2, Math.max(0, retryCount))
   return Math.min(backoff, maxMs)
+}
+
+/**
+ * Sync-state patch for the config component of a pass. A failed config sync
+ * keeps the previous success timestamp: the last pass that actually worked is
+ * still the honest answer to "when did my settings last sync".
+ */
+function configSyncStatePatch(report?: WebdavConfigSyncReport): Partial<WebdavSyncState> {
+  if (!report) return {}
+  if (!report.ok) {
+    return {
+      configSyncStatus: "failed",
+      configLastError: report.error ?? null,
+    }
+  }
+  return {
+    configSyncStatus: "synced",
+    configLastSuccessTime: Date.now(),
+    configLastAction: report.action ?? null,
+    configLastError: null,
+  }
 }
 
 export class WebdavSyncEngine {
@@ -187,6 +213,7 @@ export class WebdavSyncEngine {
           pendingChangesCount: pendingCount,
           lastError: null,
           pausedReason: null,
+          ...configSyncStatePatch(result.components?.config),
         })
         this.options?.onStateChange?.(successState)
 

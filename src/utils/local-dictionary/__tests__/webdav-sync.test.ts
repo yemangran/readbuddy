@@ -171,8 +171,12 @@ describe("WebDAV First Sync & Conditional Upload", () => {
           return Promise.resolve(new Response("", { status: 404 }))
         }
         if (init.method === "PUT") {
-          putCapturedHeaders = init.headers as Record<string, string>
-          putCapturedBody = init.body as string
+          // Only the dictionary file is under assertion here; the preference
+          // component of the same pass PUTs readbuddy-config.json as well.
+          if (url.endsWith("readbuddy.json")) {
+            putCapturedHeaders = init.headers as Record<string, string>
+            putCapturedBody = init.body as string
+          }
           return Promise.resolve(
             new Response("", { status: 201, headers: { etag: '"initial-etag-123"' } }),
           )
@@ -376,6 +380,10 @@ describe("WebDAV First Sync & Conditional Upload", () => {
       .fn<(...args: any[]) => any>()
       .mockImplementation((url: string, init: RequestInit) => {
         if (init.method === "GET") {
+          if (!url.endsWith("readbuddy.json")) {
+            // The preference component reads its own file: none exists yet
+            return Promise.resolve(new Response("", { status: 404 }))
+          }
           getCalls++
           if (getCalls === 1) {
             // First GET: returns empty snapshot with etag-1
@@ -408,6 +416,10 @@ describe("WebDAV First Sync & Conditional Upload", () => {
         }
 
         if (init.method === "PUT") {
+          if (!url.endsWith("readbuddy.json")) {
+            // Preference upload of the same pass, not under assertion here
+            return Promise.resolve(new Response("", { status: 201 }))
+          }
           putCalls++
           const headers = init.headers as Record<string, string>
           if (headers["If-Match"] === '"etag-1"') {

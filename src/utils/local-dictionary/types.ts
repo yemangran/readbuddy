@@ -1,4 +1,5 @@
 import type { SelectionToolbarCustomActionOutputField } from "@/types/config/selection-toolbar"
+import type { ConfigSyncAction } from "@/utils/config/webdav-sync"
 
 export interface LocalDictionaryColumn {
   id: string
@@ -213,6 +214,31 @@ export interface WebdavSyncStats {
   addedConflictCount: number
 }
 
+/**
+ * Outcome of one component of a unified WebDAV sync pass. Components are
+ * independent: a failure here is a diagnostic, not a failure of the pass.
+ */
+export interface WebdavSyncComponentReport {
+  ok: boolean
+  remoteUploaded?: boolean
+  localUpdated?: boolean
+  error?: WebdavError
+}
+
+/** Config sync report, carrying what the reconciliation decided to do. */
+export interface WebdavConfigSyncReport extends WebdavSyncComponentReport {
+  action?: ConfigSyncAction
+  /** A local history snapshot was taken because the remote config won. */
+  backupCreated?: boolean
+}
+
+export interface WebdavSyncComponents {
+  dictionary: WebdavSyncComponentReport
+  /** Present only when the review state sync is part of the pass. */
+  reviews?: WebdavSyncComponentReport
+  config?: WebdavConfigSyncReport
+}
+
 export interface WebdavSyncResult {
   ok: boolean
   remoteUploaded?: boolean
@@ -220,6 +246,8 @@ export interface WebdavSyncResult {
   stats?: WebdavSyncStats
   etag?: string | null
   error?: WebdavError
+  /** Per-component diagnostics of one unified sync pass. */
+  components?: WebdavSyncComponents
 }
 
 export interface ApplySyncMergeResult {
@@ -235,6 +263,9 @@ export interface ApplySyncMergeResult {
 
 export type WebdavSyncPhase = "idle" | "syncing" | "paused" | "error"
 
+/** Outcome of the config component in the most recent pass that attempted it. */
+export type WebdavConfigSyncStatus = "idle" | "synced" | "failed"
+
 export interface WebdavSyncState {
   phase: WebdavSyncPhase
   lastSuccessTime: number | null
@@ -244,6 +275,16 @@ export interface WebdavSyncState {
   pendingChangesCount: number
   lastError: WebdavError | null
   pausedReason: WebdavErrorCode | null
+  /**
+   * Outcome of the `readbuddy-config.json` component of the most recent pass
+   * that attempted it. A pass that failed before reaching the config component
+   * (dictionary auth/network error) leaves these untouched, so they keep
+   * describing the last config sync that actually ran.
+   */
+  configSyncStatus: WebdavConfigSyncStatus
+  configLastSuccessTime: number | null
+  configLastAction: ConfigSyncAction | null
+  configLastError: WebdavError | null
 }
 
 export interface RemoteSnapshotSummary {

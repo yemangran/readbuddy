@@ -2,12 +2,16 @@ import type {
   DictionarySnapshotV1,
   RemoteSnapshotSummary,
   WebdavConfig,
+  WebdavConfigSyncReport,
   WebdavError,
+  WebdavSyncComponentReport,
+  WebdavSyncComponents,
   WebdavSyncResult,
   WebdavSyncState,
 } from "./types"
 import type { ReviewStore } from "@/utils/review/store"
 import { browser, storage } from "#imports"
+import { syncConfigWithWebdav } from "@/utils/config/webdav-sync"
 import { logger } from "@/utils/logger"
 import { syncReviewsWithWebdav, getWebdavReviewsFileUrl } from "@/utils/review/sync"
 import { type LocalDictionaryRepository } from "./repository"
@@ -33,6 +37,10 @@ export const INITIAL_WEBDAV_SYNC_STATE: WebdavSyncState = {
   pendingChangesCount: 0,
   lastError: null,
   pausedReason: null,
+  configSyncStatus: "idle",
+  configLastSuccessTime: null,
+  configLastAction: null,
+  configLastError: null,
 }
 
 export async function getStoredWebdavSyncState(): Promise<WebdavSyncState> {
@@ -233,13 +241,18 @@ export interface SyncWithWebdavOptions {
   reviewStoreInstance?: ReviewStore
 }
 
-async function maybeSyncReviews(
+/**
+ * Review states are a side component of the unified sync: a failure is reported
+ * in the diagnostics instead of failing the pass, so the dictionary and the
+ * config still sync. Returns `undefined` when the pass does not carry reviews.
+ */
+async function syncReviewsComponent(
   repository: LocalDictionaryRepository,
   config: WebdavConfig,
   options?: SyncWithWebdavOptions,
   fetchFn: typeof fetch = globalThis.fetch,
-): Promise<void> {
-  if (!options?.syncReviews) return
+): Promise<WebdavSyncComponentReport | undefined> {
+  if (!options?.syncReviews) return undefined
   let validRecordIds: Set<string> | undefined
   try {
     const allActive = await repository.list({ pageSize: 100000 })
@@ -251,7 +264,7 @@ async function maybeSyncReviews(
   }
 
   try {
-    await syncReviewsWithWebdav(
+    const result = await syncReviewsWithWebdav(
       config,
       {
         forceUnconditional: options.forceUnconditional,
@@ -261,9 +274,80 @@ async function maybeSyncReviews(
       fetchFn,
       options.reviewStoreInstance,
     )
-  } catch (err) {
-    logger.warn("[WebDAV] Review sync failed during dual sync", err)
+    if (result.ok) {
+      return {
+        ok: true,
+        remoteUploaded: result.remoteUploaded,
+        localUpdated: result.localUpdated,
+      }
+    }
+    return { ok: false, error: result.error }
+  } catch (err: any) {
+    logger.warn("[WebDAV] Review sync failed during unified sync", err)
+    return {
+      ok: false,
+      error: {
+        code: "STORAGE_ERROR",
+        message: err?.message || "Review sync failed unexpectedly",
+        retryable: true,
+      },
+    }
   }
+}
+
+/**
+ * Config is the third component of the unified sync (`readbuddy-config.json`).
+ * Like review states, a failure here — a corrupted remote file, an unsupported
+ * schema version, a failed upload — is reported as a diagnostic and never blocks
+ * the learning data.
+ *
+ * Note that this deliberately diverges from the dictionary component's fatality:
+ * `AUTH_FAILED` and `UNSUPPORTED_VERSION` on the config file do not pause the
+ * engine, because pausing would block the dictionary sync too — the opposite of
+ * what the unified pipeline promises. The engine surfaces them through
+ * `configSyncStatus` / `configLastError` instead.
+ */
+async function syncConfigComponent(
+  config: WebdavConfig,
+  fetchFn: typeof fetch = globalThis.fetch,
+): Promise<WebdavConfigSyncReport> {
+  try {
+    const result = await syncConfigWithWebdav(config, fetchFn)
+    if (result.ok) {
+      return {
+        ok: true,
+        action: result.action,
+        backupCreated: result.backupCreated,
+      }
+    }
+    return { ok: false, error: result.error }
+  } catch (err: any) {
+    logger.warn("[WebDAV] Config sync failed during unified sync", err)
+    return {
+      ok: false,
+      error: {
+        code: "STORAGE_ERROR",
+        message: err?.message || "Config sync failed unexpectedly",
+        retryable: true,
+      },
+    }
+  }
+}
+
+/**
+ * Runs the remaining components of the pass once the dictionary data has
+ * settled, and collects the full per-component diagnostics.
+ */
+async function syncRemainingComponents(
+  dictionaryReport: WebdavSyncComponentReport,
+  repository: LocalDictionaryRepository,
+  config: WebdavConfig,
+  options?: SyncWithWebdavOptions,
+  fetchFn: typeof fetch = globalThis.fetch,
+): Promise<WebdavSyncComponents> {
+  const reviews = await syncReviewsComponent(repository, config, options, fetchFn)
+  const configReport = await syncConfigComponent(config, fetchFn)
+  return { dictionary: dictionaryReport, reviews, config: configReport }
 }
 
 export async function syncWithWebdav(
@@ -440,7 +524,13 @@ export async function syncWithWebdav(
     // 3. If remote does not need upload (e.g. remote already had everything or local was empty)
     if (!needsRemoteUpload && remoteExists) {
       await repository.clearSyncChanges(syncSequence)
-      await maybeSyncReviews(repository, config, options, fetchFn)
+      const components = await syncRemainingComponents(
+        { ok: true, remoteUploaded: false, localUpdated },
+        repository,
+        config,
+        options,
+        fetchFn,
+      )
       return {
         ok: true,
         remoteUploaded: false,
@@ -453,6 +543,7 @@ export async function syncWithWebdav(
           preservedCount,
           addedConflictCount,
         },
+        components,
       }
     }
 
@@ -542,7 +633,13 @@ export async function syncWithWebdav(
     if (putRes.status === 200 || putRes.status === 201 || putRes.status === 204) {
       const newEtag = putRes.headers.get("etag") || putRes.headers.get("ETag")
       await repository.clearSyncChanges(syncSequence)
-      await maybeSyncReviews(repository, config, options, fetchFn)
+      const components = await syncRemainingComponents(
+        { ok: true, remoteUploaded: true, localUpdated },
+        repository,
+        config,
+        options,
+        fetchFn,
+      )
       return {
         ok: true,
         remoteUploaded: true,
@@ -555,6 +652,7 @@ export async function syncWithWebdav(
           preservedCount,
           addedConflictCount,
         },
+        components,
       }
     }
 

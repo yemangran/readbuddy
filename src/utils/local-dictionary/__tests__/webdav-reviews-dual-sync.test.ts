@@ -304,6 +304,21 @@ describe("WebDAV Dual-file Sync & Recycle Bin Purge Cascade", () => {
         }
       }
 
+      // The same pass also carries the preference component; its three-file
+      // behaviour is asserted in webdav-unified-sync.test.ts.
+      if (url.endsWith("readbuddy-config.json")) {
+        if (method === "GET") {
+          const file = remoteFiles.get("readbuddy-config.json")
+          if (!file) return new Response(null, { status: 404 })
+          return new Response(file.body, { status: 200, headers: { ETag: file.etag } })
+        }
+        if (method === "PUT") {
+          const etag = `"config-etag-${Date.now()}"`
+          remoteFiles.set("readbuddy-config.json", { body: opts.body, etag })
+          return new Response(null, { status: 201, headers: { ETag: etag } })
+        }
+      }
+
       throw new Error(`Unhandled request: ${method} ${url}`)
     })
 
