@@ -7,6 +7,7 @@ import { configSchema } from "@/types/config/config"
 import { addBackup } from "@/utils/backup/storage"
 import { EXTENSION_VERSION } from "@/utils/constants/app"
 import { CONFIG_SCHEMA_VERSION, CONFIG_STORAGE_KEY, DEFAULT_CONFIG } from "@/utils/constants/config"
+import { SNAPSHOT_MAX_SIZE_BYTES } from "@/utils/local-dictionary/snapshot"
 import {
   getWebdavAuthHeader,
   getWebdavParentCollectionUrl,
@@ -25,9 +26,13 @@ import { setLocalConfigAndMeta } from "./storage"
  * the user's WebDAV directory.
  */
 export const WEBDAV_CONFIG_FILENAME = "readbuddy-config.json"
+// Brand-aligned on purpose: the dictionary (`readfrog-local`) and review
+// (`readfrog-reviews`) envelopes still carry the legacy project name, but this
+// file is new and follows the `readbuddy` naming the remote filename uses.
 export const CONFIG_SNAPSHOT_FORMAT = "readbuddy-config"
 export const CONFIG_SNAPSHOT_VERSION = 1
-export const MAX_CONFIG_SYNC_RETRIES = 3
+
+const MAX_CONFIG_SYNC_RETRIES = 3
 
 /**
  * Wire envelope of `readbuddy-config.json`. `updatedAt` carries the local
@@ -50,16 +55,6 @@ export interface ConfigSyncResult {
   /** A local history snapshot was taken because remote config replaced local config. */
   backupCreated?: boolean
   error?: WebdavError
-}
-
-export interface SyncConfigWithWebdavOptions {
-  maxRetries?: number
-  /**
-   * Invoked after remote config replaced the local one. Writing `local:config`
-   * already notifies every extension context through the storage watchers; this
-   * hook lets the caller refresh UI state that does not watch storage.
-   */
-  onConfigApplied?: (config: Config) => Promise<void> | void
 }
 
 export function getWebdavConfigFileUrl(endpoint: string): string {
@@ -121,6 +116,12 @@ export function parseAndValidateConfigSnapshot(
   if (typeof candidate.schemaVersion !== "number" || !Number.isInteger(candidate.schemaVersion)) {
     return { ok: false, error: "Missing or invalid 'schemaVersion' field" }
   }
+  // Every envelope field is required: a partially written file must be rejected
+  // rather than coerced, because a coerced stamp decides which side wins the
+  // reconciliation and can silently hand the remote config to the local one.
+  if (typeof candidate.updatedAt !== "number" || !Number.isFinite(candidate.updatedAt)) {
+    return { ok: false, error: "Missing or invalid 'updatedAt' field" }
+  }
 
   return {
     ok: true,
@@ -128,7 +129,7 @@ export function parseAndValidateConfigSnapshot(
       format: CONFIG_SNAPSHOT_FORMAT,
       version: CONFIG_SNAPSHOT_VERSION,
       schemaVersion: candidate.schemaVersion,
-      updatedAt: typeof candidate.updatedAt === "number" ? candidate.updatedAt : 0,
+      updatedAt: candidate.updatedAt,
       config: candidate.config,
     },
   }
@@ -137,11 +138,18 @@ export function parseAndValidateConfigSnapshot(
 interface LocalConfigState {
   value: Config
   lastModifiedAt: number
+  /**
+   * A schema-valid config was read from storage. Defaults standing in for a
+   * missing or unusable local config are not an "earlier state" worth keeping in
+   * the backup history, and carry no modification time.
+   */
+  fromStorage: boolean
 }
 
 /**
  * Local preferences plus their last-modified stamp. A missing or invalid stored
- * config degrades to defaults with a zero stamp, so any remote config wins.
+ * config degrades to defaults with a zero stamp, so any remote config wins
+ * instead of being overwritten by fabricated defaults.
  */
 async function readLocalConfigForSync(): Promise<LocalConfigState> {
   const [stored, meta] = await Promise.all([
@@ -149,9 +157,13 @@ async function readLocalConfigForSync(): Promise<LocalConfigState> {
     storage.getMeta<ConfigMeta>(`local:${CONFIG_STORAGE_KEY}`),
   ])
   const parsed = stored ? configSchema.safeParse(stored) : null
+  if (!parsed?.success) {
+    return { value: DEFAULT_CONFIG, lastModifiedAt: 0, fromStorage: false }
+  }
   return {
-    value: parsed?.success ? parsed.data : DEFAULT_CONFIG,
+    value: parsed.data,
     lastModifiedAt: typeof meta?.lastModifiedAt === "number" ? meta.lastModifiedAt : 0,
+    fromStorage: true,
   }
 }
 
@@ -228,6 +240,19 @@ async function fetchRemoteConfigSnapshot(
     }
   }
 
+  // Same budget the dictionary snapshot enforces: an oversized body is a corrupt
+  // or hostile remote file, and reading it into memory must not be unbounded.
+  if (text.length > SNAPSHOT_MAX_SIZE_BYTES) {
+    return {
+      ok: false,
+      error: {
+        code: "BUDGET_EXCEEDED",
+        message: `Remote config size (${text.length} bytes) exceeds budget of ${SNAPSHOT_MAX_SIZE_BYTES} bytes`,
+        retryable: false,
+      },
+    }
+  }
+
   const validation = parseAndValidateConfigSnapshot(text)
   if (!validation.ok) {
     return {
@@ -248,14 +273,13 @@ async function fetchRemoteConfigSnapshot(
 }
 
 /**
- * Replaces local preferences with the newer remote ones. The current local config
- * is snapshotted into the backup history first, so an unwanted download stays
- * rollback-able from the config backup UI.
+ * Replaces local preferences with the newer remote ones. A local config that
+ * actually existed is snapshotted into the backup history first, so an unwanted
+ * download stays rollback-able from the config backup UI.
  */
 async function applyRemoteConfigSnapshot(
   remote: WebdavConfigSnapshot,
-  localConfig: Config,
-  options?: SyncConfigWithWebdavOptions,
+  local: LocalConfigState,
 ): Promise<ConfigSyncResult> {
   let migratedConfig: Config
   try {
@@ -281,8 +305,22 @@ async function applyRemoteConfigSnapshot(
     }
   }
 
+  if (local.fromStorage) {
+    try {
+      await addBackup(local.value, EXTENSION_VERSION)
+    } catch (err: any) {
+      return {
+        ok: false,
+        error: {
+          code: "STORAGE_ERROR",
+          message: err?.message || "Failed to back up local config",
+          retryable: true,
+        },
+      }
+    }
+  }
+
   try {
-    await addBackup(localConfig, EXTENSION_VERSION)
     // Writing `local:config` is the broadcast: every context watching that key
     // (options page, context menu, translation queues, i18n) re-reads it.
     await setLocalConfigAndMeta(migratedConfig, {
@@ -302,10 +340,11 @@ async function applyRemoteConfigSnapshot(
     }
   }
 
-  logger.info("[WebDAV] Remote config applied, previous config backed up locally")
-  await options?.onConfigApplied?.(migratedConfig)
+  logger.info("[WebDAV] Remote config applied", {
+    backupCreated: local.fromStorage,
+  })
 
-  return { ok: true, action: "downloaded", backupCreated: true }
+  return { ok: true, action: "downloaded", backupCreated: local.fromStorage }
 }
 
 /**
@@ -317,7 +356,6 @@ async function applyRemoteConfigSnapshot(
  */
 export async function syncConfigWithWebdav(
   webdavConfig: WebdavConfig,
-  options?: SyncConfigWithWebdavOptions,
   fetchFn: typeof fetch = globalThis.fetch,
 ): Promise<ConfigSyncResult> {
   let fileUrl: string
@@ -335,17 +373,30 @@ export async function syncConfigWithWebdav(
   }
 
   const authHeader = getWebdavAuthHeader(webdavConfig.username, webdavConfig.password)
-  const maxRetries = options?.maxRetries ?? MAX_CONFIG_SYNC_RETRIES
   let attempt = 0
   let createdParentCollection = false
 
-  while (attempt < maxRetries) {
+  while (attempt < MAX_CONFIG_SYNC_RETRIES) {
     attempt++
 
     // 1. Download the remote config summary
     const remote = await fetchRemoteConfigSnapshot(fileUrl, authHeader, fetchFn)
     if (!remote.ok) {
       return { ok: false, error: remote.error }
+    }
+
+    // An existing remote file without an ETag cannot be uploaded over safely:
+    // the conditional header that guards against clobbering a concurrent write
+    // would have nothing to compare against.
+    if (remote.snapshot && !remote.etag) {
+      return {
+        ok: false,
+        error: {
+          code: "CONDITION_NOT_SUPPORTED",
+          message: "Remote WebDAV server did not provide ETag for conditional requests",
+          retryable: false,
+        },
+      }
     }
 
     let local: LocalConfigState
@@ -364,7 +415,7 @@ export async function syncConfigWithWebdav(
 
     // 2. Remote newer: replace the local config (with a local snapshot first)
     if (remote.snapshot && remote.snapshot.updatedAt > local.lastModifiedAt) {
-      return await applyRemoteConfigSnapshot(remote.snapshot, local.value, options)
+      return await applyRemoteConfigSnapshot(remote.snapshot, local)
     }
 
     // 3. Local and remote already agree: skip the upload entirely
@@ -472,7 +523,7 @@ export async function syncConfigWithWebdav(
     ok: false,
     error: {
       code: "CONDITION_FAILED_MAX_RETRIES",
-      message: `Config sync exceeded retry limit of ${maxRetries}`,
+      message: `Config sync exceeded retry limit of ${MAX_CONFIG_SYNC_RETRIES}`,
       retryable: true,
     },
   }

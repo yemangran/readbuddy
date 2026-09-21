@@ -4,8 +4,8 @@ import type { WebdavConfig } from "@/utils/local-dictionary/types"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { storage } from "#imports"
 import { getAllBackupsWithMetadata } from "@/utils/backup/storage"
-import { DEFAULT_CONFIG } from "@/utils/constants/config"
-import { CONFIG_SCHEMA_VERSION, CONFIG_STORAGE_KEY } from "@/utils/constants/config"
+import { CONFIG_SCHEMA_VERSION, CONFIG_STORAGE_KEY, DEFAULT_CONFIG } from "@/utils/constants/config"
+import { SNAPSHOT_MAX_SIZE_BYTES } from "@/utils/local-dictionary/snapshot"
 import { testSeries as v100Series } from "../__tests__/example/v100"
 import {
   getWebdavConfigFileUrl,
@@ -24,7 +24,8 @@ const sampleConfig: WebdavConfig = {
 
 interface StoredFile {
   body: string
-  etag: string
+  /** `null` models a server that serves the file without an ETag header. */
+  etag: string | null
 }
 
 interface RecordedRequest {
@@ -64,7 +65,7 @@ function createMockWebdavServer() {
         // UTF-16-code-unit variant that corrupts multi-byte characters.
         return new Response(Buffer.from(file.body, "utf-8"), {
           status: 200,
-          headers: { etag: file.etag },
+          headers: file.etag === null ? {} : { etag: file.etag },
         })
       }
 
@@ -93,10 +94,14 @@ function createMockWebdavServer() {
     files,
     requests,
     fetchFn: fetchFn as unknown as typeof fetch,
-    rawFetch: fetchFn,
+    /** Installs a remote file directly, as another device would have written it. */
     put(url: string, snapshot: WebdavConfigSnapshot) {
       etagCounter += 1
       files.set(url, { body: JSON.stringify(snapshot, null, 2), etag: `"etag-${etagCounter}"` })
+    },
+    /** Installs a remote file whose GET response carries no ETag header. */
+    putWithoutEtag(url: string, snapshot: WebdavConfigSnapshot) {
+      files.set(url, { body: JSON.stringify(snapshot, null, 2), etag: null })
     },
     readConfigSnapshot(url: string = CONFIG_FILE_URL): WebdavConfigSnapshot {
       const file = files.get(url)
@@ -105,6 +110,9 @@ function createMockWebdavServer() {
     },
     requestMethods(url: string = CONFIG_FILE_URL) {
       return requests.filter((request) => request.url === url).map((request) => request.method)
+    },
+    putRequests(url: string = CONFIG_FILE_URL) {
+      return requests.filter((request) => request.url === url && request.method === "PUT")
     },
     markParentCollectionMissing() {
       parentCollectionMissing = true
@@ -154,10 +162,13 @@ describe("WebDAV config sync", () => {
 
   beforeEach(async () => {
     server = createMockWebdavServer()
+    // Each test starts from "no local config", like a device that never synced
+    await storage.removeItem(`local:${CONFIG_STORAGE_KEY}`, { removeMeta: true })
     await storage.removeItem("local:backup_ids")
   })
 
   afterEach(async () => {
+    await storage.removeItem(`local:${CONFIG_STORAGE_KEY}`, { removeMeta: true })
     await storage.removeItem("local:backup_ids")
   })
 
@@ -177,10 +188,12 @@ describe("WebDAV config sync", () => {
     const localConfig = buildConfig({ uiLanguage: "zh-CN" })
     await seedLocalConfig(localConfig, 1_700_000_000_000)
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result).toEqual({ ok: true, action: "uploaded" })
     expect(server.requestMethods()).toEqual(["GET", "PUT"])
+    // Creating the file is conditional: a remote file appearing meanwhile wins
+    expect(server.putRequests()[0]!.headers["If-None-Match"]).toBe("*")
 
     const remoteSnapshot = server.readConfigSnapshot()
     expect(remoteSnapshot.format).toBe("readbuddy-config")
@@ -199,7 +212,7 @@ describe("WebDAV config sync", () => {
     await seedLocalConfig(localConfig, 1_700_000_000_000)
     server.markParentCollectionMissing()
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result).toEqual({ ok: true, action: "uploaded" })
     // The upload is retried from the top of the loop after the collection exists
@@ -218,7 +231,7 @@ describe("WebDAV config sync", () => {
     await seedLocalConfig(localConfig, 5_000)
     server.put(CONFIG_FILE_URL, buildRemoteSnapshot(localConfig, 5_000))
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result).toEqual({ ok: true, action: "no-change" })
     expect(server.requestMethods()).toEqual(["GET"])
@@ -230,7 +243,7 @@ describe("WebDAV config sync", () => {
     await seedLocalConfig(localConfig, 9_000)
     server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 1_000))
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result).toEqual({ ok: true, action: "uploaded" })
     expect(server.readConfigSnapshot()).toMatchObject({
@@ -240,6 +253,94 @@ describe("WebDAV config sync", () => {
     // Local config is untouched by an upload
     expect(await readLocalConfig()).toEqual(localConfig)
     expect(await getAllBackupsWithMetadata()).toHaveLength(0)
+  })
+
+  it("guards a later upload with the ETag of the file it just read", async () => {
+    const localConfig = buildConfig({ uiLanguage: "es" })
+    await seedLocalConfig(localConfig, 1_000)
+    server.put(CONFIG_FILE_URL, buildRemoteSnapshot(buildConfig({ uiLanguage: "en" }), 500))
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result).toEqual({ ok: true, action: "uploaded" })
+    expect(server.putRequests()[0]!.headers["If-Match"]).toBe(`"etag-1"`)
+    expect(server.putRequests()[0]!.headers["If-None-Match"]).toBeUndefined()
+
+    // The next upload is guarded by the ETag the previous upload produced
+    await seedLocalConfig(buildConfig({ uiLanguage: "ko" }), 3_000)
+    const secondResult = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(secondResult).toEqual({ ok: true, action: "uploaded" })
+    expect(server.putRequests()[1]!.headers["If-Match"]).toBe(`"etag-2"`)
+  })
+
+  it("refuses to upload over a remote file the server serves without an ETag", async () => {
+    const localConfig = buildConfig({ uiLanguage: "en" })
+    const remoteConfig = buildConfig({ uiLanguage: "zh-CN" })
+    await seedLocalConfig(localConfig, 9_000)
+    server.putWithoutEtag(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 1_000))
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("CONDITION_NOT_SUPPORTED")
+    // Unknown remote content is preserved, and local config is untouched
+    expect(server.readConfigSnapshot().config).toEqual(remoteConfig)
+    expect(await readLocalConfig()).toEqual(localConfig)
+    expect(server.putRequests()).toHaveLength(0)
+  })
+
+  it("rejects a remote config file whose envelope is missing updatedAt", async () => {
+    const localConfig = buildConfig({ uiLanguage: "en" })
+    await seedLocalConfig(localConfig, 1_000)
+    const incomplete = buildRemoteSnapshot(
+      buildConfig({ uiLanguage: "zh-CN" }),
+      5_000,
+    ) as Partial<WebdavConfigSnapshot>
+    delete incomplete.updatedAt
+    server.files.set(CONFIG_FILE_URL, {
+      body: JSON.stringify(incomplete, null, 2),
+      etag: `"etag-1"`,
+    })
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("CORRUPTED_REMOTE")
+    // Neither side is overwritten on an unreadable envelope
+    expect(await readLocalConfig()).toEqual(localConfig)
+    expect(await getAllBackupsWithMetadata()).toHaveLength(0)
+    expect(server.putRequests()).toHaveLength(0)
+  })
+
+  it("rejects a remote config file larger than the size budget", async () => {
+    const localConfig = buildConfig({ uiLanguage: "en" })
+    await seedLocalConfig(localConfig, 1_000)
+    server.files.set(CONFIG_FILE_URL, {
+      body: `{"format":"readbuddy-config","pad":"${" ".repeat(SNAPSHOT_MAX_SIZE_BYTES)}"}`,
+      etag: `"etag-1"`,
+    })
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("BUDGET_EXCEEDED")
+    expect(await readLocalConfig()).toEqual(localConfig)
+    expect(server.putRequests()).toHaveLength(0)
+  })
+
+  it("reports a failed upload without touching local config", async () => {
+    const localConfig = buildConfig({ uiLanguage: "en" })
+    await seedLocalConfig(localConfig, 1_000)
+
+    const failingUpload: typeof fetch = async () => new Response("Server Error", { status: 500 })
+
+    const result = await syncConfigWithWebdav(sampleConfig, failingUpload)
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("NETWORK_ERROR")
+    expect(result.error?.message).toContain("500")
+    expect(await readLocalConfig()).toEqual(localConfig)
   })
 
   it("backs the local config up, applies the newer remote config, and broadcasts the change", async () => {
@@ -253,15 +354,10 @@ describe("WebDAV config sync", () => {
     const unwatch = storage.watch<Config>(`local:${CONFIG_STORAGE_KEY}`, (config) => {
       if (config) broadcastConfigs.push(config)
     })
-    const appliedConfigs: Config[] = []
-    const onConfigApplied = (config: Config) => {
-      appliedConfigs.push(config)
-    }
 
-    const result = await syncConfigWithWebdav(sampleConfig, { onConfigApplied }, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: true })
-    expect(appliedConfigs).toEqual([remoteConfig])
 
     // The remote config is now the local config, stamped with the remote
     // modification time so the next sync sees both sides as equal.
@@ -288,8 +384,8 @@ describe("WebDAV config sync", () => {
     await seedLocalConfig(localConfig, 1_000)
     server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 5_000))
 
-    await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
-    const secondResult = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+    const secondResult = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(secondResult).toEqual({ ok: true, action: "no-change" })
     expect(server.requestMethods()).toEqual(["GET", "GET"])
@@ -302,7 +398,7 @@ describe("WebDAV config sync", () => {
     const legacyConfig = v100Series["complex-config-from-v020"]!.config as Config
     server.put(CONFIG_FILE_URL, buildRemoteSnapshot(legacyConfig, 5_000, 100))
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: true })
     const applied = await readLocalConfig()
@@ -327,7 +423,7 @@ describe("WebDAV config sync", () => {
       return response
     }
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, racingFetch)
+    const result = await syncConfigWithWebdav(sampleConfig, racingFetch)
 
     expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: true })
     expect(await readLocalConfig()).toEqual(concurrentConfig)
@@ -343,7 +439,7 @@ describe("WebDAV config sync", () => {
 
     const unauthorized: typeof fetch = async () => new Response("Unauthorized", { status: 401 })
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, unauthorized)
+    const result = await syncConfigWithWebdav(sampleConfig, unauthorized)
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("AUTH_FAILED")
@@ -357,7 +453,7 @@ describe("WebDAV config sync", () => {
     await seedLocalConfig(localConfig, 1_000)
     server.put(CONFIG_FILE_URL, buildRemoteSnapshot(localConfig, 5_000, CONFIG_SCHEMA_VERSION + 1))
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("UNSUPPORTED_VERSION")
@@ -370,7 +466,7 @@ describe("WebDAV config sync", () => {
     await seedLocalConfig(localConfig, 1_000)
     server.files.set(CONFIG_FILE_URL, { body: "{ not json", etag: `"etag-1"` })
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("CORRUPTED_REMOTE")
@@ -382,10 +478,35 @@ describe("WebDAV config sync", () => {
     const remoteConfig = buildConfig({ uiLanguage: "zh-CN" })
     server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 5_000))
 
-    const result = await syncConfigWithWebdav(sampleConfig, undefined, server.fetchFn)
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
-    expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: true })
+    // Nothing real was overwritten, so no fabricated defaults enter the history
+    expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: false })
     expect(await readLocalConfig()).toEqual(remoteConfig)
     expect(await readLocalConfigLastModifiedAt()).toBe(5_000)
+    expect(await getAllBackupsWithMetadata()).toHaveLength(0)
+  })
+
+  it("lets the remote config win when the stored local config is invalid", async () => {
+    const remoteConfig = buildConfig({ uiLanguage: "zh-CN" })
+    await seedLocalConfig({ uiLanguage: "not-a-locale" } as unknown as Config, 9_000)
+    server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 5_000))
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    // An unusable local config carries no modification time, so it never
+    // uploads fabricated defaults over a healthy remote file.
+    expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: false })
+    expect(await readLocalConfig()).toEqual(remoteConfig)
+    expect(await getAllBackupsWithMetadata()).toHaveLength(0)
+  })
+
+  it("uploads defaults without a modification time when nothing is stored locally", async () => {
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result).toEqual({ ok: true, action: "uploaded" })
+    const remoteSnapshot = server.readConfigSnapshot()
+    expect(remoteSnapshot.updatedAt).toBe(0)
+    expect(remoteSnapshot.config).toEqual(DEFAULT_CONFIG)
   })
 })
