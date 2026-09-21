@@ -290,6 +290,23 @@ describe("WebDAV config sync", () => {
     expect(server.putRequests()).toHaveLength(0)
   })
 
+  it("downloads and applies a newer remote config even if the server does not provide an ETag", async () => {
+    const localConfig = buildConfig({ uiLanguage: "en" })
+    const remoteConfig = buildConfig({ uiLanguage: "zh-CN" })
+    await seedLocalConfig(localConfig, 1_000)
+    server.putWithoutEtag(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 5_000))
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: true })
+    expect(await readLocalConfig()).toEqual(remoteConfig)
+    expect(await readLocalConfigLastModifiedAt()).toBe(5_000)
+    const backups = await getAllBackupsWithMetadata()
+    expect(backups).toHaveLength(1)
+    expect(backups[0]!.config).toEqual(localConfig)
+    expect(server.putRequests()).toHaveLength(0)
+  })
+
   it("rejects a remote config file whose envelope is missing updatedAt", async () => {
     const localConfig = buildConfig({ uiLanguage: "en" })
     await seedLocalConfig(localConfig, 1_000)

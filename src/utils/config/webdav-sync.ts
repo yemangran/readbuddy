@@ -10,8 +10,8 @@ import { CONFIG_SCHEMA_VERSION, CONFIG_STORAGE_KEY, DEFAULT_CONFIG } from "@/uti
 import { SNAPSHOT_MAX_SIZE_BYTES } from "@/utils/local-dictionary/snapshot"
 import {
   getWebdavAuthHeader,
-  getWebdavParentCollectionUrl,
   normalizeWebdavEndpoint,
+  sendWebdavPutWithPrecondition,
   WEBDAV_DICTIONARY_FILENAME,
 } from "@/utils/local-dictionary/webdav"
 import { logger } from "@/utils/logger"
@@ -385,20 +385,6 @@ export async function syncConfigWithWebdav(
       return { ok: false, error: remote.error }
     }
 
-    // An existing remote file without an ETag cannot be uploaded over safely:
-    // the conditional header that guards against clobbering a concurrent write
-    // would have nothing to compare against.
-    if (remote.snapshot && !remote.etag) {
-      return {
-        ok: false,
-        error: {
-          code: "CONDITION_NOT_SUPPORTED",
-          message: "Remote WebDAV server did not provide ETag for conditional requests",
-          retryable: false,
-        },
-      }
-    }
-
     let local: LocalConfigState
     try {
       local = await readLocalConfigForSync()
@@ -424,6 +410,19 @@ export async function syncConfigWithWebdav(
     }
 
     // 4. Local newer (or no remote file yet): upload the local config
+    // An existing remote file without an ETag cannot be uploaded over safely:
+    // the conditional header that guards against clobbering a concurrent write
+    // would have nothing to compare against.
+    if (remote.snapshot && !remote.etag) {
+      return {
+        ok: false,
+        error: {
+          code: "CONDITION_NOT_SUPPORTED",
+          message: "Remote WebDAV server did not provide ETag for conditional requests",
+          retryable: false,
+        },
+      }
+    }
     const uploadBody = exportConfigSnapshot(local.value, local.lastModifiedAt)
     const putHeaders: Record<string, string> = {
       Authorization: authHeader,
@@ -439,84 +438,33 @@ export async function syncConfigWithWebdav(
           : `"${trimmedEtag}"`
     }
 
-    let putRes: Response
-    try {
-      putRes = await fetchFn(fileUrl, {
-        method: "PUT",
-        headers: putHeaders,
-        body: uploadBody,
-      })
-    } catch (err: any) {
-      return {
-        ok: false,
-        error: {
-          code: "NETWORK_ERROR",
-          message: err?.message || "Failed to upload config to WebDAV",
-          retryable: true,
-        },
-      }
-    }
+    const putOutcome = await sendWebdavPutWithPrecondition({
+      fileUrl,
+      headers: putHeaders,
+      body: uploadBody,
+      authHeader,
+      fetchFn,
+      createdParentCollection,
+      errorContext: "config upload",
+    })
 
-    if (putRes.status === 412) {
+    if (putOutcome.status === "precondition-failed") {
       // Remote config changed concurrently on another device: re-read and reconcile
       logger.info("[WebDAV] Config precondition failed (412), retrying sync...")
       continue
     }
 
-    if (putRes.status === 401 || putRes.status === 403) {
-      return {
-        ok: false,
-        error: {
-          code: "AUTH_FAILED",
-          message: "Authentication failed during config upload",
-          retryable: false,
-        },
-      }
+    if (putOutcome.status === "parent-collection-created") {
+      createdParentCollection = true
+      attempt-- // Collection creation does not consume a sync attempt
+      continue
     }
 
-    if (putRes.status === 400 || putRes.status === 501) {
-      return {
-        ok: false,
-        error: {
-          code: "CONDITION_NOT_SUPPORTED",
-          message: "WebDAV server does not support conditional PUT headers",
-          retryable: false,
-        },
-      }
+    if (putOutcome.status === "error") {
+      return { ok: false, error: putOutcome.error }
     }
 
-    if (putRes.status === 200 || putRes.status === 201 || putRes.status === 204) {
-      return { ok: true, action: "uploaded" }
-    }
-
-    if ((putRes.status === 404 || putRes.status === 409) && !createdParentCollection) {
-      const parentUrl = getWebdavParentCollectionUrl(fileUrl)
-      if (parentUrl) {
-        createdParentCollection = true
-        logger.info(
-          `[WebDAV] Parent collection missing (HTTP ${putRes.status}), attempting MKCOL: ${parentUrl}`,
-        )
-        try {
-          await fetchFn(parentUrl, {
-            method: "MKCOL",
-            headers: { Authorization: authHeader },
-          })
-        } catch (mkcolErr) {
-          logger.warn("[WebDAV] Failed to execute MKCOL on parent collection", mkcolErr)
-        }
-        attempt-- // Collection creation does not consume a sync attempt
-        continue
-      }
-    }
-
-    return {
-      ok: false,
-      error: {
-        code: "NETWORK_ERROR",
-        message: `WebDAV server returned HTTP ${putRes.status} on config upload`,
-        retryable: true,
-      },
-    }
+    return { ok: true, action: "uploaded" }
   }
 
   return {

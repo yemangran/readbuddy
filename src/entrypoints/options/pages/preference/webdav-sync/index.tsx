@@ -140,6 +140,7 @@ export function WebdavSyncPage() {
       toastManager.add({
         type: "success",
         title: i18n.t("options.dictionary.webdav.saveSuccess"),
+        description: i18n.t("options.dictionary.webdav.saveSuccessDesc"),
       })
     } catch (err: any) {
       setWebdavError(err?.message || "Failed to save WebDAV settings")
@@ -169,6 +170,7 @@ export function WebdavSyncPage() {
         toastManager.add({
           type: "success",
           title: i18n.t("options.dictionary.webdav.connected"),
+          description: i18n.t("options.dictionary.webdav.connectedDesc"),
         })
       } else {
         const msg = getWebdavErrorMessage(reply.error, "Connection failed")
@@ -488,6 +490,14 @@ export function WebdavSyncPage() {
                     </span>
                   </div>
                   <div>
+                    <span>{i18n.t("options.dictionary.webdav.reviewsLastSuccess")}: </span>
+                    <span className="font-medium text-foreground">
+                      {syncState.reviewsLastSuccessTime
+                        ? new Date(syncState.reviewsLastSuccessTime).toLocaleTimeString()
+                        : i18n.t("options.dictionary.webdav.neverSynced")}
+                    </span>
+                  </div>
+                  <div>
                     <span>{i18n.t("options.dictionary.webdav.pendingChanges")}: </span>
                     {syncState.pendingChangesCount === 0 ? (
                       <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
@@ -501,7 +511,7 @@ export function WebdavSyncPage() {
                     )}
                   </div>
                   {syncState.nextRetryTime && (
-                    <div className="col-span-2">
+                    <div>
                       <span>{i18n.t("options.dictionary.webdav.nextRetry")}: </span>
                       <span className="font-medium text-foreground">
                         {Math.max(0, Math.ceil((syncState.nextRetryTime - currentTime) / 1000))}s

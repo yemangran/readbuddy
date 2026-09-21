@@ -229,6 +229,7 @@ export class WebdavSyncEngine {
           pendingChangesCount: pendingCount,
           lastError: null,
           pausedReason: null,
+          ...(result.components?.reviews?.ok ? { reviewsLastSuccessTime: Date.now() } : {}),
           ...configSyncStatePatch(result.components?.config),
         })
         this.options?.onStateChange?.(successState)

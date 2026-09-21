@@ -277,6 +277,10 @@ export interface WebdavSyncState {
   lastError: WebdavError | null
   pausedReason: WebdavErrorCode | null
   /**
+   * Last successful sync timestamp for review states (`readbuddy-reviews.json`).
+   */
+  reviewsLastSuccessTime: number | null
+  /**
    * Outcome of the `readbuddy-config.json` component of the most recent pass
    * that attempted it. A pass that failed before reaching the config component
    * (dictionary auth/network error) leaves these untouched, so they keep

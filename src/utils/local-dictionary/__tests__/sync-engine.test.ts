@@ -88,6 +88,36 @@ describe("WebdavSyncEngine", () => {
     expect(state.lastError).toBeNull()
   })
 
+  it("updates reviewsLastSuccessTime when syncReviews is enabled and succeeds", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
+      if (init?.method === "GET") {
+        return Promise.resolve(new Response("Not Found", { status: 404 }))
+      }
+      if (init?.method === "PUT") {
+        return Promise.resolve(new Response("", { status: 201, headers: { etag: '"new-etag"' } }))
+      }
+      return Promise.resolve(new Response("", { status: 400 }))
+    })
+
+    const engine = new WebdavSyncEngine(() => repo, {
+      fetchFn: mockFetch,
+      syncReviews: true,
+    })
+
+    const result = await engine.triggerSync({ reason: "manual" })
+    expect(result?.ok).toBe(true)
+
+    const state = await getStoredWebdavSyncState()
+    expect(state.lastSuccessTime).not.toBeNull()
+    expect(state.reviewsLastSuccessTime).not.toBeNull()
+  })
+
   it("handles recoverable network error with exponential backoff and alarm registration", async () => {
     await saveStoredWebdavConfig({
       endpoint: "https://dav.example.com/webdav/",

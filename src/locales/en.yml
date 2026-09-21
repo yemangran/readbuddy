@@ -179,10 +179,12 @@ options:
       syncNow: Sync Now
       disconnect: Disconnect
       connected: Connected
+      connectedDesc: WebDAV server connected; ready to sync dictionary, reviews, and readbuddy-config.json
       notConfigured: Not Configured
       syncSuccess: Synchronization completed successfully
       syncInProgress: A sync is already in progress
       saveSuccess: WebDAV settings saved
+      saveSuccessDesc: Connected to WebDAV; synchronizing dictionary, reviews, and readbuddy-config.json
       disconnectSuccess: WebDAV disconnected
       testing: Testing...
       syncing: Syncing...
@@ -202,6 +204,7 @@ options:
       phasePaused: Paused
       phaseError: Error
       lastSuccess: Last Success
+      reviewsLastSuccess: Reviews Last Synced
       lastSync: Last Sync
       neverSynced: Never
       nextRetry: Next Retry
@@ -222,8 +225,8 @@ options:
       configSyncFailed: Sync failed
       configSyncNow: Sync Preferences
       configSyncSuccess: Preferences synchronized
-      configSyncActionUploaded: Uploaded to cloud
-      configSyncActionDownloaded: Applied from cloud
+      configSyncActionUploaded: Uploaded to remote
+      configSyncActionDownloaded: Applied from remote
       viewRemoteSnapshot: View Remote Snapshot
       hideRemoteSnapshot: Hide Remote Snapshot
       passwordKeepPlaceholder: "•••••••• (Leave blank to keep current password)"

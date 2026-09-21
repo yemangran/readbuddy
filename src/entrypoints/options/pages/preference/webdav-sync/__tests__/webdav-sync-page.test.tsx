@@ -62,6 +62,7 @@ describe("WebdavSyncPage", () => {
       pendingChangesCount: 0,
       lastError: null,
       pausedReason: null,
+      reviewsLastSuccessTime: null,
       configSyncStatus: "idle",
       configLastSuccessTime: null,
       configLastAction: null,
@@ -336,6 +337,7 @@ describe("WebdavSyncPage", () => {
       pendingChangesCount: 0,
       lastError: null,
       pausedReason: null,
+      reviewsLastSuccessTime: 1700000000000,
       configSyncStatus: "synced",
       configLastSuccessTime: 1700000000000,
       configLastAction: "uploaded",
@@ -358,6 +360,9 @@ describe("WebdavSyncPage", () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(new RegExp(i18n.t("options.dictionary.webdav.lastSync"))),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(i18n.t("options.dictionary.webdav.reviewsLastSuccess"))),
     ).toBeInTheDocument()
     // The global trigger stays separate from the preferences-only one.
     expect(screen.getByLabelText("webdav-sync-now")).toBeInTheDocument()
@@ -401,6 +406,7 @@ describe("WebdavSyncPage", () => {
       pendingChangesCount: 0,
       lastError: null,
       pausedReason: null,
+      reviewsLastSuccessTime: null,
       configSyncStatus: "failed",
       configLastSuccessTime: null,
       configLastAction: null,
@@ -440,6 +446,7 @@ describe("WebdavSyncPage", () => {
       pendingChangesCount: 1,
       lastError: null,
       pausedReason: null,
+      reviewsLastSuccessTime: null,
       configSyncStatus: "idle",
       configLastSuccessTime: null,
       configLastAction: null,

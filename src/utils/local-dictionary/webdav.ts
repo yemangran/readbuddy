@@ -37,6 +37,7 @@ export const INITIAL_WEBDAV_SYNC_STATE: WebdavSyncState = {
   pendingChangesCount: 0,
   lastError: null,
   pausedReason: null,
+  reviewsLastSuccessTime: null,
   configSyncStatus: "idle",
   configLastSuccessTime: null,
   configLastAction: null,
@@ -350,6 +351,136 @@ async function syncRemainingComponents(
   return { dictionary: dictionaryReport, reviews, config: configReport }
 }
 
+export type WebdavPutOutcome =
+  | { status: "success"; response: Response; etag: string | null }
+  | { status: "precondition-failed" }
+  | { status: "parent-collection-created" }
+  | { status: "error"; error: WebdavError }
+
+export async function sendWebdavPutWithPrecondition(options: {
+  fileUrl: string
+  headers: Record<string, string>
+  body: string
+  authHeader: string
+  fetchFn?: typeof fetch
+  createdParentCollection?: boolean
+  errorContext?: string
+}): Promise<WebdavPutOutcome> {
+  const {
+    fileUrl,
+    headers,
+    body,
+    authHeader,
+    fetchFn = globalThis.fetch,
+    createdParentCollection = false,
+    errorContext = "upload",
+  } = options
+
+  let putRes: Response
+  try {
+    putRes = await fetchFn(fileUrl, {
+      method: "PUT",
+      headers,
+      body,
+    })
+  } catch (err: any) {
+    return {
+      status: "error",
+      error: {
+        code: "NETWORK_ERROR",
+        message: err?.message || `Failed to ${errorContext} to WebDAV`,
+        retryable: true,
+      },
+    }
+  }
+
+  if (putRes.status === 412) {
+    return { status: "precondition-failed" }
+  }
+
+  if (putRes.status === 401 || putRes.status === 403) {
+    return {
+      status: "error",
+      error: {
+        code: "AUTH_FAILED",
+        message: `Authentication failed during ${errorContext}`,
+        retryable: false,
+      },
+    }
+  }
+
+  if (putRes.status === 400 || putRes.status === 501) {
+    return {
+      status: "error",
+      error: {
+        code: "CONDITION_NOT_SUPPORTED",
+        message: "WebDAV server does not support conditional PUT headers",
+        retryable: false,
+      },
+    }
+  }
+
+  if (putRes.status === 200 || putRes.status === 201 || putRes.status === 204) {
+    const etag = putRes.headers.get("etag") || putRes.headers.get("ETag")
+    return { status: "success", response: putRes, etag }
+  }
+
+  if ((putRes.status === 404 || putRes.status === 409) && !createdParentCollection) {
+    const parentUrl = getWebdavParentCollectionUrl(fileUrl)
+    if (parentUrl) {
+      logger.info(
+        `[WebDAV] Parent collection missing (HTTP ${putRes.status}), attempting MKCOL: ${parentUrl}`,
+      )
+      try {
+        const mkcolRes = await fetchFn(parentUrl, {
+          method: "MKCOL",
+          headers: {
+            Authorization: authHeader,
+          },
+        })
+        if (mkcolRes.status === 201 || mkcolRes.status === 405 || mkcolRes.status === 200) {
+          logger.info(`[WebDAV] MKCOL parent collection succeeded, retrying ${errorContext}...`)
+          return { status: "parent-collection-created" }
+        }
+      } catch (mkcolErr) {
+        logger.warn("[WebDAV] Failed to execute MKCOL on parent collection", mkcolErr)
+      }
+    }
+  }
+
+  if (putRes.status === 404) {
+    let bodySnippet = ""
+    try {
+      bodySnippet = await putRes.text()
+    } catch {
+      // ignore
+    }
+    const isJianguoyun = fileUrl.includes("dav.jianguoyun.com")
+    const errorMsg =
+      isJianguoyun || bodySnippet.includes("ObjectNotFound")
+        ? "WebDAV 目标目录不存在（坚果云根目录不支持直接放置文件，请在服务地址中包含同步文件夹如 /dav/readbuddy/）"
+        : "WebDAV server returned HTTP 404 on upload: parent collection does not exist"
+
+    return {
+      status: "error",
+      error: {
+        code: "NETWORK_ERROR",
+        message: errorMsg,
+        retryable: false,
+      },
+    }
+  }
+
+  return {
+    status: "error",
+    error: {
+      code: "NETWORK_ERROR",
+      message: `WebDAV server returned HTTP ${putRes.status} on upload`,
+      retryable: true,
+    },
+  }
+}
+
 export async function syncWithWebdav(
   repository: LocalDictionaryRepository,
   config: WebdavConfig,
@@ -572,79 +703,33 @@ export async function syncWithWebdav(
       }
     }
 
-    let putRes: Response
-    try {
-      putRes = await fetchFn(fileUrl, {
-        method: "PUT",
-        headers: putHeaders,
-        body: uploadBody,
-      })
-    } catch (err: any) {
-      return {
-        ok: false,
-        localUpdated,
-        stats: {
-          addedCount,
-          updatedCount,
-          deletedCount,
-          preservedCount,
-          addedConflictCount,
-        },
-        error: {
-          code: "NETWORK_ERROR",
-          message: err?.message || "Failed to upload snapshot to WebDAV",
-          retryable: true,
-        },
-      }
-    }
+    const putOutcome = await sendWebdavPutWithPrecondition({
+      fileUrl,
+      headers: putHeaders,
+      body: uploadBody,
+      authHeader,
+      fetchFn,
+      createdParentCollection,
+      errorContext: "upload snapshot",
+    })
 
-    if (putRes.status === 412) {
-      // Precondition Failed: remote changed concurrently on another device!
+    if (putOutcome.status === "precondition-failed") {
       logger.info(
         `[WebDAV] Precondition failed (412) on attempt ${attempt}. Retrying conditional upload...`,
       )
       continue
     }
 
-    if (putRes.status === 401 || putRes.status === 403) {
+    if (putOutcome.status === "parent-collection-created") {
+      createdParentCollection = true
+      attempt-- // Do not consume an attempt for collection creation
+      continue
+    }
+
+    if (putOutcome.status === "error") {
       return {
         ok: false,
         localUpdated,
-        error: {
-          code: "AUTH_FAILED",
-          message: "Authentication failed during upload",
-          retryable: false,
-        },
-      }
-    }
-
-    if (putRes.status === 400 || putRes.status === 501) {
-      return {
-        ok: false,
-        localUpdated,
-        error: {
-          code: "CONDITION_NOT_SUPPORTED",
-          message: "WebDAV server does not support conditional PUT headers",
-          retryable: false,
-        },
-      }
-    }
-
-    if (putRes.status === 200 || putRes.status === 201 || putRes.status === 204) {
-      const newEtag = putRes.headers.get("etag") || putRes.headers.get("ETag")
-      await repository.clearSyncChanges(syncSequence)
-      const components = await syncRemainingComponents(
-        { ok: true, remoteUploaded: true, localUpdated },
-        repository,
-        config,
-        options,
-        fetchFn,
-      )
-      return {
-        ok: true,
-        remoteUploaded: true,
-        localUpdated,
-        etag: newEtag || remoteEtag,
         stats: {
           addedCount,
           updatedCount,
@@ -652,67 +737,32 @@ export async function syncWithWebdav(
           preservedCount,
           addedConflictCount,
         },
-        components,
+        error: putOutcome.error,
       }
     }
 
-    if ((putRes.status === 404 || putRes.status === 409) && !createdParentCollection) {
-      const parentUrl = getWebdavParentCollectionUrl(fileUrl)
-      if (parentUrl) {
-        createdParentCollection = true
-        logger.info(
-          `[WebDAV] Parent collection missing (HTTP ${putRes.status}), attempting MKCOL: ${parentUrl}`,
-        )
-        try {
-          const mkcolRes = await fetchFn(parentUrl, {
-            method: "MKCOL",
-            headers: {
-              Authorization: authHeader,
-            },
-          })
-          if (mkcolRes.status === 201 || mkcolRes.status === 405 || mkcolRes.status === 200) {
-            logger.info("[WebDAV] MKCOL parent collection succeeded, retrying upload...")
-            attempt-- // Do not consume an attempt for collection creation
-            continue
-          }
-        } catch (mkcolErr) {
-          logger.warn("[WebDAV] Failed to execute MKCOL on parent collection", mkcolErr)
-        }
-      }
-    }
-
-    if (putRes.status === 404) {
-      let bodySnippet = ""
-      try {
-        bodySnippet = await putRes.text()
-      } catch {
-        // ignore
-      }
-      const isJianguoyun = fileUrl.includes("dav.jianguoyun.com")
-      const errorMsg =
-        isJianguoyun || bodySnippet.includes("ObjectNotFound")
-          ? "WebDAV 目标目录不存在（坚果云根目录不支持直接放置文件，请在服务地址中包含同步文件夹如 /dav/readbuddy/）"
-          : "WebDAV server returned HTTP 404 on upload: parent collection does not exist"
-
-      return {
-        ok: false,
-        localUpdated,
-        error: {
-          code: "NETWORK_ERROR",
-          message: errorMsg,
-          retryable: false,
-        },
-      }
-    }
-
+    const newEtag = putOutcome.etag
+    await repository.clearSyncChanges(syncSequence)
+    const components = await syncRemainingComponents(
+      { ok: true, remoteUploaded: true, localUpdated },
+      repository,
+      config,
+      options,
+      fetchFn,
+    )
     return {
-      ok: false,
+      ok: true,
+      remoteUploaded: true,
       localUpdated,
-      error: {
-        code: "NETWORK_ERROR",
-        message: `WebDAV server returned HTTP ${putRes.status} on upload`,
-        retryable: true,
+      etag: newEtag || remoteEtag,
+      stats: {
+        addedCount,
+        updatedCount,
+        deletedCount,
+        preservedCount,
+        addedConflictCount,
       },
+      components,
     }
   }
 

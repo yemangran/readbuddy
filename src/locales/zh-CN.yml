@@ -179,10 +179,12 @@ options:
       syncNow: 立即同步
       disconnect: 断开连接
       connected: 已连接
+      connectedDesc: 服务连接正常，可同步本地词典记录、复习卡片与配置文件 (readbuddy-config.json)
       notConfigured: 未配置
       syncSuccess: 同步成功完成
       syncInProgress: 同步已在进行中
       saveSuccess: WebDAV 配置已保存
+      saveSuccessDesc: 已连接 WebDAV 并启动数据与偏好配置 (readbuddy-config.json) 同步
       disconnectSuccess: 已断开 WebDAV 配置
       testing: 测试中...
       syncing: 同步中...
@@ -202,6 +204,7 @@ options:
       phasePaused: 已暂停
       phaseError: 同步异常
       lastSuccess: 最近成功
+      reviewsLastSuccess: 复习状态同步
       lastSync: 最近同步
       neverSynced: 从未同步
       nextRetry: 下次重试
@@ -222,10 +225,10 @@ options:
       configSyncFailed: 同步失败
       configSyncNow: 同步配置
       configSyncSuccess: 偏好配置同步完成
-      configSyncActionUploaded: 已上传至云端
-      configSyncActionDownloaded: 已应用云端配置
-      viewRemoteSnapshot: 查看云端快照
-      hideRemoteSnapshot: 收起云端快照
+      configSyncActionUploaded: 已上传至远端
+      configSyncActionDownloaded: 已应用远端配置
+      viewRemoteSnapshot: 查看远端快照
+      hideRemoteSnapshot: 收起远端快照
       passwordKeepPlaceholder: "•••••••• (留空保持原密码不变)"
       presetJianguoyun: 坚果云
       jianguoyunTip: 坚果云请使用「第三方应用授权密码」而非网页登录密码。
