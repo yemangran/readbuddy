@@ -1,5 +1,45 @@
 # @read-buddy/extension
 
+## 1.2.0
+
+### Minor Changes
+
+- [`32e5eb3`](https://github.com/yemangran/readbuddy/commit/32e5eb31df03bbf53bdf566f734e7473255a1bf0) Thanks [@yemangran](https://github.com/yemangran)! - feat(dictionary): 重构闪卡复习视窗为双栏工作台布局与优化同步入口
+
+  - `/options.html#/dictionary?mode=review` 页面全新升级为双栏工作台布局（方案 B）：左侧提供常驻复习卡片队列（展示单词、词性、过关状态、总体复习进度及已过关/待复习统计），支持即时点选跳转；右侧承载沉浸式卡片学习与记忆稳定性展示。
+  - 优化全屏复习页顶栏返回导航，移除右侧冗余关闭按钮。
+  - `/preference/webdav-sync` 移除多余的「偏好配置同步」区域，统一收敛至页面主同步通道。
+
+- [`f2f94ed`](https://github.com/yemangran/readbuddy/commit/f2f94ed73fb011f4ecdc760bb29878fb73e18430) Thanks [@yemangran](https://github.com/yemangran)! - feat(webdav): sync extension preferences through WebDAV with local snapshot protection
+
+  新增 `readbuddy-config.json` 规范读写能力：插件偏好设置现在通过用户已配置的 WebDAV 目录同步，采用 `lastModifiedAt` 最后更新胜出策略——远端配置较新时自动生成本地历史备份快照再拉取应用，本地较新或远端无文件时自动上传，覆盖后通过存储监听广播通知各运行环境生效。上传使用 ETag 条件请求（`If-Match` / `If-None-Match`）避免覆盖其他设备的并发修改，远端文件缺失 ETag、超出大小预算或信封字段不完整时暂停同步并保留双方数据原状。
+
+- [`a333379`](https://github.com/yemangran/readbuddy/commit/a333379846722e666d170977e28bbfed90668728) Thanks [@yemangran](https://github.com/yemangran)! - feat(webdav): sync dictionary, review states, and preferences in one coordinated pass
+
+  `syncWithWebdav` 现在是一次统一同步的编排入口：在本地词典记录（`readbuddy.json`）同步落定后，同一轮中协同处理复习卡片状态（`readbuddy-reviews.json`）与插件偏好配置（`readbuddy-config.json`），本地写入防抖、启动、网络恢复、闹钟重试与手动「立即同步」都会走完整链路，一次配置 WebDAV 即可全局同步。设置页支持独立的偏好配置手动同步，便于快捷调试与刷新配置（遵循 ADR 0003 决议 2 修订）。
+
+  同步状态模型扩展记录各组件的独立同步结果与成功时间戳（`lastSuccessTime`、`reviewsLastSuccessTime`、`configSyncStatus`、`configLastSuccessTime`、`configLastAction`、`configLastError`）；同步返回值新增按组件划分的诊断报告（`components.dictionary` / `components.reviews` / `components.config`）：单个组件的非致命错误（如远端配置文件损坏、复习文件上传失败）不再阻断其他组件的正常同步，而是作为诊断信息向上暴露，学习数据照常同步。
+
+  WebDAV 同步由「双文件」演进为「三文件协同」，架构决策记录见 [ADR 0003](../docs/adr/0003-unified-webdav-sync-pipeline.md)（修订 ADR 0002 第 3 条）。
+
+- [`5fa9641`](https://github.com/yemangran/readbuddy/commit/5fa96412a936f51ca7317ce4972db54911051542) Thanks [@yemangran](https://github.com/yemangran)! - feat(options): 统一偏好页的 WebDAV 云端同步入口与配置同步状态
+
+  `/preference` 配置分区移除割裂的 Google Drive 同步卡片与冲突解决弹窗，替换为统一的 WebDAV 云端同步入口：一眼可见连接状态（已连接 / 未配置 / 同步异常）、最近一次同步时间，以及运行完整统一链路的「立即同步」按钮，行末箭头下钻到 WebDAV 详情页。
+
+  `/preference/webdav-sync` 详情页新增「偏好配置同步」概览：展示 `readbuddy-config.json` 的同步状态、最近同步时间、上一轮同步动作（已上传至云端 / 已应用云端配置 / 已是最新）与失败原因，并提供独立于全局同步的「同步配置」按钮——只协调偏好配置，不动生词本与复习数据；偏好配置同步失败也绝不会暂停引擎或阻塞词典同步。
+
+  架构决策记录见 [ADR 0003](../docs/adr/0003-unified-webdav-sync-pipeline.md)（修订第 2 条：新增显式的「仅偏好配置」触发器）。
+
+### Patch Changes
+
+- [`a294e4a`](https://github.com/yemangran/readbuddy/commit/a294e4a2d54537f0627a7488e988b1157dfafcf4) Thanks [@yemangran](https://github.com/yemangran)! - refactor(webdav): excise the obsolete Google Drive sync stack
+
+  Google Drive 云端同步的最后一处残留已彻底清除：删除 `src/utils/google-drive/` 全套模块（OAuth 隐式授权、Drive appdata 客户端、三方冲突合并）、`google-drive-sync` 偏好页组件与冲突弹窗、`use-google-drive-auth` Hook、`google-drive-sync` Jotai Atoms，以及随之失去引用的 `use-unresolved-field`、`last-sync-time` atom 与 `lastSyncedConfig` 读写封装。
+
+  偏好设置的同步状态改由 WebDAV 统一链路自带的 `configSyncStatus` / `configLastSuccessTime` 描述，不再依赖 Google Drive 的 `lastSyncedConfig` 基线。同时从 `src/env/shared.ts` 移除 `WXT_GOOGLE_CLIENT_ID`——生产构建不再要求 Google 客户端 ID，扩展对 `accounts.google.com` 与 `www.googleapis.com` 的网络调用归零；`.env.example` 与 submit / release 工作流的对应变量一并移除，九个语言包中的 `options.preference.config.googleDrive.*` 词条全部删除。
+
+  新增源码级边界守卫测试，防止已删除的模块、存储键、环境变量、语言词条或 Google 同步端点重新混入代码库。
+
 ## 1.1.0
 
 ### Minor Changes
