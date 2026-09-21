@@ -1,6 +1,5 @@
-import type { RemoteSnapshotSummary, WebdavErrorCode } from "@/utils/local-dictionary/types"
+import type { RemoteSnapshotSummary } from "@/utils/local-dictionary/types"
 import { Icon } from "@iconify/react"
-import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
@@ -23,46 +22,23 @@ import { Input } from "@/components/ui/base-ui/input"
 import { toastManager } from "@/components/ui/base-ui/toast"
 import { ConfigDetailSection } from "@/entrypoints/options/components/config-detail-section"
 import { PageLayout } from "@/entrypoints/options/components/page-layout"
-import { i18n, type I18nKey } from "@/utils/i18n"
+import { i18n } from "@/utils/i18n"
 import {
   clearWebdavConfig,
   getRemoteWebdavSummary,
   getWebdavConfig,
-  getWebdavSyncState,
   saveWebdavConfig,
+  syncWebdavConfig,
   testWebdavConnection,
   triggerWebdavSync,
-  watchWebdavSyncState,
 } from "@/utils/local-dictionary/client"
 import { requestWebdavHostPermission } from "@/utils/local-dictionary/webdav"
 import { cn } from "@/utils/styles/utils"
 import { queryClient } from "@/utils/tanstack-query"
+import { WebdavConfigSyncOverview } from "./components/config-sync-overview"
 import { WebdavSetupGuideDialog } from "./components/webdav-setup-guide-dialog"
-
-const WEBDAV_ERROR_I18N_KEYS: Record<WebdavErrorCode, I18nKey> = {
-  AUTH_FAILED: "options.dictionary.webdav.authFailed",
-  CORRUPTED_REMOTE: "options.dictionary.webdav.corruptedRemote",
-  UNSUPPORTED_VERSION: "options.dictionary.webdav.unsupportedVersion",
-  INTEGRITY_CONFLICT: "options.dictionary.webdav.integrityConflict",
-  BUDGET_EXCEEDED: "options.dictionary.webdav.budgetExceeded",
-  CONDITION_FAILED_MAX_RETRIES: "options.dictionary.webdav.conditionRetryExceeded",
-  CONDITION_NOT_SUPPORTED: "options.dictionary.webdav.conditionNotSupported",
-  PERMISSION_DENIED: "options.dictionary.webdav.permissionDenied",
-  STORAGE_ERROR: "options.dictionary.webdav.storageError",
-  NETWORK_ERROR: "options.dictionary.webdav.networkError",
-}
-
-function getWebdavErrorMessage(
-  error?: { code?: string; message?: string } | null,
-  fallback?: string,
-): string {
-  if (!error) return fallback || ""
-  if (error.code && error.code in WEBDAV_ERROR_I18N_KEYS) {
-    const key = WEBDAV_ERROR_I18N_KEYS[error.code as WebdavErrorCode]
-    return (i18n.t as (k: string) => string)(key)
-  }
-  return error.message || fallback || "Sync failed"
-}
+import { useWebdavSyncState } from "./use-webdav-sync-state"
+import { getWebdavErrorMessage } from "./webdav-error-message"
 
 export function WebdavSyncPage() {
   const [webdavEndpoint, setWebdavEndpoint] = useState("")
@@ -71,6 +47,7 @@ export function WebdavSyncPage() {
   const [isWebdavConfigured, setIsWebdavConfigured] = useState(false)
   const [isTestingWebdav, setIsTestingWebdav] = useState(false)
   const [isSyncingWebdav, setIsSyncingWebdav] = useState(false)
+  const [isSyncingConfig, setIsSyncingConfig] = useState(false)
   const [webdavError, setWebdavError] = useState<string | null>(null)
   const [isForceOverwriteDialogOpen, setIsForceOverwriteDialogOpen] = useState(false)
   const [isFetchingRemoteSummary, setIsFetchingRemoteSummary] = useState(false)
@@ -99,13 +76,7 @@ export function WebdavSyncPage() {
 
   const [currentTime, setCurrentTime] = useState(() => Date.now())
 
-  const { data: syncState } = useQuery({
-    queryKey: ["local-dictionary-webdav-sync-state"],
-    queryFn: async () => {
-      return await getWebdavSyncState()
-    },
-    refetchInterval: 2000,
-  })
+  const syncState = useWebdavSyncState()
 
   useEffect(() => {
     if (!syncState?.nextRetryTime) {
@@ -116,12 +87,6 @@ export function WebdavSyncPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [syncState?.nextRetryTime])
-
-  useEffect(() => {
-    return watchWebdavSyncState(() => {
-      void queryClient.invalidateQueries({ queryKey: ["local-dictionary-webdav-sync-state"] })
-    })
-  }, [])
 
   useEffect(() => {
     void getWebdavConfig().then((config) => {
@@ -246,6 +211,43 @@ export function WebdavSyncPage() {
       }
     } finally {
       setIsSyncingWebdav(false)
+    }
+  }
+
+  /**
+   * Independent trigger for the preference component: reconciles
+   * `readbuddy-config.json` alone, leaving the dictionary and review files to
+   * the global "Sync Now" above.
+   */
+  const handleSyncConfig = async () => {
+    setIsSyncingConfig(true)
+    setWebdavError(null)
+    try {
+      const reply = await syncWebdavConfig()
+      if (reply?.ok) {
+        toastManager.add({
+          type: "success",
+          title: i18n.t("options.dictionary.webdav.configSyncSuccess"),
+        })
+      } else if (reply) {
+        const msg = getWebdavErrorMessage(
+          reply.error,
+          i18n.t("options.dictionary.webdav.networkError"),
+        )
+        setWebdavError(msg)
+        toastManager.add({
+          type: "error",
+          title: msg,
+        })
+      } else {
+        // The engine was busy: the pass already running covers preferences too.
+        toastManager.add({
+          type: "info",
+          title: i18n.t("options.dictionary.webdav.syncInProgress"),
+        })
+      }
+    } finally {
+      setIsSyncingConfig(false)
     }
   }
 
@@ -592,6 +594,17 @@ export function WebdavSyncPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Preference component of the unified sync, with its own trigger */}
+            {isWebdavConfigured && syncState && (
+              <WebdavConfigSyncOverview
+                state={syncState}
+                // A pass already running covers preferences too, so the
+                // independent trigger waits for it instead of racing it.
+                isSyncing={isSyncingConfig || isSyncingWebdav || syncState.phase === "syncing"}
+                onSync={() => void handleSyncConfig()}
+              />
             )}
 
             {webdavError && (

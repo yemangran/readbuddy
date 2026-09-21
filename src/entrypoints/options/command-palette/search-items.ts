@@ -56,10 +56,11 @@ export const SEARCH_ITEMS: SearchItem[] = [
     pageKey: "options.preference.title",
   },
   {
-    sectionId: "google-drive-sync",
+    // The unified cloud-sync row of the Preference page's config section.
+    sectionId: "webdav-sync",
     route: "/preference",
-    titleKey: "options.preference.config.googleDrive.title",
-    descriptionKey: "options.preference.config.googleDrive.description",
+    titleKey: "options.dictionary.webdav.title",
+    descriptionKey: "options.dictionary.webdav.description",
     pageKey: "options.preference.title",
   },
   {

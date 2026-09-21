@@ -222,6 +222,8 @@ interface ProtocolMap {
   dictionaryTriggerWebdavSync: (data?: {
     forceUnconditional?: boolean
     resetPaused?: boolean
+    /** Reconcile only extension preferences (`readbuddy-config.json`). */
+    onlyConfig?: boolean
     reason?: "debounce" | "startup" | "online" | "alarm" | "manual" | "retry"
   }) => Promise<WebdavSyncResult | null>
   dictionaryGetRemoteWebdavSummary: () => Promise<

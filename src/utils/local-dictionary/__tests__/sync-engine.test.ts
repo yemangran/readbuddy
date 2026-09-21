@@ -313,4 +313,111 @@ describe("WebdavSyncEngine", () => {
     // Now forceUnconditional is respected (no If-Match)
     expect((capturedHeaders as unknown as Record<string, string>)?.["If-Match"]).toBeUndefined()
   })
+
+  it("runs a preferences-only pass that syncs readbuddy-config.json without touching dictionary data", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    const dictionaryRequests: string[] = []
+    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
+      if (requestUrl(url).endsWith("readbuddy.json")) {
+        dictionaryRequests.push(requestUrl(url))
+      }
+      if (init?.method === "GET") {
+        return Promise.resolve(new Response("Not Found", { status: 404 }))
+      }
+      return Promise.resolve(new Response("", { status: 201, headers: { etag: '"etag"' } }))
+    })
+
+    const engine = new WebdavSyncEngine(() => repo, { fetchFn: mockFetch })
+    const result = await engine.triggerSync({ reason: "manual", onlyConfig: true })
+
+    expect(result?.ok).toBe(true)
+    expect(result?.components?.config).toEqual({ ok: true, action: "uploaded" })
+    // The dictionary file is never read or written by a preferences-only pass
+    expect(dictionaryRequests).toEqual([])
+
+    const state = await getStoredWebdavSyncState()
+    expect(state.configSyncStatus).toBe("synced")
+    expect(state.configLastAction).toBe("uploaded")
+    expect(state.configLastSuccessTime).not.toBeNull()
+    // Dictionary-level success stays untouched: preferences alone did not sync it
+    expect(state.lastSuccessTime).toBeNull()
+  })
+
+  it("records a preferences-only failure without pausing the engine", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url) => {
+      if (requestUrl(url).endsWith("readbuddy-config.json")) {
+        return Promise.resolve(new Response("Unauthorized", { status: 401 }))
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }))
+    })
+
+    const engine = new WebdavSyncEngine(() => repo, { fetchFn: mockFetch })
+    const result = await engine.triggerSync({ reason: "manual", onlyConfig: true })
+
+    expect(result?.ok).toBe(false)
+    expect(result?.components?.config?.error?.code).toBe("AUTH_FAILED")
+
+    const state = await getStoredWebdavSyncState()
+    expect(state.configSyncStatus).toBe("failed")
+    expect(state.configLastError?.code).toBe("AUTH_FAILED")
+    // A preferences failure must not pause the engine: the dictionary sync
+    // would be blocked with it (ADR 0003 decision 6).
+    expect(state.phase).toBe("idle")
+    expect(state.pausedReason).toBeNull()
+  })
+
+  it("does not queue a full pass when a preferences-only trigger arrives mid-pass", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    let dictionaryGetCalls = 0
+    const resolvers: Array<(res: Response) => void> = []
+
+    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
+      if (init?.method === "GET") {
+        if (requestUrl(url).endsWith("readbuddy-config.json")) {
+          return Promise.resolve(new Response("Not Found", { status: 404 }))
+        }
+        dictionaryGetCalls++
+        return new Promise<Response>((resolve) => {
+          resolvers.push(resolve)
+        })
+      }
+      return Promise.resolve(new Response("", { status: 201, headers: { etag: '"etag"' } }))
+    })
+
+    const engine = new WebdavSyncEngine(() => repo, {
+      fetchFn: mockFetch,
+      debounceMs: 5,
+    })
+
+    const firstSyncPromise = engine.triggerSync({ reason: "manual" })
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Preferences-only trigger while the unified pass is still running
+    const configOnlyResult = await engine.triggerSync({ reason: "manual", onlyConfig: true })
+    expect(configOnlyResult).toBeNull()
+
+    resolvers[0]!(new Response("Not Found", { status: 404 }))
+    await firstSyncPromise
+    await new Promise((r) => setTimeout(r, 50))
+
+    // The running pass already covers preferences, so no extra full pass is
+    // queued behind it: the dictionary file was fetched exactly once.
+    expect(dictionaryGetCalls).toBe(1)
+  })
 })

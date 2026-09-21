@@ -233,7 +233,8 @@ export interface WebdavConfigSyncReport extends WebdavSyncComponentReport {
 }
 
 export interface WebdavSyncComponents {
-  dictionary: WebdavSyncComponentReport
+  /** Absent when the pass never reached the dictionary component. */
+  dictionary?: WebdavSyncComponentReport
   /** Present only when the review state sync is part of the pass. */
   reviews?: WebdavSyncComponentReport
   config?: WebdavConfigSyncReport

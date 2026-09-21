@@ -255,6 +255,7 @@ export function setupLocalDictionaryMessageHandlers(): void {
       reason: message.data?.reason ?? "manual",
       forceUnconditional: message.data?.forceUnconditional,
       resetPaused: message.data?.resetPaused,
+      onlyConfig: message.data?.onlyConfig,
     })
   })
 

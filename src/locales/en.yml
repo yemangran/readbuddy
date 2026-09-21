@@ -167,7 +167,7 @@ options:
       actions: Actions
     webdav:
       title: WebDAV Sync
-      description: Synchronize your local dictionary across multiple devices with generic WebDAV.
+      description: Synchronize your dictionary, review progress, and extension preferences across devices with generic WebDAV.
       endpoint: Endpoint URL
       endpointPlaceholder: https://your-server.com/dav/
       username: Username
@@ -181,6 +181,7 @@ options:
       connected: Connected
       notConfigured: Not Configured
       syncSuccess: Synchronization completed successfully
+      syncInProgress: A sync is already in progress
       saveSuccess: WebDAV settings saved
       disconnectSuccess: WebDAV disconnected
       testing: Testing...
@@ -201,6 +202,7 @@ options:
       phasePaused: Paused
       phaseError: Error
       lastSuccess: Last Success
+      lastSync: Last Sync
       neverSynced: Never
       nextRetry: Next Retry
       pendingChanges: Pending Changes
@@ -214,6 +216,14 @@ options:
       remoteUpdatedAt: Remote Updated At
       remoteNotExists: Remote file does not exist yet
       allSynced: Up to date
+      configSyncTitle: Preference Sync
+      configSyncIdle: Not synced yet
+      configSyncSynced: Synced
+      configSyncFailed: Sync failed
+      configSyncNow: Sync Preferences
+      configSyncSuccess: Preferences synchronized
+      configSyncActionUploaded: Uploaded to cloud
+      configSyncActionDownloaded: Applied from cloud
       viewRemoteSnapshot: View Remote Snapshot
       hideRemoteSnapshot: Hide Remote Snapshot
       passwordKeepPlaceholder: "•••••••• (Leave blank to keep current password)"

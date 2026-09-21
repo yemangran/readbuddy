@@ -1,5 +1,6 @@
 import type { LocalDictionaryRepository } from "./repository"
 import type {
+  WebdavConfig,
   WebdavConfigSyncReport,
   WebdavErrorCode,
   WebdavSyncResult,
@@ -11,6 +12,7 @@ import {
   getStoredWebdavConfig,
   getStoredWebdavSyncState,
   saveStoredWebdavSyncState,
+  syncConfigComponent,
   syncWithWebdav,
 } from "./webdav"
 
@@ -100,10 +102,16 @@ export class WebdavSyncEngine {
     reason?: "debounce" | "startup" | "online" | "alarm" | "manual" | "retry"
     forceUnconditional?: boolean
     resetPaused?: boolean
+    /** Reconcile only extension preferences (`readbuddy-config.json`). */
+    onlyConfig?: boolean
   }): Promise<WebdavSyncResult | null> {
     // Mutex: Synchronously check and set isRunning before any async await
     if (this.isRunning) {
-      this.hasPendingSync = true
+      // A preferences-only request is subsumed by the pass already running —
+      // that pass reconciles preferences too — so it must not queue a full
+      // pass behind it, or clicking "Sync Preferences" would sync the
+      // dictionary as a side effect.
+      this.hasPendingSync = this.hasPendingSync || !triggerOptions?.onlyConfig
       return null
     }
 
@@ -114,6 +122,14 @@ export class WebdavSyncEngine {
       if (!config) {
         logger.info("[WebdavSyncEngine] Skipping sync: no WebDAV configuration")
         return null
+      }
+
+      // A preferences-only pass is an explicit user action from the WebDAV
+      // detail page. It runs before the pause check on purpose: pausing the
+      // engine is about the dictionary component, and the preference component
+      // deliberately stays non-fatal (ADR 0003 decision 6).
+      if (triggerOptions?.onlyConfig) {
+        return await this.runConfigOnlyPass(config)
       }
 
       const currentState = await getStoredWebdavSyncState()
@@ -321,6 +337,24 @@ export class WebdavSyncEngine {
         this.hasPendingSync = false
         void this.triggerSync({ reason: "debounce" })
       }
+    }
+  }
+
+  /**
+   * Reconciles only the preference component (`readbuddy-config.json`), for the
+   * WebDAV detail page's independent trigger. The dictionary and review files
+   * are left alone, and only the preference fields of the sync state are
+   * written — so this pass can neither make the learning data look freshly
+   * synced nor pause the engine when the preferences fail.
+   */
+  private async runConfigOnlyPass(config: WebdavConfig): Promise<WebdavSyncResult> {
+    const report = await syncConfigComponent(config, this.options?.fetchFn)
+    const state = await saveStoredWebdavSyncState(configSyncStatePatch(report))
+    this.options?.onStateChange?.(state)
+    return {
+      ok: report.ok,
+      error: report.error,
+      components: { config: report },
     }
   }
 

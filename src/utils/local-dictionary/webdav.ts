@@ -307,7 +307,7 @@ async function syncReviewsComponent(
  * what the unified pipeline promises. The engine surfaces them through
  * `configSyncStatus` / `configLastError` instead.
  */
-async function syncConfigComponent(
+export async function syncConfigComponent(
   config: WebdavConfig,
   fetchFn: typeof fetch = globalThis.fetch,
 ): Promise<WebdavConfigSyncReport> {

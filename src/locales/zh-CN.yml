@@ -167,7 +167,7 @@ options:
       actions: 操作
     webdav:
       title: WebDAV 同步
-      description: 使用通用 WebDAV 服务在多设备间安全同步本地离线词典。
+      description: 使用通用 WebDAV 服务在多设备间同步词典、复习进度与插件偏好配置。
       endpoint: 服务地址 (URL)
       endpointPlaceholder: https://your-server.com/dav/
       username: 用户名
@@ -181,6 +181,7 @@ options:
       connected: 已连接
       notConfigured: 未配置
       syncSuccess: 同步成功完成
+      syncInProgress: 同步已在进行中
       saveSuccess: WebDAV 配置已保存
       disconnectSuccess: 已断开 WebDAV 配置
       testing: 测试中...
@@ -201,6 +202,7 @@ options:
       phasePaused: 已暂停
       phaseError: 同步异常
       lastSuccess: 最近成功
+      lastSync: 最近同步
       neverSynced: 从未同步
       nextRetry: 下次重试
       pendingChanges: 待同步变更
@@ -214,6 +216,14 @@ options:
       remoteUpdatedAt: 远端更新时间
       remoteNotExists: 远端文件尚不存在
       allSynced: 已是最新
+      configSyncTitle: 偏好配置同步
+      configSyncIdle: 尚未同步
+      configSyncSynced: 已同步
+      configSyncFailed: 同步失败
+      configSyncNow: 同步配置
+      configSyncSuccess: 偏好配置同步完成
+      configSyncActionUploaded: 已上传至云端
+      configSyncActionDownloaded: 已应用云端配置
       viewRemoteSnapshot: 查看云端快照
       hideRemoteSnapshot: 收起云端快照
       passwordKeepPlaceholder: "•••••••• (留空保持原密码不变)"

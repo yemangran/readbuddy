@@ -207,9 +207,20 @@ export async function getWebdavSyncState(): Promise<WebdavSyncState> {
 export async function triggerWebdavSync(options?: {
   forceUnconditional?: boolean
   resetPaused?: boolean
+  /** Reconcile only extension preferences (`readbuddy-config.json`). */
+  onlyConfig?: boolean
   reason?: "debounce" | "startup" | "online" | "alarm" | "manual" | "retry"
 }): Promise<WebdavSyncResult | null> {
   return await sendMessage("dictionaryTriggerWebdavSync", options)
+}
+
+/**
+ * Reconciles only extension preferences (`readbuddy-config.json`), leaving the
+ * dictionary and review files untouched. The independent trigger of the WebDAV
+ * detail page's preference sync overview.
+ */
+export async function syncWebdavConfig(): Promise<WebdavSyncResult | null> {
+  return await triggerWebdavSync({ reason: "manual", onlyConfig: true })
 }
 
 export async function getRemoteWebdavSummary(): Promise<
