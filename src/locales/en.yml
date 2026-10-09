@@ -2,6 +2,8 @@ name: Read Buddy
 extName: "Read Buddy - Translate & Learn"
 extDescription: Read Buddy is an open source browser extension designed to help you learn languages deeply from any website.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
+documentTitles:
+  options: Settings
 account:
   login: Log in
   webApp: Web app

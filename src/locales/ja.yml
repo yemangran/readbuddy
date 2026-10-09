@@ -2,6 +2,8 @@ name: Read Buddy
 extName: Read Buddy - 翻訳して学ぶ
 extDescription: Read Buddyは、あらゆるウェブサイトから言語を深く学ぶために設計されたオープンソースのブラウザ拡張機能です。
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
+documentTitles:
+  options: 設定
 account:
   login: ログイン
   webApp: ウェブアプリ

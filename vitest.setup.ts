@@ -64,8 +64,9 @@ vi.mock("@/utils/i18n", () => ({
 }))
 
 // LocaleBoundary is a separate module from the mocked facade above and pulls in i18next +
-// the bundled YAML resources (which vitest has no plugin for). Stub it to a passthrough so
-// no test loads i18next or the .yml files; runtime language switching is not under test here.
+// the bundled YAML resources (vitest.config.ts loads them via its ViteYaml plugin, but only
+// the locale-boundary seam test opts in). Stub it to a passthrough so no other test loads
+// i18next or the .yml files; runtime language switching is not under test here.
 vi.mock("@/utils/i18n/locale-boundary", () => ({
   LocaleBoundary: ({ children }: { children: unknown }) => children,
 }))

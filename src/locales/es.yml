@@ -2,6 +2,8 @@ name: Read Buddy
 extName: Read Buddy - Traduce y aprende
 extDescription: Read Buddy es una extensión de navegador de código abierto diseñada para ayudarte a aprender idiomas en profundidad desde cualquier sitio web.
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
+documentTitles:
+  options: Ajustes
 account:
   login: Iniciar sesión
   webApp: Aplicación web

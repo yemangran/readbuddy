@@ -2,6 +2,8 @@ name: 伴读书童
 extName: 伴读书童 - 翻译与学习
 extDescription: 伴读书童是一款开放源代码的浏览器插件，旨在帮助您从任何网站深入学习语言。
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
+documentTitles:
+  options: 设置
 account:
   login: 登录
   webApp: 网页应用

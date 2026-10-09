@@ -58,7 +58,7 @@ async function initApp() {
         <SidebarProvider>
           <ThemeProvider>
             <TooltipProvider>
-              <LocaleBoundary>
+              <LocaleBoundary documentTitleKey="documentTitles.options">
                 <ToastProvider>
                   <AnchoredToastProvider>
                     <RecoveryBoundary>
