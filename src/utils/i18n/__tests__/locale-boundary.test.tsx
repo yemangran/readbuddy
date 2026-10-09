@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import type { UiLanguage } from "@/types/config/config"
 import type { DocumentTitleKey } from "@/utils/i18n/locale-boundary"
+import type { SupportedUiLocale } from "@/utils/i18n/resources"
 import { act, render, screen } from "@testing-library/react"
 import { createStore, Provider } from "jotai"
 import { describe, expect, it, vi } from "vitest"
 import { fakeBrowser } from "wxt/testing/fake-browser"
+import { SUPPORTED_UI_LOCALES } from "@/utils/i18n/resources"
 
 // This file tests the language boundary seam against the real i18next engine and
 // the real bundled YAML locale resources (vitest.config.ts loads them via its
@@ -15,21 +17,27 @@ vi.unmock("@/utils/i18n")
 vi.unmock("@/utils/i18n/locale-boundary")
 
 // Dynamic imports so the unmock calls above take effect for these modules.
+// `@/utils/i18n/resources` needs no such treatment — it is not among the modules
+// mocked in vitest.setup.ts — so the canonical supported-locale list is imported
+// statically above instead of being re-declared here.
 const { initI18n, i18n } = await import("@/utils/i18n")
 const { LocaleBoundary } = await import("@/utils/i18n/locale-boundary")
 const { configAtom, configFieldsAtomMap } = await import("@/utils/atoms/config")
 const { DEFAULT_CONFIG } = await import("@/utils/constants/config")
 const i18next = (await import("i18next")).default
 
-// The nine UI locales the document-title matrix below runs across.
-const SUPPORTED_UI_LOCALES = ["en", "es", "ja", "ko", "ru", "tr", "vi", "zh-CN", "zh-TW"] as const
-
 // One row per extension page that owns a document title: the exact title each
-// of the nine supported UI locales composes from the localized page name and
-// the localized app name. The translation hub names reuse the terminology of
-// the existing options sidebar entry (options.tools.translationHub); the popup
-// surface has no prior localized string, so its names are new.
-const DOCUMENT_TITLE_MATRIX = [
+// of the supported UI locales composes from the localized page name and the
+// localized app name. `titles` is keyed by the canonical `SupportedUiLocale`
+// union imported from resources.ts, so adding a locale there without an entry
+// here is a compile error — the matrix can never silently skip a locale's title.
+// The translation hub names reuse the terminology of the existing options
+// sidebar entry (options.tools.translationHub); the popup surface has no prior
+// localized string, so its names are new.
+const DOCUMENT_TITLE_MATRIX: ReadonlyArray<{
+  key: DocumentTitleKey
+  titles: Record<SupportedUiLocale, string>
+}> = [
   {
     key: "documentTitles.options",
     titles: {
@@ -72,7 +80,7 @@ const DOCUMENT_TITLE_MATRIX = [
       "zh-TW": "翻譯中心 | 伴讀書童",
     },
   },
-] as const
+]
 
 // Flattened key × locale cases for the title/lang matrix below.
 const TITLE_MATRIX_CASES = DOCUMENT_TITLE_MATRIX.flatMap(({ key, titles }) =>
