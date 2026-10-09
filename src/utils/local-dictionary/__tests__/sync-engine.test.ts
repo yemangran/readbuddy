@@ -450,4 +450,41 @@ describe("WebdavSyncEngine", () => {
     // queued behind it: the dictionary file was fetched exactly once.
     expect(dictionaryGetCalls).toBe(1)
   })
+
+  it("schedules debounced config sync independently and does not touch dictionary file", async () => {
+    await saveStoredWebdavConfig({
+      endpoint: "https://dav.example.com/webdav/",
+      username: "user",
+      password: "pass",
+    })
+
+    const requests: string[] = []
+    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url, init) => {
+      requests.push(requestUrl(url))
+      if (init?.method === "GET") {
+        return Promise.resolve(new Response("Not Found", { status: 404 }))
+      }
+      return Promise.resolve(new Response("", { status: 201, headers: { etag: '"etag"' } }))
+    })
+
+    const engine = new WebdavSyncEngine(() => repo, {
+      fetchFn: mockFetch,
+      debounceMs: 20,
+    })
+
+    engine.scheduleDebouncedConfigSync(20)
+
+    // Not yet called immediately
+    expect(requests.length).toBe(0)
+
+    // Wait for debounce timer
+    await new Promise((r) => setTimeout(r, 60))
+
+    // Config file should be accessed (GET 404 then PUT), dictionary file NEVER touched
+    expect(requests.some((url) => url.endsWith("readbuddy-config.json"))).toBe(true)
+    expect(requests.some((url) => url.endsWith("readbuddy.json"))).toBe(false)
+
+    const state = await getStoredWebdavSyncState()
+    expect(state.configSyncStatus).toBe("synced")
+  })
 })

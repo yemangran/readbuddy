@@ -265,7 +265,7 @@ export interface ApplySyncMergeResult {
 export type WebdavSyncPhase = "idle" | "syncing" | "paused" | "error"
 
 /** Outcome of the config component in the most recent pass that attempted it. */
-export type WebdavConfigSyncStatus = "idle" | "synced" | "failed"
+export type WebdavConfigSyncStatus = "idle" | "syncing" | "synced" | "failed"
 
 export interface WebdavSyncState {
   phase: WebdavSyncPhase

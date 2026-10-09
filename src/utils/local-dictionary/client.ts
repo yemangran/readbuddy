@@ -223,6 +223,8 @@ export async function syncWebdavConfig(): Promise<WebdavSyncResult | null> {
   return await triggerWebdavSync({ reason: "manual", onlyConfig: true })
 }
 
+export const syncPreferencesWithWebdav = syncWebdavConfig
+
 export async function getRemoteWebdavSummary(): Promise<
   { ok: true; summary: RemoteSnapshotSummary } | { ok: false; error: WebdavError }
 > {

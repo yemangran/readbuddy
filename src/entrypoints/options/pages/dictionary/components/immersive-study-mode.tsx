@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { ReviewSessionView, ReviewSummaryCard } from "@/components/review"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
+import { i18n } from "@/utils/i18n"
 import { reviewStore } from "@/utils/review/store"
 import { cn } from "@/utils/styles/utils"
 
@@ -69,16 +70,18 @@ export function ImmersiveStudyMode({
             size="sm"
             onClick={onExit}
             className="cursor-pointer text-muted-foreground hover:text-foreground"
-            aria-label="返回词典"
+            aria-label={i18n.t("options.dictionary.returnToDictionary")}
           >
             <Icon icon="tabler:arrow-left" className="mr-1.5 size-4" />
-            返回词典
+            {i18n.t("options.dictionary.returnToDictionary")}
           </Button>
           <div className="h-4 w-px bg-border/80" />
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-foreground">闪卡复习</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              {i18n.t("options.dictionary.flashcardReview")}
+            </h2>
             <Badge variant="secondary" className="text-[11px] font-normal">
-              FSRS 间隔记忆
+              {i18n.t("options.dictionary.fsrsSpacedRepetition")}
             </Badge>
           </div>
         </div>
@@ -87,12 +90,12 @@ export function ImmersiveStudyMode({
           <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[11px]">
             1-4
           </span>
-          <span>评估难度</span>
+          <span>{i18n.t("options.dictionary.rateDifficulty")}</span>
           <span className="text-border">·</span>
           <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[11px]">
             Space / Enter
           </span>
-          <span>翻转与前进</span>
+          <span>{i18n.t("options.dictionary.flipAndAdvance")}</span>
         </div>
       </div>
 
@@ -101,7 +104,7 @@ export function ImmersiveStudyMode({
         {phase === "loading" && (
           <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
             <Icon icon="tabler:loader-2" className="mb-3 size-8 animate-spin text-primary" />
-            <p className="text-sm">正在加载复习卡片...</p>
+            <p className="text-sm">{i18n.t("options.dictionary.loadingReviewCards")}</p>
           </div>
         )}
 
@@ -110,9 +113,11 @@ export function ImmersiveStudyMode({
             <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
               <Icon icon="tabler:circle-check" className="size-8" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">太棒了！暂无待复习单词</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              {i18n.t("options.dictionary.allReviewDoneTitle")}
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              当前生词本中的所有单词都已复习完毕或尚未到达复习时间。
+              {i18n.t("options.dictionary.allReviewDoneDesc")}
             </p>
             <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row">
               {activeRecords.length > 0 && (
@@ -123,7 +128,7 @@ export function ImmersiveStudyMode({
                   onClick={() => void loadQueue(true)}
                 >
                   <Icon icon="tabler:refresh" className="mr-1.5 size-4" />
-                  复习全部生词
+                  {i18n.t("options.dictionary.reviewAllWords")}
                 </Button>
               )}
               <Button
@@ -132,7 +137,7 @@ export function ImmersiveStudyMode({
                 className="flex-1 cursor-pointer"
                 onClick={onExit}
               >
-                返回词典
+                {i18n.t("options.dictionary.returnToDictionary")}
               </Button>
             </div>
           </div>

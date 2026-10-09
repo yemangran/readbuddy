@@ -155,6 +155,15 @@ options:
     viewDetail: 查看详情
     detailTitle: 词典记录详情
     syncSettings: 同步设置
+    flashcardReview: 闪卡复习
+    returnToDictionary: 返回词典
+    fsrsSpacedRepetition: FSRS 间隔记忆
+    rateDifficulty: 评估难度
+    flipAndAdvance: 翻转与前进
+    loadingReviewCards: 正在加载复习卡片...
+    allReviewDoneTitle: 太棒了！暂无待复习单词
+    allReviewDoneDesc: 当前生词本中的所有单词都已复习完毕或尚未到达复习时间。
+    reviewAllWords: 复习全部生词
     createdAt: 创建时间
     definition: 释义
     sentence: 例句
@@ -236,11 +245,85 @@ options:
       jianguoyunPresetAppliedDesc: 请输入坚果云注册邮箱（用户名）与第三方应用授权密码
       viewSetupGuide: 查看配置教程
       setupGuideTitle: WebDAV 服务配置指南
+      setupGuideDesc: 选择您所使用的 WebDAV 服务商，查看对应的服务地址格式、密码获取方式与接入配置教程。
+      supportedVendors: 支持的 WebDAV 服务商
+      endpointFormat: "服务地址 (Endpoint) 格式："
+      copyEndpoint: 复制地址
+      endpointCopied: 已复制端点地址到剪贴板
+      setupSteps: "配置接入步骤："
+      notesAndTips: "注意事项与避坑指南："
+      visitWebsite: 访问官网
+      verifyConnectionTip: 配置完成后，建议点击页面中的「测试连接」验证连通性
       setupGuideStep1: 登录坚果云网页版官网 (jianguoyun.com)。
       setupGuideStep2: 进入「账户信息」➜「安全选项」。
       setupGuideStep3: 找到「第三方应用管理」，点击「添加应用密码」，名称填写「伴读书童」。
       setupGuideStep4: 将注册邮箱填入「用户名」，生成的应用密码填入「密码」，然后点击「测试连接」。
       openJianguoyunWeb: 前往坚果云安全设置页面
+      vendors:
+        jianguoyun:
+          name: 坚果云 (Jianguoyun)
+          tabName: 坚果云
+          tag: 国内推荐
+          description: 国内网络访问稳定、开箱即用，支持多设备全自动云同步。
+          websiteLabel: 前往坚果云安全设置页面
+          step1: 登录坚果云网页版官网 (jianguoyun.com)。
+          step2: 点击右上角账号进入「账户信息」➜「安全选项」。
+          step3: 找到「第三方应用管理」，点击「添加应用密码」，应用名称填写「伴读书童」或「Read Buddy」。
+          step4: 在坚果云用户根目录（「我的文件」）中手动创建一个名为「readbuddy」的文件夹（重要：用户需要在坚果云用户根目录中手动创建一个 readbuddy 的目录才可以正常进行同步）。
+          step5: 将注册邮箱填入插件「用户名」，生成的应用授权密码填入「密码」，服务地址填入「https://dav.jianguoyun.com/dav/」。
+          tip1: 必须使用坚果云生成的「应用授权密码」，不能使用普通的网页登录密码。
+          tip2: "【必须手动创建目录】用户需要在坚果云用户根目录中手动创建一个「readbuddy」的目录才可以正常进行同步（坚果云根目录不支持直接放置文件，也不允许客户端通过接口直接创建根文件夹）。"
+        nextcloud:
+          name: Nextcloud / ownCloud
+          tabName: Nextcloud
+          tag: 开源私有云
+          description: 主流开源私有云盘，数据完全自主可控，原生提供标准 WebDAV 接口。
+          websiteLabel: 查看 Nextcloud WebDAV 文档
+          step1: 登录您的 Nextcloud / ownCloud 网页端后台。
+          step2: 点击右上角个人头像 ➜ 进入「个人设置 (Personal settings)」➜「安全 (Security)」。
+          step3: 在底部「设备与会话 (Devices & credentials)」中，输入应用名称「Read Buddy」，点击「创建新的应用密码」。
+          step4: 复制生成的专用应用密码，服务地址填写 Nextcloud「文件设置」左下角展示的 WebDAV 完整地址。
+          step5: 将 Nextcloud 用户名和专用应用密码填入插件完成配置。
+          tip1: 若开启了二次身份验证 (2FA)，必须生成并使用「应用专用密码」。
+          tip2: 请确保您的 Nextcloud 域名配置了有效的 HTTPS 证书并允许来自浏览器的请求。
+        infinicloud:
+          name: InfiniCLOUD
+          tabName: InfiniCLOUD
+          tag: 海外免梯
+          description: 日本老牌云存储 (原 TeraCLOUD)，原生提供免费容量与高速稳定的 WebDAV 服务。
+          websiteLabel: 前往 InfiniCLOUD 个人中心
+          step1: 登录 InfiniCLOUD 官网并在个人控制面板 (My Page) 中找到「Apps Connection」。
+          step2: 勾选开启「Apps Connection」选项。
+          step3: 系统将为您分配专属的 WebDAV Connection URL (形如 https://<ID>.teracloud.jp/dav/)。
+          step4: 勾选「Issue / Re-issue」获取专属 Connection Password (连接密码)。
+          step5: 将分配的 URL 填入「服务地址」，用户 ID 填入「用户名」，Connection Password 填入「密码」。
+          tip1: 请妥善保存生成的 Connection Password，该密码独立于官网网页登录密码。
+          tip2: 适合经常在多国网络环境切换、或希望与国内网盘隔离的用户。
+        synology:
+          name: 群晖 NAS (Synology)
+          tabName: 群晖
+          tag: 家庭私有云
+          description: 在个人或家庭私有 NAS 上自建 WebDAV 同步服务，数据彻底本地私有化。
+          websiteLabel: 群晖官方支持中心
+          step1: 登录群晖 DSM 系统，打开「套件中心」，搜索并安装「WebDAV Server」套件。
+          step2: 打开 WebDAV Server 套件界面，勾选「启用 HTTPS (端口 5006)」并应用。
+          step3: 在 DSM「控制面板」➜「权限 / 用户群组」中，确保当前同步用户已赋予 WebDAV Server 访问权限。
+          step4: 服务地址填入「https://<NAS域名或IP>:5006/<共享目录>/」（如 https://nas.local:5006/home/）。
+          step5: 填入 DSM 用户名与密码进行连接。
+          tip1: 强烈建议使用 HTTPS 端口 5006；如使用自签名证书，请确保浏览器或系统已信任该证书。
+          tip2: 公网环境下访问 NAS 请做好路由器的端口映射、DDNS 或反向代理设置。
+        generic:
+          name: 通用 WebDAV / Alist / 其它
+          tabName: 通用
+          tag: 标准协议
+          description: 适用于 Alist、rclone、Apache/Nginx WebDAV 模块或任何遵循 RFC 4918 标准的服务端。
+          websiteLabel: 查看 Alist WebDAV 配置指南
+          step1: 准备已正常部署并支持标准 HTTP WebDAV 协议的服务端。
+          step2: 确认同步目标目录具备读写以及创建子目录 (GET, PUT, MKCOL) 权限。
+          step3: 获取完整的 WebDAV 基础服务地址，填入插件的「服务地址」输入框。
+          step4: 填入服务端的认证用户名与密码，点击「测试连接」验证连通性。
+          tip1: 服务端需支持 HTTP Basic 认证机制。
+          tip2: 为支持多设备并发同步防冲突，建议服务端支持条件请求头 (ETag 与 If-Match / If-None-Match)。
 
   product:
     roadmap: 路线图
@@ -274,6 +357,18 @@ options:
     pageDescription: 接入 Read Buddy 调用的 AI 服务，并为每项功能指定使用哪一个。
     description: 添加 Read Buddy 可以调用的提供商。内置 20 多个，也可以添加兼容 Chat Completions 的自定义 API 和 Open Responses 自定义 API。
     configTitle: 提供商配置
+    sync:
+      title: WebDAV 配置同步
+      description: API 提供商与偏好设置编辑后将自动同步至 WebDAV 云端，多设备无缝共享。
+      synced: 配置已成功同步至云端
+      pulled: 已从云端拉取并应用最新配置
+      upToDate: 云端与本地配置已是最新
+      syncNow: 同步配置
+      syncing: 正在同步配置...
+      lastSync: 最近同步
+      notConfigured: 未配置 WebDAV 云端同步
+      notConfiguredDesc: 配置 WebDAV 后可跨设备自动备份和同步所有 API 提供商与密钥。
+      goToSettings: 前往配置 WebDAV
     addProvider: 添加提供商
     builtInProvider: 内置提供商
     builtInAiUsage:

@@ -13,6 +13,7 @@ export interface ReviewSessionViewProps {
   onSubmitRating?: (recordId: string, rating: ReviewRating) => Promise<unknown>
   onExit?: () => void
   className?: string
+  compact?: boolean
 }
 
 export function ReviewSessionView({
@@ -21,6 +22,7 @@ export function ReviewSessionView({
   onSubmitRating,
   onExit,
   className,
+  compact = false,
 }: ReviewSessionViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completedIndices, setCompletedIndices] = useState<Set<number>>(new Set())
@@ -84,6 +86,46 @@ export function ReviewSessionView({
       }
       setCurrentIndex(nextIdx)
     }
+  }
+
+  if (compact) {
+    return (
+      <div className={cn("flex w-full flex-col gap-3", className)}>
+        {/* Compact 顶栏：返回操作、进度与记忆指标 */}
+        <div className="flex items-center justify-between border-b border-border/50 pb-2">
+          <div className="flex items-center gap-1.5">
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                aria-label="退出复习"
+                className="flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Icon icon="tabler:arrow-left" className="size-4" />
+              </button>
+            )}
+            <span className="font-mono text-xs font-semibold text-foreground">
+              第 {currentIndex + 1} / {total} 词
+            </span>
+            <Badge variant="secondary" className="px-1.5 py-0 font-mono text-[10px]">
+              {Math.round((completedCount / total) * 100)}%
+            </Badge>
+          </div>
+
+          {currentCard.reviewState && (
+            <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">
+              稳定性:{" "}
+              {currentCard.reviewState.stability > 0
+                ? `${currentCard.reviewState.stability.toFixed(1)} 天`
+                : "新词"}
+            </Badge>
+          )}
+        </div>
+
+        {/* 闪卡主体，自然宽度与高度 */}
+        <ReviewCard key={currentCard.recordId} card={currentCard} onNext={handleNext} />
+      </div>
+    )
   }
 
   return (

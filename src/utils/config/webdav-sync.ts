@@ -357,6 +357,7 @@ async function applyRemoteConfigSnapshot(
 export async function syncConfigWithWebdav(
   webdavConfig: WebdavConfig,
   fetchFn: typeof fetch = globalThis.fetch,
+  options?: { forceUnconditional?: boolean },
 ): Promise<ConfigSyncResult> {
   let fileUrl: string
   try {
@@ -375,6 +376,9 @@ export async function syncConfigWithWebdav(
   const authHeader = getWebdavAuthHeader(webdavConfig.username, webdavConfig.password)
   let attempt = 0
   let createdParentCollection = false
+  let fallbackUnconditional = Boolean(options?.forceUnconditional)
+  let lastFailedEtag: string | null = null
+  let lastFailedRemoteUpdatedAt: number | null = null
 
   while (attempt < MAX_CONFIG_SYNC_RETRIES) {
     attempt++
@@ -383,6 +387,19 @@ export async function syncConfigWithWebdav(
     const remote = await fetchRemoteConfigSnapshot(fileUrl, authHeader, fetchFn)
     if (!remote.ok) {
       return { ok: false, error: remote.error }
+    }
+
+    // If a previous conditional PUT returned 412, check if remote content changed.
+    // If the remote file is identical to what was seen during the 412, no concurrent device
+    // changed the file; rather, the WebDAV server rejected the conditional header.
+    // Fall back to unconditional PUT to avoid looping and failing.
+    if (
+      lastFailedEtag !== null &&
+      remote.etag === lastFailedEtag &&
+      remote.snapshot?.updatedAt === lastFailedRemoteUpdatedAt
+    ) {
+      logger.info("[WebDAV] Remote unchanged after 412; falling back to unconditional PUT")
+      fallbackUnconditional = true
     }
 
     let local: LocalConfigState
@@ -410,10 +427,7 @@ export async function syncConfigWithWebdav(
     }
 
     // 4. Local newer (or no remote file yet): upload the local config
-    // An existing remote file without an ETag cannot be uploaded over safely:
-    // the conditional header that guards against clobbering a concurrent write
-    // would have nothing to compare against.
-    if (remote.snapshot && !remote.etag) {
+    if (remote.snapshot && !remote.etag && !fallbackUnconditional) {
       return {
         ok: false,
         error: {
@@ -429,13 +443,16 @@ export async function syncConfigWithWebdav(
       "Content-Type": "application/json; charset=utf-8",
     }
     if (!remote.snapshot) {
-      putHeaders["If-None-Match"] = "*"
-    } else if (remote.etag) {
+      if (!fallbackUnconditional) {
+        putHeaders["If-None-Match"] = "*"
+      }
+    } else if (remote.etag && !fallbackUnconditional) {
       const trimmedEtag = remote.etag.trim()
-      putHeaders["If-Match"] =
-        trimmedEtag.startsWith('"') || trimmedEtag.startsWith("W/")
-          ? trimmedEtag
-          : `"${trimmedEtag}"`
+      // Weak ETags (W/...) cannot satisfy strong comparison for If-Match (RFC 7232)
+      // and cause 412 on compliant servers. Only send If-Match for strong ETags.
+      if (!trimmedEtag.startsWith("W/")) {
+        putHeaders["If-Match"] = trimmedEtag.startsWith('"') ? trimmedEtag : `"${trimmedEtag}"`
+      }
     }
 
     const putOutcome = await sendWebdavPutWithPrecondition({
@@ -449,8 +466,9 @@ export async function syncConfigWithWebdav(
     })
 
     if (putOutcome.status === "precondition-failed") {
-      // Remote config changed concurrently on another device: re-read and reconcile
-      logger.info("[WebDAV] Config precondition failed (412), retrying sync...")
+      logger.info("[WebDAV] Config precondition failed (412), checking remote state...")
+      lastFailedEtag = remote.etag
+      lastFailedRemoteUpdatedAt = remote.snapshot?.updatedAt ?? null
       continue
     }
 

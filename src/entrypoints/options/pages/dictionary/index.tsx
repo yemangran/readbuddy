@@ -973,7 +973,7 @@ export function DictionaryPage() {
             aria-label="start-review"
           >
             <Icon icon="tabler:cards" className="mr-1.5 size-4" />
-            闪卡复习
+            {i18n.t("options.dictionary.flashcardReview")}
           </Button>
           <Button
             variant="outline"

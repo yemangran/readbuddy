@@ -14,37 +14,65 @@ describe("WebdavSetupGuideDialog", () => {
     ).toBeInTheDocument()
 
     // Check vendor tabs on the left
-    expect(screen.getByText("坚果云")).toBeInTheDocument()
-    expect(screen.getByText("Nextcloud")).toBeInTheDocument()
-    expect(screen.getByText("InfiniCLOUD")).toBeInTheDocument()
-    expect(screen.getByText("群晖")).toBeInTheDocument()
-    expect(screen.getByText("通用")).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.jianguoyun.tabName")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.nextcloud.tabName")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.infinicloud.tabName")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.synology.tabName")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.generic.tabName")),
+    ).toBeInTheDocument()
 
     // Default active content is Jianguoyun
-    expect(screen.getByText("坚果云 (Jianguoyun)")).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.jianguoyun.name")),
+    ).toBeInTheDocument()
     expect(screen.getByText("https://dav.jianguoyun.com/dav/")).toBeInTheDocument()
-    expect(screen.getByText(/第三方应用管理/)).toBeInTheDocument()
-    expect(screen.getAllByText(/readbuddy/).length).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.jianguoyun.step3")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.jianguoyun.step4")),
+    ).toBeInTheDocument()
   })
 
   it("switches vendor tutorial when clicking a vendor tab", () => {
     render(<WebdavSetupGuideDialog open={true} onOpenChange={vi.fn<(open: boolean) => void>()} />)
 
     // Click Nextcloud tab
-    const nextcloudTab = screen.getByText("Nextcloud")
+    const nextcloudTab = screen.getByText(
+      i18n.t("options.dictionary.webdav.vendors.nextcloud.tabName"),
+    )
     fireEvent.click(nextcloudTab)
 
     // Nextcloud content should appear
-    expect(screen.getByText("Nextcloud / ownCloud")).toBeInTheDocument()
-    expect(screen.getByText(/设备与会话/)).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.nextcloud.name")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.nextcloud.step3")),
+    ).toBeInTheDocument()
 
     // Click Synology tab
-    const synologyTab = screen.getByText("群晖")
+    const synologyTab = screen.getByText(
+      i18n.t("options.dictionary.webdav.vendors.synology.tabName"),
+    )
     fireEvent.click(synologyTab)
 
     // Synology content should appear
-    expect(screen.getByText("群晖 NAS (Synology)")).toBeInTheDocument()
-    expect(screen.getByText(/启用 HTTPS \(端口 5006\)/)).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.synology.name")),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t("options.dictionary.webdav.vendors.synology.step2")),
+    ).toBeInTheDocument()
   })
 
   it("does not render apply preset button and provides copy address button", () => {
@@ -62,7 +90,7 @@ describe("WebdavSetupGuideDialog", () => {
     expect(screen.queryByText("一键填入端点")).not.toBeInTheDocument()
 
     // "复制地址" button should be available and clickable
-    const copyBtn = screen.getByText("复制地址")
+    const copyBtn = screen.getByText(i18n.t("options.dictionary.webdav.copyEndpoint"))
     expect(copyBtn).toBeInTheDocument()
     fireEvent.click(copyBtn)
     expect(writeTextMock).toHaveBeenCalledWith("https://dav.jianguoyun.com/dav/")

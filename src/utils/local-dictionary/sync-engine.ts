@@ -65,7 +65,10 @@ function configSyncStatePatch(report?: WebdavConfigSyncReport): Partial<WebdavSy
 export class WebdavSyncEngine {
   private isRunning = false
   private hasPendingSync = false
+  private hasPendingConfigSync = false
+  private isConfigSyncing = false
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
+  private configDebounceTimer: ReturnType<typeof setTimeout> | null = null
   private backoffTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(
@@ -96,6 +99,25 @@ export class WebdavSyncEngine {
   }
 
   /**
+   * Called when local preferences change (debounced auto sync for readbuddy-config.json)
+   */
+  scheduleDebouncedConfigSync(
+    delayMs: number = this.options?.debounceMs ?? DEFAULT_DEBOUNCE_MS,
+  ): void {
+    if (this.configDebounceTimer) {
+      clearTimeout(this.configDebounceTimer)
+    }
+    this.configDebounceTimer = setTimeout(() => {
+      this.configDebounceTimer = null
+      void this.triggerSync({ reason: "debounce", onlyConfig: true })
+    }, delayMs)
+  }
+
+  isConfigSyncInProgress(): boolean {
+    return this.isConfigSyncing
+  }
+
+  /**
    * Main entry point to trigger a sync task.
    */
   async triggerSync(triggerOptions?: {
@@ -104,14 +126,16 @@ export class WebdavSyncEngine {
     resetPaused?: boolean
     /** Reconcile only extension preferences (`readbuddy-config.json`). */
     onlyConfig?: boolean
+    /** Whether to include preferences in this pass when running full sync. Defaults to false. */
+    syncConfig?: boolean
   }): Promise<WebdavSyncResult | null> {
     // Mutex: Synchronously check and set isRunning before any async await
     if (this.isRunning) {
-      // A preferences-only request is subsumed by the pass already running —
-      // that pass reconciles preferences too — so it must not queue a full
-      // pass behind it, or clicking "Sync Preferences" would sync the
-      // dictionary as a side effect.
-      this.hasPendingSync = this.hasPendingSync || !triggerOptions?.onlyConfig
+      if (triggerOptions?.onlyConfig) {
+        this.hasPendingConfigSync = true
+      } else {
+        this.hasPendingSync = true
+      }
       return null
     }
 
@@ -129,7 +153,9 @@ export class WebdavSyncEngine {
       // engine is about the dictionary component, and the preference component
       // deliberately stays non-fatal (ADR 0003 decision 6).
       if (triggerOptions?.onlyConfig) {
-        return await this.runConfigOnlyPass(config)
+        return await this.runConfigOnlyPass(config, {
+          forceUnconditional: triggerOptions.forceUnconditional,
+        })
       }
 
       const currentState = await getStoredWebdavSyncState()
@@ -191,6 +217,7 @@ export class WebdavSyncEngine {
           {
             forceUnconditional: isForceUnconditional,
             syncReviews: this.options?.syncReviews ?? false,
+            syncConfig: triggerOptions?.syncConfig ?? false,
           },
           this.options?.fetchFn,
         )
@@ -333,29 +360,45 @@ export class WebdavSyncEngine {
     } finally {
       this.isRunning = false
 
-      // If pending changes occurred while running, trigger another pass
+      // If pending changes occurred while running, trigger next pass
       if (this.hasPendingSync) {
         this.hasPendingSync = false
         void this.triggerSync({ reason: "debounce" })
+      } else if (this.hasPendingConfigSync) {
+        this.hasPendingConfigSync = false
+        void this.triggerSync({ reason: "debounce", onlyConfig: true })
       }
     }
   }
 
   /**
    * Reconciles only the preference component (`readbuddy-config.json`), for the
-   * WebDAV detail page's independent trigger. The dictionary and review files
-   * are left alone, and only the preference fields of the sync state are
-   * written — so this pass can neither make the learning data look freshly
-   * synced nor pause the engine when the preferences fail.
+   * WebDAV detail page's independent trigger or preference debounced auto-sync.
+   * The dictionary and review files are left alone, and only the preference
+   * fields of the sync state are written.
    */
-  private async runConfigOnlyPass(config: WebdavConfig): Promise<WebdavSyncResult> {
-    const report = await syncConfigComponent(config, this.options?.fetchFn)
-    const state = await saveStoredWebdavSyncState(configSyncStatePatch(report))
-    this.options?.onStateChange?.(state)
-    return {
-      ok: report.ok,
-      error: report.error,
-      components: { config: report },
+  private async runConfigOnlyPass(
+    config: WebdavConfig,
+    options?: { forceUnconditional?: boolean },
+  ): Promise<WebdavSyncResult> {
+    this.isConfigSyncing = true
+    try {
+      const syncingState = await saveStoredWebdavSyncState({ configSyncStatus: "syncing" })
+      this.options?.onStateChange?.(syncingState)
+      const report = await syncConfigComponent(config, this.options?.fetchFn, options)
+      const state = await saveStoredWebdavSyncState(configSyncStatePatch(report))
+      this.options?.onStateChange?.(state)
+      return {
+        ok: report.ok,
+        error: report.error,
+        components: { config: report },
+      }
+    } finally {
+      // Delay clearing isConfigSyncing briefly to ensure storage.watch events
+      // fired by applyRemoteConfigSnapshot are ignored
+      setTimeout(() => {
+        this.isConfigSyncing = false
+      }, 500)
     }
   }
 

@@ -526,4 +526,60 @@ describe("WebDAV config sync", () => {
     expect(remoteSnapshot.updatedAt).toBe(0)
     expect(remoteSnapshot.config).toEqual(DEFAULT_CONFIG)
   })
+
+  it("does not send If-Match when remote ETag is weak (starts with W/)", async () => {
+    const localConfig = buildConfig({ uiLanguage: "ko" })
+    const remoteConfig = buildConfig({ uiLanguage: "en" })
+    await seedLocalConfig(localConfig, 5_000)
+    server.files.set(CONFIG_FILE_URL, {
+      body: JSON.stringify(buildRemoteSnapshot(remoteConfig, 1_000), null, 2),
+      etag: `W/"weak-etag-1"`,
+    })
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result).toEqual({ ok: true, action: "uploaded" })
+    expect(server.putRequests()[0]!.headers["If-Match"]).toBeUndefined()
+  })
+
+  it("falls back to unconditional PUT when server returns 412 but remote is unchanged", async () => {
+    const localConfig = buildConfig({ uiLanguage: "ko" })
+    const remoteConfig = buildConfig({ uiLanguage: "en" })
+    await seedLocalConfig(localConfig, 5_000)
+    server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 1_000))
+
+    let putCount = 0
+    const rejectingConditionalPutFetch: typeof fetch = async (input, init) => {
+      if ((init?.method ?? "GET") === "PUT") {
+        putCount++
+        const headers = (init?.headers ?? {}) as Record<string, string>
+        // Server rejects conditional header with 412
+        if (headers["If-Match"]) {
+          return new Response("Precondition Failed", { status: 412 })
+        }
+      }
+      return server.fetchFn(input, init)
+    }
+
+    const result = await syncConfigWithWebdav(sampleConfig, rejectingConditionalPutFetch)
+
+    expect(result).toEqual({ ok: true, action: "uploaded" })
+    expect(putCount).toBe(2) // 1st with If-Match (412), 2nd unconditional (204)
+    expect(server.readConfigSnapshot().config).toEqual(localConfig)
+  })
+
+  it("supports forceUnconditional option to upload without conditional headers", async () => {
+    const localConfig = buildConfig({ uiLanguage: "ko" })
+    const remoteConfig = buildConfig({ uiLanguage: "en" })
+    await seedLocalConfig(localConfig, 5_000)
+    server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 1_000))
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn, {
+      forceUnconditional: true,
+    })
+
+    expect(result).toEqual({ ok: true, action: "uploaded" })
+    expect(server.putRequests()[0]!.headers["If-Match"]).toBeUndefined()
+    expect(server.putRequests()[0]!.headers["If-None-Match"]).toBeUndefined()
+  })
 })

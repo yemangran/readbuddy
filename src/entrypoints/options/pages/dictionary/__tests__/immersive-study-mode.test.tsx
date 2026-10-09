@@ -2,6 +2,7 @@ import type { LocalDictionaryRecord } from "@/utils/local-dictionary/types"
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { i18n } from "@/utils/i18n"
 import { reviewStore } from "@/utils/review/store"
 import { ImmersiveStudyMode } from "../components/immersive-study-mode"
 
@@ -67,10 +68,12 @@ describe("ImmersiveStudyMode Component", () => {
     render(<ImmersiveStudyMode records={[]} onExit={onExitMock} />)
 
     await waitFor(() => {
-      expect(screen.getByText(/暂无待复习单词/i)).toBeInTheDocument()
+      expect(screen.getByText(i18n.t("options.dictionary.allReviewDoneTitle"))).toBeInTheDocument()
     })
 
-    const backButtons = screen.getAllByRole("button", { name: /返回词典/i })
+    const backButtons = screen.getAllByRole("button", {
+      name: i18n.t("options.dictionary.returnToDictionary"),
+    })
     fireEvent.click(backButtons[0]!)
     expect(onExitMock).toHaveBeenCalled()
   })
@@ -110,8 +113,8 @@ describe("ImmersiveStudyMode Component", () => {
     // Front card shows rating buttons with keyboard shortcut hints [1], [2], [3], [4]
     expect(screen.getByText("重来")).toBeInTheDocument()
     expect(screen.getByText("简单")).toBeInTheDocument()
-    expect(screen.getByText("评估难度")).toBeInTheDocument()
-    expect(screen.getByText("翻转与前进")).toBeInTheDocument()
+    expect(screen.getByText(i18n.t("options.dictionary.rateDifficulty"))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t("options.dictionary.flipAndAdvance"))).toBeInTheDocument()
   })
 
   it("supports keyboard navigation to rate card, flips to back, and completes session", async () => {

@@ -1,4 +1,7 @@
+import type { Config } from "@/types/config/config"
+import { dequal } from "dequal"
 import { browser, storage } from "#imports"
+import { CONFIG_STORAGE_KEY } from "@/utils/constants/config"
 import { getLocalDictionaryDb } from "@/utils/local-dictionary/db"
 import { LocalDictionaryRepository } from "@/utils/local-dictionary/repository"
 import { WebdavSyncEngine, WEBDAV_SYNC_ALARM_NAME } from "@/utils/local-dictionary/sync-engine"
@@ -75,6 +78,14 @@ export function setupLocalDictionarySyncEngine(): void {
 
   // Check state and restore schedule upon service worker startup
   void engine.restoreAndCheckSchedule()
+
+  // Watch for configuration edits (API providers, preferences, etc.) and auto-sync
+  storage.watch<Config>(`local:${CONFIG_STORAGE_KEY}`, (newConfig, oldConfig) => {
+    if (engine.isConfigSyncInProgress()) return
+    if (newConfig && oldConfig && !dequal(newConfig, oldConfig)) {
+      engine.scheduleDebouncedConfigSync()
+    }
+  })
 }
 
 export function setupLocalDictionaryMessageHandlers(): void {

@@ -240,6 +240,7 @@ export interface SyncWithWebdavOptions {
   forceUnconditional?: boolean
   syncReviews?: boolean
   reviewStoreInstance?: ReviewStore
+  syncConfig?: boolean
 }
 
 /**
@@ -311,9 +312,10 @@ async function syncReviewsComponent(
 export async function syncConfigComponent(
   config: WebdavConfig,
   fetchFn: typeof fetch = globalThis.fetch,
+  options?: { forceUnconditional?: boolean },
 ): Promise<WebdavConfigSyncReport> {
   try {
-    const result = await syncConfigWithWebdav(config, fetchFn)
+    const result = await syncConfigWithWebdav(config, fetchFn, options)
     if (result.ok) {
       return {
         ok: true,
@@ -347,7 +349,11 @@ async function syncRemainingComponents(
   fetchFn: typeof fetch = globalThis.fetch,
 ): Promise<WebdavSyncComponents> {
   const reviews = await syncReviewsComponent(repository, config, options, fetchFn)
-  const configReport = await syncConfigComponent(config, fetchFn)
+  const configReport = options?.syncConfig
+    ? await syncConfigComponent(config, fetchFn, {
+        forceUnconditional: options.forceUnconditional,
+      })
+    : undefined
   return { dictionary: dictionaryReport, reviews, config: configReport }
 }
 

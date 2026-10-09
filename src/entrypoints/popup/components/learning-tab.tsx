@@ -83,6 +83,7 @@ export function LearningTab({
           cards={reviewQueue}
           onComplete={handleSessionComplete}
           onExit={() => setPhase("idle")}
+          compact
         />
       </div>
     )

@@ -577,8 +577,10 @@ describe("DictionaryPage", () => {
       renderWithQuery(<DictionaryPage />)
 
       await waitFor(() => {
-        expect(screen.getByText("闪卡复习")).toBeInTheDocument()
-        expect(screen.getByText("FSRS 间隔记忆")).toBeInTheDocument()
+        expect(screen.getByText(i18n.t("options.dictionary.flashcardReview"))).toBeInTheDocument()
+        expect(
+          screen.getByText(i18n.t("options.dictionary.fsrsSpacedRepetition")),
+        ).toBeInTheDocument()
       })
     })
   })

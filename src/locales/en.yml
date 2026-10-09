@@ -155,6 +155,15 @@ options:
     viewDetail: View Details
     detailTitle: Dictionary Record Details
     syncSettings: Sync Settings
+    flashcardReview: Flashcard Review
+    returnToDictionary: Back to Dictionary
+    fsrsSpacedRepetition: FSRS Spaced Repetition
+    rateDifficulty: Rate Difficulty
+    flipAndAdvance: Flip & Advance
+    loadingReviewCards: Loading review cards...
+    allReviewDoneTitle: Great job! No cards due for review
+    allReviewDoneDesc: All words in your vocabulary list are reviewed or not due yet.
+    reviewAllWords: Review All Words
     createdAt: Created
     definition: Definition
     sentence: Sentence
@@ -236,11 +245,85 @@ options:
       jianguoyunPresetAppliedDesc: Please enter your Jianguoyun email (username) and app authorization password
       viewSetupGuide: Setup Guide
       setupGuideTitle: WebDAV Setup Guide
+      setupGuideDesc: Select your WebDAV provider to view the endpoint format, credentials guide, and setup instructions.
+      supportedVendors: Supported WebDAV Providers
+      endpointFormat: "Server Endpoint Format:"
+      copyEndpoint: Copy Endpoint
+      endpointCopied: Endpoint copied to clipboard
+      setupSteps: "Setup Instructions:"
+      notesAndTips: "Notes & Best Practices:"
+      visitWebsite: Visit Website
+      verifyConnectionTip: After configuration, click "Test Connection" on the page to verify reachability
       setupGuideStep1: Log in to Jianguoyun web portal (jianguoyun.com).
       setupGuideStep2: Navigate to Account Information ➜ Security.
       setupGuideStep3: Under Third-party App Management, click Add App Password and name it "Read Buddy".
       setupGuideStep4: Fill your account email in "Username", the generated app password in "Password", then click "Test Connection".
       openJianguoyunWeb: Open Jianguoyun Security Settings
+      vendors:
+        jianguoyun:
+          name: Jianguoyun (Nutstore)
+          tabName: Jianguoyun
+          tag: Recommended (China)
+          description: Stable domestic network access and automated cloud sync across devices.
+          websiteLabel: Open Jianguoyun Security Settings
+          step1: Log in to Jianguoyun web portal (jianguoyun.com).
+          step2: Click your account in top right ➜ Account Information ➜ Security.
+          step3: Under Third-party App Management, click Add App Password and name it "Read Buddy".
+          step4: 'Manually create a folder named "readbuddy" in your Jianguoyun root directory ("My Files") (Crucial: a manual readbuddy directory in root is required for sync to work).'
+          step5: Enter your registered email as Username, generated app password as Password, and endpoint as https://dav.jianguoyun.com/dav/.
+          tip1: You must use the generated "App Password" rather than your web login password.
+          tip2: "[Manual Directory Creation Required] You must manually create a 'readbuddy' folder in Jianguoyun root directory before syncing (Jianguoyun root does not permit direct file placement or automated root folder creation via API)."
+        nextcloud:
+          name: Nextcloud / ownCloud
+          tabName: Nextcloud
+          tag: Open Source / Self-Hosted
+          description: Leading open-source private cloud storage with standard WebDAV support and full data ownership.
+          websiteLabel: View Nextcloud WebDAV Docs
+          step1: Log in to your Nextcloud / ownCloud web portal.
+          step2: Click your avatar in top right ➜ Personal settings ➜ Security.
+          step3: Under Devices & credentials, enter app name "Read Buddy" and click Create new app password.
+          step4: Copy the generated app password. Use the full WebDAV URL shown at bottom left of Files Settings.
+          step5: Fill in your Nextcloud username and app password in the extension.
+          tip1: If Two-Factor Authentication (2FA) is enabled, you must use an App-specific Password.
+          tip2: Ensure your Nextcloud domain has a valid HTTPS certificate and permits browser extension requests.
+        infinicloud:
+          name: InfiniCLOUD
+          tabName: InfiniCLOUD
+          tag: Global
+          description: Established Japanese cloud storage (formerly TeraCLOUD) offering free tier and reliable WebDAV service.
+          websiteLabel: Open InfiniCLOUD Dashboard
+          step1: Log in to InfiniCLOUD and navigate to "Apps Connection" in My Page.
+          step2: Enable the "Apps Connection" option.
+          step3: The system will assign your dedicated WebDAV Connection URL (e.g., https://<ID>.teracloud.jp/dav/).
+          step4: Check "Issue / Re-issue" to obtain your Connection Password.
+          step5: Enter the assigned URL as Endpoint, your User ID as Username, and Connection Password as Password.
+          tip1: Keep your Connection Password safe; it is independent of your account login password.
+          tip2: Suitable for users switching between global network environments.
+        synology:
+          name: Synology NAS
+          tabName: Synology
+          tag: Home Private Cloud
+          description: Host your own WebDAV sync service on personal or office Synology NAS for total local privacy.
+          websiteLabel: Synology Support Center
+          step1: Log in to DSM, open Package Center, search and install the "WebDAV Server" package.
+          step2: Open WebDAV Server, check "Enable HTTPS (port 5006)" and apply.
+          step3: In DSM Control Panel ➜ Privileges / User Groups, grant WebDAV Server access to your sync account.
+          step4: Enter the endpoint as https://<NAS_Domain_or_IP>:5006/<Shared_Folder>/ (e.g. https://nas.local:5006/home/).
+          step5: Connect using your DSM username and password.
+          tip1: HTTPS port 5006 is strongly recommended; if using self-signed certificates, ensure your browser/system trusts it.
+          tip2: For public internet access, configure router port forwarding, DDNS, or reverse proxy properly.
+        generic:
+          name: Generic WebDAV / Alist / Other
+          tabName: Generic
+          tag: Standard Protocol
+          description: Compatible with Alist, rclone, Apache/Nginx WebDAV modules, or any RFC 4918 compliant server.
+          websiteLabel: View Alist WebDAV Guide
+          step1: Deploy and run an HTTP WebDAV compliant server.
+          step2: Ensure the target sync directory has read/write and subdirectory creation (GET, PUT, MKCOL) permissions.
+          step3: Copy the full WebDAV base URL and paste into the Endpoint input.
+          step4: Fill in authentication Username and Password, then click "Test Connection".
+          tip1: Server must support HTTP Basic authentication.
+          tip2: For multi-device conflict avoidance, conditional HTTP request headers (ETag, If-Match / If-None-Match) are recommended.
 
   product:
     roadmap: Roadmap
@@ -274,6 +357,18 @@ options:
     pageDescription: Connect the AI services Read Buddy calls, then choose which one runs each feature.
     description: Add the providers Read Buddy can call. Over 20 are built in, with custom support for Chat Completions-compatible and Open Responses APIs.
     configTitle: Provider config
+    sync:
+      title: WebDAV Config Sync
+      description: API providers and preferences auto-sync to WebDAV upon editing for seamless multi-device sharing.
+      synced: Preferences successfully synced to cloud
+      pulled: Latest preferences pulled and applied from cloud
+      upToDate: Cloud and local preferences are up to date
+      syncNow: Sync Preferences
+      syncing: Syncing preferences...
+      lastSync: Last synced
+      notConfigured: WebDAV cloud sync not configured
+      notConfiguredDesc: Set up WebDAV to automatically back up and sync your API providers and keys across devices.
+      goToSettings: Configure WebDAV
     addProvider: Add provider
     builtInProvider: Built-in provider
     builtInAiUsage:

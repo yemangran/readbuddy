@@ -106,4 +106,30 @@ describe("ReviewSessionView", () => {
     expect(summary?.ratingCounts[3]).toBe(1)
     expect(summary?.ratingCounts[4]).toBe(1)
   })
+
+  it("renders single-column compact layout without sidebar and supports exit", () => {
+    const handleExit = vi.fn<() => void>()
+    const handleComplete = vi.fn<() => void>()
+
+    render(
+      <ReviewSessionView
+        cards={mockCards}
+        onComplete={handleComplete}
+        onExit={handleExit}
+        compact
+      />,
+    )
+
+    // Sidebar should NOT be rendered
+    expect(screen.queryByText("复习队列")).not.toBeInTheDocument()
+
+    // Progress and exit button should be present
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument()
+    const exitButton = screen.getByRole("button", { name: "退出复习" })
+    expect(exitButton).toBeInTheDocument()
+
+    // Trigger exit
+    fireEvent.click(exitButton)
+    expect(handleExit).toHaveBeenCalledTimes(1)
+  })
 })

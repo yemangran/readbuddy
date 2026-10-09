@@ -227,7 +227,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const result = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       server.fetchFn,
     )
 
@@ -272,7 +272,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const result = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       server.fetchFn,
     )
 
@@ -309,7 +309,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const result = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       server.fetchFn,
     )
 
@@ -343,7 +343,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const first = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       server.fetchFn,
     )
     expect(first.ok).toBe(true)
@@ -355,7 +355,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const second = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       server.fetchFn,
     )
 
@@ -384,7 +384,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const result = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       server.fetchFn,
     )
 
@@ -426,7 +426,7 @@ describe("Unified WebDAV sync: dictionary, review states, and preferences", () =
     const result = await syncWithWebdav(
       repo,
       sampleConfig,
-      { syncReviews: true, reviewStoreInstance },
+      { syncReviews: true, syncConfig: true, reviewStoreInstance },
       failingReviews,
     )
 
@@ -474,7 +474,7 @@ describe("WebdavSyncEngine preference sync state", () => {
     await seedLocalConfig(localConfig, 1_700_000_000_000)
 
     const engine = new WebdavSyncEngine(() => repo, { fetchFn: server.fetchFn })
-    const result = await engine.triggerSync({ reason: "manual" })
+    const result = await engine.triggerSync({ reason: "manual", syncConfig: true })
 
     expect(result?.ok).toBe(true)
     const state = await getStoredWebdavSyncState()
@@ -493,7 +493,7 @@ describe("WebdavSyncEngine preference sync state", () => {
     })
 
     const engine = new WebdavSyncEngine(() => repo, { fetchFn: server.fetchFn })
-    const result = await engine.triggerSync({ reason: "manual" })
+    const result = await engine.triggerSync({ reason: "manual", syncConfig: true })
 
     // Learning data synced, so the pass succeeds; only the config component failed
     expect(result?.ok).toBe(true)
@@ -505,16 +505,21 @@ describe("WebdavSyncEngine preference sync state", () => {
     expect(server.read(DICTIONARY_URL)).toContain("engine-vocab-1")
   })
 
-  it("syncs the preferences on the background debounced path, not only on manual sync", async () => {
+  it("syncs the preferences on the background debounced path, and leaves config untouched on dictionary debounced sync", async () => {
     await seedLocalConfig(buildConfig({ uiLanguage: "zh-CN" }), 1_700_000_000_000)
 
     const engine = new WebdavSyncEngine(() => repo, {
       fetchFn: server.fetchFn,
       debounceMs: 5,
     })
-    engine.scheduleDebouncedSync()
 
-    // The debounced pass runs unattended: wait for the config file to land
+    // Dictionary sync alone does NOT touch config
+    engine.scheduleDebouncedSync()
+    await new Promise((r) => setTimeout(r, 20))
+    expect(server.files.has(CONFIG_URL)).toBe(false)
+
+    // Config debounced sync independently uploads config
+    engine.scheduleDebouncedConfigSync()
     await vi.waitFor(() => {
       expect(server.files.has(CONFIG_URL)).toBe(true)
     })
