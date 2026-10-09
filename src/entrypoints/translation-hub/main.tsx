@@ -55,7 +55,7 @@ async function initApp() {
           >
             <ThemeProvider>
               <TooltipProvider>
-                <LocaleBoundary>
+                <LocaleBoundary documentTitleKey="documentTitles.translationHub">
                   <ToastProvider>
                     <AnchoredToastProvider>
                       <App />

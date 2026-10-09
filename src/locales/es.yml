@@ -4,6 +4,8 @@ extDescription: Read Buddy es una extensión de navegador de código abierto dis
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: Ajustes
+  popup: Ventana emergente
+  translationHub: Centro de traducción
 account:
   login: Iniciar sesión
   webApp: Aplicación web

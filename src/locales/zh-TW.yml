@@ -4,6 +4,8 @@ extDescription: 伴讀書童是一款開放原始碼的瀏覽器擴充功能，�
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: 設定
+  popup: 彈出視窗
+  translationHub: 翻譯中心
 account:
   login: 登入
   webApp: 網頁應用程式

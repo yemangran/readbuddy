@@ -110,7 +110,7 @@ async function initApp() {
           >
             <ThemeProvider>
               <TooltipProvider>
-                <LocaleBoundary>
+                <LocaleBoundary documentTitleKey="documentTitles.popup">
                   <ToastProvider>
                     <RecoveryBoundary>
                       <App />

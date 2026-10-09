@@ -4,6 +4,8 @@ extDescription: Read Buddyは、あらゆるウェブサイトから言語を深
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: 設定
+  popup: ポップアップ
+  translationHub: 翻訳ハブ
 account:
   login: ログイン
   webApp: ウェブアプリ

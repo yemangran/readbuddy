@@ -4,6 +4,8 @@ extDescription: Read Buddy là tiện ích mở rộng trình duyệt mã nguồ
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: Cài đặt
+  popup: Cửa sổ bật lên
+  translationHub: Trung tâm Dịch thuật
 account:
   login: Đăng nhập
   webApp: Ứng dụng web

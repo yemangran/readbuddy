@@ -4,6 +4,8 @@ extDescription: 伴读书童是一款开放源代码的浏览器插件，旨在�
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: 设置
+  popup: 弹窗
+  translationHub: 翻译中心
 account:
   login: 登录
   webApp: 网页应用

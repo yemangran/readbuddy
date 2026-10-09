@@ -4,6 +4,8 @@ extDescription: Read Buddy — расширение браузера с откр
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: Настройки
+  popup: Всплывающее окно
+  translationHub: Центр переводов
 account:
   login: Войти
   webApp: Веб-приложение

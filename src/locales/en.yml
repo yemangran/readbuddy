@@ -4,6 +4,8 @@ extDescription: Read Buddy is an open source browser extension designed to help 
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: Settings
+  popup: Popup
+  translationHub: Translation Hub
 account:
   login: Log in
   webApp: Web app

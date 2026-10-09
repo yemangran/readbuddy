@@ -4,6 +4,8 @@ extDescription: Read Buddy, herhangi bir web sitesinden dilleri derinlemesine ö
 uninstallSurveyUrl: https://github.com/yemangran/readbuddy/issues
 documentTitles:
   options: Ayarlar
+  popup: Açılır pencere
+  translationHub: Çeviri Merkezi
 account:
   login: Giriş yap
   webApp: Web uygulaması
