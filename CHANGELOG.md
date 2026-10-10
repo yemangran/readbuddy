@@ -1,5 +1,21 @@
 # @read-buddy/extension
 
+## 1.3.2
+
+### Patch Changes
+
+- [`3c94fe2`](https://github.com/yemangran/readbuddy/commit/3c94fe28e1b112d3cbed448ec396b03594ee0ddf) Thanks [@yemangran](https://github.com/yemangran)! - fix(webdav): prevent fresh-install default config from overwriting remote preferences
+
+  全新安装扩展时，未编辑过的默认配置的时间戳（`lastModifiedAt`）不再被赋予安装当天的 `Date.now()`，而是保持为 `0`；当新浏览器连接已存有配置的 WebDAV 目录并进行同步时，系统会自动从云端拉取已配置的偏好与 API 供应商，防止空白默认配置反向覆盖云端。
+
+- [`7773784`](https://github.com/yemangran/readbuddy/commit/77737842dd65e3a4e1c99ec26b20b26f3992e1b7) Thanks [@yemangran](https://github.com/yemangran)! - feat(i18n): localize options page tab title and html lang
+
+  设置页标签标题与 `<html lang>` 现在跟随界面语言：中文环境显示「设置 | 伴读书童」，在设置中切换界面语言后无需刷新页面即时更新，读屏软件也按当前界面语言的发音规则朗读页面；个别语言缺少标题词条时回退英文，不再显示残缺标题。
+
+- [`28d2ed0`](https://github.com/yemangran/readbuddy/commit/28d2ed0402e7fcf6467d33a08d82dd45cfd43a0c) Thanks [@yemangran](https://github.com/yemangran)! - feat(i18n): localize popup and translation hub titles
+
+  弹窗与翻译中心（Translation Hub）标签页的文档标题现在跟随界面语言：中文环境分别显示「弹窗 | 伴读书童」与「翻译中心 | 伴读书童」，在设置中切换界面语言后无需刷新即时更新；`<html lang>` 同步为当前界面语言，读屏软件按对应语言的发音规则朗读页面。弹窗标题主要见于浏览器历史记录与辅助技术。个别语言缺少标题词条时回退英文，不再显示残缺标题。
+
 ## 1.3.1
 
 ### Patch Changes
