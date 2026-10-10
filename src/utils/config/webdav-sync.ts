@@ -160,10 +160,11 @@ async function readLocalConfigForSync(): Promise<LocalConfigState> {
   if (!parsed?.success) {
     return { value: DEFAULT_CONFIG, lastModifiedAt: 0, fromStorage: false }
   }
+  const lastModifiedAt = typeof meta?.lastModifiedAt === "number" ? meta.lastModifiedAt : 0
   return {
     value: parsed.data,
-    lastModifiedAt: typeof meta?.lastModifiedAt === "number" ? meta.lastModifiedAt : 0,
-    fromStorage: true,
+    lastModifiedAt,
+    fromStorage: lastModifiedAt > 0,
   }
 }
 
@@ -416,8 +417,12 @@ export async function syncConfigWithWebdav(
       }
     }
 
-    // 2. Remote newer: replace the local config (with a local snapshot first)
-    if (remote.snapshot && remote.snapshot.updatedAt > local.lastModifiedAt) {
+    // 2. Remote newer (or local is untouched fresh defaults): replace local config
+    const isLocalUntouched = local.lastModifiedAt === 0
+    if (remote.snapshot && (remote.snapshot.updatedAt > local.lastModifiedAt || isLocalUntouched)) {
+      if (isLocalUntouched && dequal(local.value, remote.snapshot.config)) {
+        return { ok: true, action: "no-change" }
+      }
       return await applyRemoteConfigSnapshot(remote.snapshot, local)
     }
 

@@ -92,7 +92,7 @@ export async function initializeConfig(): Promise<InitializeConfigResult> {
   if (didConfigChange || didMetaNeedUpdate) {
     await storage.setMeta<ConfigMeta>(`local:${CONFIG_STORAGE_KEY}`, {
       schemaVersion: currentVersion,
-      lastModifiedAt: configMeta?.lastModifiedAt ?? Date.now(),
+      lastModifiedAt: isFreshInstall ? 0 : (configMeta?.lastModifiedAt ?? Date.now()),
     })
   }
 

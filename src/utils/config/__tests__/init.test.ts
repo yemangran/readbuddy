@@ -112,13 +112,10 @@ describe("initializeConfig", () => {
       )
     }
     expect(setMetaMock).toHaveBeenCalledTimes(1)
-    expect(setMetaMock).toHaveBeenCalledWith(
-      "local:config",
-      expect.objectContaining({
-        schemaVersion: CONFIG_SCHEMA_VERSION,
-        lastModifiedAt: expect.any(Number),
-      }),
-    )
+    expect(setMetaMock).toHaveBeenCalledWith("local:config", {
+      schemaVersion: CONFIG_SCHEMA_VERSION,
+      lastModifiedAt: 0,
+    })
   })
 
   it("starts every translate feature on the globally reachable Microsoft default", async () => {

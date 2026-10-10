@@ -518,6 +518,22 @@ describe("WebDAV config sync", () => {
     expect(await getAllBackupsWithMetadata()).toHaveLength(0)
   })
 
+  it("lets the remote config win when local config is initialized defaults (lastModifiedAt is 0), even if remote timestamp is in the past", async () => {
+    const remoteConfig = buildConfig({ uiLanguage: "zh-CN" })
+    server.put(CONFIG_FILE_URL, buildRemoteSnapshot(remoteConfig, 1_000))
+
+    // Simulates a fresh install where DEFAULT_CONFIG was written with lastModifiedAt: 0
+    await seedLocalConfig(DEFAULT_CONFIG, 0)
+
+    const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
+
+    expect(result).toEqual({ ok: true, action: "downloaded", backupCreated: false })
+    expect(await readLocalConfig()).toEqual(remoteConfig)
+    expect(await readLocalConfigLastModifiedAt()).toBe(1_000)
+    expect(await getAllBackupsWithMetadata()).toHaveLength(0)
+    expect(server.putRequests()).toHaveLength(0)
+  })
+
   it("uploads defaults without a modification time when nothing is stored locally", async () => {
     const result = await syncConfigWithWebdav(sampleConfig, server.fetchFn)
 
