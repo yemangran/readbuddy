@@ -173,6 +173,20 @@ pnpm run lint
 
 ---
 
+## 💖 特别鸣谢与赞助 (Special Thanks & Sponsors)
+
+<div align="center">
+
+<a href="https://siliconflow.cn" target="_blank" rel="noopener noreferrer">
+  <img src="./assets/SiliconFlow-Poweredby-LOGO-Final-2509.svg" alt="Powered by SiliconFlow" width="480" />
+</a>
+
+</div>
+
+衷心感谢 **[硅基流动 (SiliconFlow)](https://siliconflow.cn)** 为伴读书童用户提供的大模型免费 API 调用支持！通过稳定高效的 AI 算力赋能，帮助更多语言学习者零门槛享受高质量的网页双语沉浸式阅读与智能生词解析体验。
+
+---
+
 ## 📄 开源许可证 (License)
 
 本项目继承上游项目的开源精神，遵循 **[GPL-3.0 License](./LICENSE)** 协议开源。
