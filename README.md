@@ -178,7 +178,11 @@ pnpm run lint
 <div align="center">
 
 <a href="https://siliconflow.cn" target="_blank" rel="noopener noreferrer">
-  <img src="./assets/SiliconFlow-Poweredby-LOGO-Final-2509.svg" alt="Powered by SiliconFlow" width="480" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/SiliconFlow-Poweredby-LOGO-Dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/SiliconFlow-Poweredby-LOGO-Light.svg">
+    <img alt="Powered by SiliconFlow" src="./assets/SiliconFlow-Poweredby-LOGO-Light.svg" width="320" />
+  </picture>
 </a>
 
 </div>
