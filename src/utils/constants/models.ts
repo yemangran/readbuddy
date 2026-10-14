@@ -10,15 +10,14 @@ interface OpenAIGPT5ReasoningEffortPolicy {
 }
 
 export const SILICONFLOW_SPONSORED_MODELS = [
-  "tencent/Hunyuan-MT-7B",
   "THUDM/GLM-Z1-9B-0414",
+  "tencent/Hunyuan-MT-7B",
   "XingChenAGI/Xing4.0-29B",
 ] as const
 
 export type SiliconFlowSponsoredModel = (typeof SILICONFLOW_SPONSORED_MODELS)[number]
 
-export const SILICONFLOW_DEFAULT_SPONSORED_MODEL: SiliconFlowSponsoredModel =
-  "tencent/Hunyuan-MT-7B"
+export const SILICONFLOW_DEFAULT_SPONSORED_MODEL: SiliconFlowSponsoredModel = "THUDM/GLM-Z1-9B-0414"
 
 // Reviewed against provider catalogs and AI SDK docs on 2026-09-04.
 // Keep existing IDs: persisted provider configs validate against these enums.

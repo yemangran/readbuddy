@@ -72,7 +72,7 @@ describe("dEFAULT_CONFIG", () => {
     ).toEqual(
       expect.objectContaining({
         model: {
-          model: "tencent/Hunyuan-MT-7B",
+          model: "THUDM/GLM-Z1-9B-0414",
           isCustomModel: false,
           customModel: null,
         },

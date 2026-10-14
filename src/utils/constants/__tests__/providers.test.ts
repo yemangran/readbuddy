@@ -269,11 +269,11 @@ describe("provider constants", () => {
 
   it("exports canonical SiliconFlow sponsored models and initializes SiliconFlow with sponsored defaults", () => {
     expect(SILICONFLOW_SPONSORED_MODELS).toEqual([
-      "tencent/Hunyuan-MT-7B",
       "THUDM/GLM-Z1-9B-0414",
+      "tencent/Hunyuan-MT-7B",
       "XingChenAGI/Xing4.0-29B",
     ])
-    expect(SILICONFLOW_DEFAULT_SPONSORED_MODEL).toBe("tencent/Hunyuan-MT-7B")
+    expect(SILICONFLOW_DEFAULT_SPONSORED_MODEL).toBe("THUDM/GLM-Z1-9B-0414")
     expect(SILICONFLOW_SPONSORED_GATEWAY_URL).toBeTruthy()
 
     expect(DEFAULT_PROVIDER_CONFIG.siliconflow).toEqual(
@@ -282,7 +282,7 @@ describe("provider constants", () => {
         provider: "siliconflow",
         baseURL: "https://api.siliconflow.cn/v1",
         model: {
-          model: "tencent/Hunyuan-MT-7B",
+          model: "THUDM/GLM-Z1-9B-0414",
           isCustomModel: false,
           customModel: null,
         },

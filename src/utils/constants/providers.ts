@@ -46,7 +46,7 @@ export {
 
 export const SILICONFLOW_SPONSORED_GATEWAY_URL =
   (typeof process !== "undefined" && process.env?.SILICONFLOW_SPONSORED_GATEWAY_URL) ||
-  "https://siliconflow-gateway.read-buddy.workers.dev/v1"
+  "https://readbuddy.yemr.pp.ua/v1"
 
 export const SILICONFLOW_SPONSORED_CLIENT_NAME = "read-buddy"
 
