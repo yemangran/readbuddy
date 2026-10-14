@@ -1,5 +1,15 @@
 # @read-buddy/extension
 
+## 1.4.0
+
+### Minor Changes
+
+- feat(providers): siliconflow dual-mode downstream feature alignment and quota fallback ([#48](https://github.com/yemangran/readbuddy/issues/48))
+
+- feat(options): siliconflow dual-mode UI switch with sponsored model constraints ([#47](https://github.com/yemangran/readbuddy/issues/47))
+
+- feat(providers): configure live sponsor gateway and set THUDM/GLM-Z1-9B-0414 as default free model ([#45](https://github.com/yemangran/readbuddy/issues/45), [#46](https://github.com/yemangran/readbuddy/issues/46))
+
 ## 1.3.2
 
 ### Patch Changes
