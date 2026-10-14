@@ -38,6 +38,10 @@ coverage/
 .agents/
 .claude/
 .codex/
+skills-lock.json
+.worktreeinclude
+commitlint.config.cjs
+.lintstagedrc.json
 
 tsconfig.local.json
 
