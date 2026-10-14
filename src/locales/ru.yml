@@ -208,11 +208,20 @@ options:
       providerSettingLabels:
         region: Регион
         apiMode: Режим API
+        authMode: Режим авторизации
         resourceName: Имя ресурса Azure (необязательно)
         apiVersion: Версия API
       providerSettingOptionLabels:
         responses: Responses API
         chatCompletions: Chat Completions
+        sponsored: Спонсируемый бесплатный режим
+        byok: Режим личного API-ключа
+      siliconflow:
+        authMode: Режим авторизации
+        sponsoredMode: Спонсируемый бесплатный режим
+        byokMode: Режим личного API-ключа
+        sponsoredNoticeTitle: Спонсируемый канал активен
+        sponsoredNoticeDescription: При поддержке SiliconFlow. Не требуется API-ключ или собственный URL шлюза для бесплатного доступа.
       temperature: Температура
       temperatureHint: Контролирует случайность ответов. Низкие значения (0) более детерминированы, высокие — более креативны. Диапазон зависит от провайдера. Оставьте пустым для использования значения по умолчанию.
       reasoning:

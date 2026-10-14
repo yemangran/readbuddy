@@ -119,4 +119,14 @@ describe("providerSpecificSettingsField", () => {
 
     expect(screen.getByLabelText("persisted-provider-specific-settings")).toHaveTextContent("null")
   })
+
+  it("does not render generic settings for SiliconFlow as authMode is handled by dedicated switcher", async () => {
+    render(
+      <ProviderSpecificSettingsFieldHarness initialConfig={DEFAULT_PROVIDER_CONFIG.siliconflow} />,
+    )
+
+    expect(
+      screen.queryByLabelText("options.apiProviders.form.providerSettingLabels.authMode"),
+    ).not.toBeInTheDocument()
+  })
 })

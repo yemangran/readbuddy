@@ -37,6 +37,7 @@ import {
 import { API_PROVIDER_ITEMS } from "@/utils/constants/providers"
 import { getSelectionToolbarActions, patchSelectionToolbarAction } from "@/utils/custom-actions"
 import { i18n } from "@/utils/i18n"
+import { resolveSiliconFlowAuthMode } from "@/utils/providers/siliconflow-signing"
 import { providerSupportsTranslationOnlyMode } from "@/utils/providers/translation-only-gate"
 import { cn } from "@/utils/styles/utils"
 import { APIKeyField } from "./provider-config-form/api-key-field"
@@ -48,6 +49,10 @@ import { ProviderOptionsField } from "./provider-config-form/provider-options-fi
 import { ProviderSpecificSettingsField } from "./provider-config-form/provider-specific-settings-field"
 import { ProviderURLField } from "./provider-config-form/provider-url-field"
 import { ReasoningField } from "./provider-config-form/reasoning-field"
+import {
+  SiliconFlowAuthModeField as SiliconFlowAuthModeFieldComponent,
+  SiliconFlowSponsoredBanner,
+} from "./provider-config-form/siliconflow-auth-mode-field"
 import { TemperatureField } from "./provider-config-form/temperature-field"
 import { TranslateModelSelector } from "./provider-config-form/translate-model-selector"
 
@@ -294,8 +299,21 @@ function DescriptionField() {
   )
 }
 
+function SiliconFlowAuthModeField() {
+  return <SiliconFlowAuthModeFieldComponent form={useApiProviderForm()} />
+}
+
 function ConnectionFields() {
   const form = useApiProviderForm()
+  const providerConfig = useSelector(form.store, (state) => state.values)
+  const isSiliconFlowSponsored =
+    providerConfig.provider === "siliconflow" &&
+    resolveSiliconFlowAuthMode(providerConfig) === "sponsored"
+
+  if (isSiliconFlowSponsored) {
+    return <SiliconFlowSponsoredBanner />
+  }
+
   return (
     <>
       <APIKeyField form={form} />
@@ -549,6 +567,7 @@ export const ProviderEditor = {
   Identity,
   Attribution,
   ConfigHeader,
+  SiliconFlowAuthModeField,
   NameField,
   DescriptionField,
   ConnectionFields,

@@ -208,11 +208,20 @@ options:
       providerSettingLabels:
         region: 리전
         apiMode: API 모드
+        authMode: 인증 모드
         resourceName: Azure 리소스 이름(선택 사항)
         apiVersion: API 버전
       providerSettingOptionLabels:
         responses: Responses API
         chatCompletions: Chat Completions
+        sponsored: 스폰서 무료 모드
+        byok: 자체 API 키 모드
+      siliconflow:
+        authMode: 인증 모드
+        sponsoredMode: 스폰서 무료 모드
+        byokMode: 자체 API 키 모드
+        sponsoredNoticeTitle: 스폰서 무료 채널 활성화됨
+        sponsoredNoticeDescription: SiliconFlow 제공으로 API 키나 맞춤 URL 없이 엄선된 고속 번역 모델을 무료로 사용할 수 있습니다.
       temperature: 온도
       temperatureHint: 응답의 무작위성을 제어합니다. 낮은 값(0)은 더 결정적이고, 높은 값은 더 창의적입니다. 범위는 제공자에 따라 다릅니다. 비워두면 제공자 기본값을 사용합니다.
       reasoning:

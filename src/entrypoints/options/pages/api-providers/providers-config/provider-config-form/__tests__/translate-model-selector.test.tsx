@@ -168,4 +168,29 @@ describe("translateModelSelector", () => {
     )
     expect(screen.getByLabelText("submit-count")).toHaveTextContent("1")
   })
+
+  it("hides custom model checkbox and renders select when siliconflow is in sponsored mode", async () => {
+    const siliconflowSponsoredConfig: APIProviderConfig = {
+      id: "provider-siliconflow",
+      name: "SiliconFlow",
+      enabled: true,
+      provider: "siliconflow",
+      baseURL: "https://api.siliconflow.cn/v1",
+      model: {
+        model: "tencent/Hunyuan-MT-7B",
+        isCustomModel: false,
+        customModel: null,
+      },
+      providerSpecificSettings: {
+        authMode: "sponsored",
+      },
+    }
+
+    render(<TranslateModelSelectorHarness initialConfig={siliconflowSponsoredConfig} />)
+
+    expect(
+      screen.queryByText("options.apiProviders.form.models.enterCustomModel"),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("combobox")).toBeInTheDocument()
+  })
 })

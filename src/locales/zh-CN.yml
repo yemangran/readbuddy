@@ -446,11 +446,20 @@ options:
       providerSettingLabels:
         region: 区域
         apiMode: API 模式
+        authMode: 接入模式
         resourceName: Azure 资源名称（可选）
         apiVersion: API 版本
       providerSettingOptionLabels:
         responses: Responses API
         chatCompletions: Chat Completions
+        sponsored: 免 Key 模式
+        byok: 自有 Key 模式
+      siliconflow:
+        authMode: 接入模式
+        sponsoredMode: 免 Key 模式
+        byokMode: 自有 Key 模式
+        sponsoredNoticeTitle: 免 Key 赞助通道已启用
+        sponsoredNoticeDescription: 由 SiliconFlow 赞助支持，无需配置 API Key 与接口地址，即可免费使用精选高速模型。
       temperature: 温度
       temperatureHint: 控制响应的随机性。较低的值（0）更确定性，较高的值更具创造性。范围因提供商而异。留空则使用提供商默认值。
       reasoning:

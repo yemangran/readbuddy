@@ -4,6 +4,7 @@ import { useAtom } from "jotai"
 import { useEffect, useState } from "react"
 import { Checkbox } from "@/components/ui/base-ui/checkbox"
 import { i18n } from "@/utils/i18n"
+import { resolveSiliconFlowAuthMode } from "@/utils/providers/siliconflow-signing"
 import { cn } from "@/utils/styles/utils"
 import { highlightedProviderFieldAtom, PROVIDER_FIELD_HIGHLIGHT_DURATION_MS } from "../atoms"
 import { ConnectionTestButton } from "./components/connection-button"
@@ -33,6 +34,13 @@ export const APIKeyField = withForm({
     const providerType = providerConfig.provider
     if (providerType === "ollama") {
       return <></>
+    }
+
+    if (
+      providerType === "siliconflow" &&
+      resolveSiliconFlowAuthMode(providerConfig) === "sponsored"
+    ) {
+      return null
     }
 
     return (

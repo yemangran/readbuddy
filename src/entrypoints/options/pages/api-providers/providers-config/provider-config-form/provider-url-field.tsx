@@ -3,6 +3,7 @@ import { useSelector } from "@tanstack/react-store"
 import { isDedicatedLLMProvider, isOpenResponsesLLMProviderConfig } from "@/types/config/provider"
 import { PROVIDER_URL_PLACEHOLDERS } from "@/utils/constants/providers"
 import { i18n } from "@/utils/i18n"
+import { resolveSiliconFlowAuthMode } from "@/utils/providers/siliconflow-signing"
 import { ConnectionTestButton } from "./components/connection-button"
 import { withForm } from "./form"
 
@@ -13,6 +14,13 @@ export const ProviderURLField = withForm({
     const providerType = providerConfig.provider
 
     if (providerType === "deepl") {
+      return null
+    }
+
+    if (
+      providerType === "siliconflow" &&
+      resolveSiliconFlowAuthMode(providerConfig) === "sponsored"
+    ) {
       return null
     }
 

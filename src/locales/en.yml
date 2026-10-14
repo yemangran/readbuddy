@@ -446,11 +446,20 @@ options:
       providerSettingLabels:
         region: Region
         apiMode: API mode
+        authMode: Auth mode
         resourceName: Azure resource name (optional)
         apiVersion: API version
       providerSettingOptionLabels:
         responses: Responses API
         chatCompletions: Chat Completions
+        sponsored: Sponsored Free Mode
+        byok: Personal API Key Mode
+      siliconflow:
+        authMode: Auth Mode
+        sponsoredMode: Sponsored Free Mode
+        byokMode: Personal API Key Mode
+        sponsoredNoticeTitle: Sponsored Free Channel Active
+        sponsoredNoticeDescription: Sponsored by SiliconFlow. No API key or custom gateway URL required to use selected fast free models.
       temperature: Temperature
       temperatureHint: Controls randomness in responses. Lower values (0) are more deterministic, higher values are more creative. Range varies by provider. Leave empty to use provider default.
       reasoning:

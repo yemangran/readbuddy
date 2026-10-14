@@ -208,11 +208,20 @@ options:
       providerSettingLabels:
         region: Bölge
         apiMode: API modu
+        authMode: Kimlik doğrulama modu
         resourceName: Azure kaynak adı (isteğe bağlı)
         apiVersion: API sürümü
       providerSettingOptionLabels:
         responses: Responses API
         chatCompletions: Chat Completions
+        sponsored: Sponsorlu Ücretsiz Mod
+        byok: Kişisel API Anahtarı Modu
+      siliconflow:
+        authMode: Kimlik doğrulama modu
+        sponsoredMode: Sponsorlu Ücretsiz Mod
+        byokMode: Kişisel API Anahtarı Modu
+        sponsoredNoticeTitle: Sponsorlu Ücretsiz Kanal Aktif
+        sponsoredNoticeDescription: SiliconFlow sponsorluğundadır. Seçilen hızlı modelleri ücretsiz kullanmak için API anahtarı veya ağ geçidi URL'si gerekmez.
       temperature: Sıcaklık
       temperatureHint: Yanıtlardaki rastgeleliği kontrol eder. Düşük değerler (0) daha belirleyici, yüksek değerler daha yaratıcıdır. Aralık sağlayıcıya göre değişir. Sağlayıcı varsayılanını kullanmak için boş bırakın.
       reasoning:

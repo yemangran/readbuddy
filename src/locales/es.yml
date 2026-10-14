@@ -209,11 +209,20 @@ options:
       providerSettingLabels:
         region: Región
         apiMode: Modo de API
+        authMode: Modo de autenticación
         resourceName: Nombre del recurso de Azure (opcional)
         apiVersion: Versión de API
       providerSettingOptionLabels:
         responses: Responses API
         chatCompletions: Chat Completions
+        sponsored: Modo gratuito patrocinado
+        byok: Modo de clave API personal
+      siliconflow:
+        authMode: Modo de autenticación
+        sponsoredMode: Modo gratuito patrocinado
+        byokMode: Modo de clave API personal
+        sponsoredNoticeTitle: Canal gratuito patrocinado activo
+        sponsoredNoticeDescription: Patrocinado por SiliconFlow. No requiere clave API ni URL de gateway para usar modelos rápidos seleccionados gratis.
       temperature: Temperatura
       temperatureHint: Controla la aleatoriedad en las respuestas. Los valores más bajos (0) son más deterministas; los más altos son más creativos. El rango varía según el proveedor. Déjalo vacío para usar el valor predeterminado del proveedor.
       reasoning:

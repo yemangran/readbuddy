@@ -15,8 +15,13 @@ import {
   isProtocolCompatibleLLMProviderConfig,
   LLM_PROVIDER_MODELS,
 } from "@/types/config/provider"
+import {
+  SILICONFLOW_DEFAULT_SPONSORED_MODEL,
+  SILICONFLOW_SPONSORED_MODELS,
+} from "@/utils/constants/models"
 import { i18n } from "@/utils/i18n"
 import { resolveModelId } from "@/utils/providers/model-id"
+import { resolveSiliconFlowAuthMode } from "@/utils/providers/siliconflow-signing"
 import { ModelSuggestionButton } from "./components/model-suggestion-button"
 import { ProviderOptionsRecommendationTrigger } from "./components/provider-options-recommendation-trigger"
 import { withForm } from "./form"
@@ -28,8 +33,20 @@ export const TranslateModelSelector = withForm({
     const autosave = useAutosaveContext()
     if (!isLLMProviderConfig(providerConfig)) return null
 
+    const isSiliconFlowSponsored =
+      providerConfig.provider === "siliconflow" &&
+      resolveSiliconFlowAuthMode(providerConfig) === "sponsored"
+
     const modelId = resolveModelId(providerConfig.model)
     const { isCustomModel, customModel, model } = providerConfig.model
+    const shouldShowCustomModel = !isSiliconFlowSponsored && isCustomModel
+    const modelOptions = isSiliconFlowSponsored
+      ? SILICONFLOW_SPONSORED_MODELS
+      : LLM_PROVIDER_MODELS[providerConfig.provider]
+    const effectiveSelectValue =
+      isSiliconFlowSponsored && !SILICONFLOW_SPONSORED_MODELS.includes(model as never)
+        ? SILICONFLOW_DEFAULT_SPONSORED_MODEL
+        : model
 
     const applyRecommendedProviderOptions = (options: Record<string, unknown>) => {
       autosave.edit(() => form.setFieldValue("providerOptions", options), { immediate: true })
@@ -46,7 +63,7 @@ export const TranslateModelSelector = withForm({
 
     return (
       <div>
-        {isCustomModel ? (
+        {shouldShowCustomModel ? (
           <form.AppField name="model.customModel">
             {(field) => (
               <field.InputFieldAutoSave
@@ -76,6 +93,19 @@ export const TranslateModelSelector = withForm({
               <field.SelectFieldAutoSave
                 label={i18n.t("options.apiProviders.form.models.label")}
                 labelExtra={recommendationTrigger}
+                value={effectiveSelectValue}
+                onValueChange={(selectedModel) => {
+                  if (isSiliconFlowSponsored && typeof selectedModel === "string") {
+                    autosave.edit(
+                      () => {
+                        form.setFieldValue("model.isCustomModel", false)
+                        form.setFieldValue("model.model", selectedModel as never)
+                        form.setFieldValue("model.customModel", null)
+                      },
+                      { immediate: true },
+                    )
+                  }
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue
@@ -84,7 +114,7 @@ export const TranslateModelSelector = withForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {LLM_PROVIDER_MODELS[providerConfig.provider].map((modelOption) => (
+                    {modelOptions.map((modelOption) => (
                       <SelectItem key={modelOption} value={modelOption}>
                         {modelOption}
                       </SelectItem>
@@ -95,7 +125,7 @@ export const TranslateModelSelector = withForm({
             )}
           </form.AppField>
         )}
-        {!isCustomModelOnlyProvider(providerConfig.provider) && (
+        {!isCustomModelOnlyProvider(providerConfig.provider) && !isSiliconFlowSponsored && (
           <form.Field name="model.isCustomModel">
             {(field) => (
               <div className="mt-2.5 flex items-center space-x-2">

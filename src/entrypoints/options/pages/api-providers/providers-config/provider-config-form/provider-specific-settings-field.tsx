@@ -51,8 +51,11 @@ export const ProviderSpecificSettingsField = withForm({
 
     const fieldDefs = useMemo(() => {
       const defs = settingsSchema ? getProviderSpecificSettingFields(settingsSchema) : null
-      return defs && defs.length > 0 ? defs : null
-    }, [settingsSchema])
+      const nonDedicatedDefs = defs?.filter(
+        (def) => !(providerType === "siliconflow" && def.key === "authMode"),
+      )
+      return nonDedicatedDefs && nonDedicatedDefs.length > 0 ? nonDedicatedDefs : null
+    }, [providerType, settingsSchema])
 
     if (!fieldDefs) return null
 

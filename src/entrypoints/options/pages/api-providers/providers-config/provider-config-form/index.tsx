@@ -197,6 +197,7 @@ function EditableProviderConfig({ providerConfig }: { providerConfig: APIProvide
           <EntityEditor.Root>
             <EntityEditor.Body>
               <ProviderEditor.ConfigHeader />
+              <ProviderEditor.SiliconFlowAuthModeField />
               <ProviderEditor.NameField />
               <ProviderEditor.DescriptionField />
               <ProviderEditor.ConnectionFields />
