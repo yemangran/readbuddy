@@ -149,10 +149,10 @@ describe("editor compound component contexts", () => {
     const store = createConfigStore()
     const config = structuredClone(store.get(configAtom))
     const providerConfig = config.providersConfig.find(
-      (provider) => provider.id === "openai-default",
+      (provider) => provider.id === "siliconflow-default",
     )
     if (!providerConfig || !isAPIProviderConfig(providerConfig)) {
-      throw new Error("Expected the default OpenAI provider")
+      throw new Error("Expected the default SiliconFlow provider")
     }
     config.providersConfig = config.providersConfig.map((provider) =>
       provider.id === providerConfig.id ? { ...provider, enabled: false } : provider,

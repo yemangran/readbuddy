@@ -61,7 +61,7 @@ export function createDefaultDictionaryAction(): SelectionToolbarCustomAction | 
   const template = CUSTOM_ACTION_TEMPLATES.find((t) => t.id === "dictionary")
   if (!template) return null
 
-  const action = template.createAction(DEFAULT_PROVIDER_CONFIG.openai.id)
+  const action = template.createAction(DEFAULT_PROVIDER_CONFIG.siliconflow.id)
   return {
     ...action,
     id: BUILT_IN_DICTIONARY_ACTION_ID,
@@ -150,17 +150,16 @@ export const DEFAULT_CONFIG: Config = {
     builtInActions: {
       dictionary: {
         enabled: true,
-        providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
+        providerId: DEFAULT_PROVIDER_CONFIG.siliconflow.id,
       },
     },
     customActions: [],
     noteSuggestion: {
       enabled: true,
       actionId: BUILT_IN_DICTIONARY_ACTION_ID,
-      // Fresh installs always carry the OpenAI default provider; suggestions
-      // start working the moment the user adds their key, with no hosted plan
-      // requirement attached.
-      providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
+      // Fresh installs carry the SiliconFlow default provider; suggestions
+      // start working the moment the user adds their key.
+      providerId: DEFAULT_PROVIDER_CONFIG.siliconflow.id,
     },
   },
   sideContent: {
@@ -246,7 +245,7 @@ export function buildFreshDefaultConfig(): Config {
       builtInActions: {
         dictionary: {
           enabled: true,
-          providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
+          providerId: DEFAULT_PROVIDER_CONFIG.siliconflow.id,
         },
       },
       customActions: [],

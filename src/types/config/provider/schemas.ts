@@ -19,6 +19,7 @@ import {
 import {
   azureProviderSpecificSettingsSchema,
   bedrockProviderSpecificSettingsSchema,
+  siliconFlowProviderSpecificSettingsSchema,
 } from "./provider-specific-settings"
 
 /* ──────────────────────────────
@@ -77,6 +78,7 @@ const llmProviderConfigSchemaList = [
   baseOpenAICompatibleLLMProviderConfigSchema.extend({
     provider: z.literal("siliconflow"),
     model: createProviderModelSchema<"siliconflow">("siliconflow"),
+    providerSpecificSettings: siliconFlowProviderSpecificSettingsSchema.optional(),
   }),
   baseOpenAICompatibleLLMProviderConfigSchema.extend({
     provider: z.literal("tensdaq"),

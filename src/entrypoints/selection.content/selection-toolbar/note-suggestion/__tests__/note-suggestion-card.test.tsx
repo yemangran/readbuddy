@@ -48,7 +48,7 @@ function createAction(
     name: "Dictionary",
     enabled: true,
     icon: "tabler:book-2",
-    providerId: "openai-default",
+    providerId: "siliconflow-default",
     systemPrompt: "system",
     prompt: "prompt",
     outputSchema: [

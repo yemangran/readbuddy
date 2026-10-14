@@ -38,8 +38,13 @@ import {
 import { compactObject } from "@/types/utils"
 import { getLLMProvidersConfig, getProviderConfigById } from "../config/helpers"
 import { CONFIG_STORAGE_KEY } from "../constants/config"
+import {
+  SILICONFLOW_SPONSORED_CLIENT_NAME,
+  SILICONFLOW_SPONSORED_GATEWAY_URL,
+} from "../constants/providers"
 import { getProviderHeadersWithOverride } from "./headers"
 import { resolveModelId } from "./model-id"
+import { createSiliconFlowSponsorFetch, resolveSiliconFlowAuthMode } from "./siliconflow-signing"
 
 const DEDICATED_PROVIDER_FACTORY_BY_TYPE = {
   openai: createOpenAI,
@@ -117,15 +122,31 @@ export function getLanguageModelForConfig(providerConfig: LLMProviderConfig) {
   const providerSpecificSettings = getProviderSpecificSettings(providerConfig)
 
   const provider = match(providerConfig)
-    .when(isOpenAICompatibleLLMProviderConfig, (matchedConfig) =>
-      createOpenAICompatible({
+    .when(isOpenAICompatibleLLMProviderConfig, (matchedConfig) => {
+      if (matchedConfig.provider === "siliconflow") {
+        const authMode = resolveSiliconFlowAuthMode(matchedConfig)
+        if (authMode === "sponsored") {
+          return createOpenAICompatible({
+            name: matchedConfig.provider,
+            baseURL: SILICONFLOW_SPONSORED_GATEWAY_URL,
+            supportsStructuredOutputs: true,
+            fetch: createSiliconFlowSponsorFetch(),
+            headers: {
+              ...(headers ?? {}),
+              "X-Plugin-Client": SILICONFLOW_SPONSORED_CLIENT_NAME,
+            },
+          })
+        }
+      }
+
+      return createOpenAICompatible({
         name: matchedConfig.provider,
         baseURL: matchedConfig.baseURL,
         supportsStructuredOutputs: true,
         ...(matchedConfig.apiKey && { apiKey: matchedConfig.apiKey }),
         ...(headers && { headers }),
-      }),
-    )
+      })
+    })
     .when(isOpenResponsesLLMProviderConfig, (matchedConfig) =>
       createOpenResponses({
         name: matchedConfig.provider,
@@ -164,3 +185,5 @@ export function getLanguageModelForConfig(providerConfig: LLMProviderConfig) {
 export async function getModelById(providerId: string) {
   return getLanguageModelById(providerId)
 }
+
+export { resolveSiliconFlowAuthMode } from "./siliconflow-signing"

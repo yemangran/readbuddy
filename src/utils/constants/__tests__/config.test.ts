@@ -59,9 +59,7 @@ describe("dEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG.providersConfig.map((provider) => provider.id)).toEqual([
       "google-translate-default",
       "microsoft-translate-default",
-      "openai-default",
-      "jalapenocloud-default",
-      "atlascloud-default",
+      "siliconflow-default",
     ])
     expect(DEFAULT_CONFIG.pageTranslation.providerId).toBe("microsoft-translate-default")
     expect(DEFAULT_CONFIG.selectionToolbar.features.translate.providerId).toBe(
@@ -70,24 +68,16 @@ describe("dEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG.inputTranslation.providerId).toBe("microsoft-translate-default")
     expect(DEFAULT_CONFIG.videoSubtitles.providerId).toBe("microsoft-translate-default")
     expect(
-      DEFAULT_CONFIG.providersConfig.find((provider) => provider.id === "jalapenocloud-default"),
+      DEFAULT_CONFIG.providersConfig.find((provider) => provider.id === "siliconflow-default"),
     ).toEqual(
       expect.objectContaining({
         model: {
-          model: "GLM-5.2",
+          model: "tencent/Hunyuan-MT-7B",
           isCustomModel: false,
           customModel: null,
         },
-      }),
-    )
-    expect(
-      DEFAULT_CONFIG.providersConfig.find((provider) => provider.id === "atlascloud-default"),
-    ).toEqual(
-      expect.objectContaining({
-        model: {
-          model: "deepseek-ai/deepseek-v4-flash",
-          isCustomModel: false,
-          customModel: null,
+        providerSpecificSettings: {
+          authMode: "sponsored",
         },
       }),
     )
@@ -131,7 +121,7 @@ describe("dEFAULT_CONFIG", () => {
     )
     expect(config.selectionToolbar.builtInActions.dictionary).toEqual({
       enabled: true,
-      providerId: "openai-default",
+      providerId: "siliconflow-default",
     })
     expect(config.selectionToolbar.customActions).toEqual([])
     expect(createDefaultDictionaryAction()).toEqual(

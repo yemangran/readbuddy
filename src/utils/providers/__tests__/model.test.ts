@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { storage } from "#imports"
-import { FORCED_PROVIDER_HEADERS } from "@/utils/constants/providers"
+import {
+  FORCED_PROVIDER_HEADERS,
+  SILICONFLOW_SPONSORED_GATEWAY_URL,
+} from "@/utils/constants/providers"
 
 let getStorageItemMock: ReturnType<typeof vi.fn>
 
@@ -407,5 +410,173 @@ describe("getModelById", () => {
       "supportsStructuredOutputs",
     )
     expect(openResponsesLanguageModelMock).toHaveBeenCalledWith("gpt-oss-120b")
+  })
+
+  describe("SiliconFlow sponsored and BYOK routing", () => {
+    it("routes sponsored requests to the Cloudflare Worker gateway with signed headers and no client API key", async () => {
+      getStorageItemMock.mockResolvedValue({
+        providersConfig: [
+          {
+            id: "siliconflow-default",
+            name: "SiliconFlow",
+            enabled: true,
+            provider: "siliconflow",
+            baseURL: "https://api.siliconflow.cn/v1",
+            model: {
+              model: "tencent/Hunyuan-MT-7B",
+              isCustomModel: false,
+              customModel: null,
+            },
+            providerSpecificSettings: {
+              authMode: "sponsored",
+            },
+          },
+        ],
+      })
+
+      const { getModelById } = await import("../model")
+      const result = await getModelById("siliconflow-default")
+
+      expect(result).toBe("custom-model")
+      expect(createOpenAICompatibleMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "siliconflow",
+          baseURL: SILICONFLOW_SPONSORED_GATEWAY_URL,
+          supportsStructuredOutputs: true,
+          fetch: expect.any(Function),
+          headers: expect.objectContaining({
+            "X-Plugin-Client": "read-buddy",
+          }),
+        }),
+      )
+      expect(createOpenAICompatibleMock.mock.calls[0]?.[0]).not.toHaveProperty("apiKey")
+      expect(openAICompatibleLanguageModelMock).toHaveBeenCalledWith("tencent/Hunyuan-MT-7B")
+
+      // Verify that the injected fetch creates signed headers and strips Authorization
+      const sponsorFetch = createOpenAICompatibleMock.mock.calls[0]?.[0]?.fetch
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify({})))
+      const proxyFetch = sponsorFetch
+      // Call through the fetch function with a dummy request
+      await proxyFetch("https://gateway.example.com", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer unwanted-key",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: [{ role: "user", content: "Test prompt" }] }),
+      })
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+      const [, requestInit] = fetchSpy.mock.calls[0] as [string, RequestInit]
+      const sentHeaders = requestInit.headers as Headers
+      expect(sentHeaders.get("X-Plugin-Client")).toBe("read-buddy")
+      expect(sentHeaders.get("X-Timestamp")).toBeTruthy()
+      expect(sentHeaders.get("X-Signature")).toMatch(/^[a-f0-9]{64}$/)
+      expect(sentHeaders.get("Authorization")).toBeNull()
+      fetchSpy.mockRestore()
+    })
+
+    it("routes BYOK requests directly to SiliconFlow API with user API key", async () => {
+      getStorageItemMock.mockResolvedValue({
+        providersConfig: [
+          {
+            id: "siliconflow-default",
+            name: "SiliconFlow",
+            enabled: true,
+            provider: "siliconflow",
+            baseURL: "https://api.siliconflow.cn/v1",
+            apiKey: "sk-my-personal-key",
+            model: {
+              model: "tencent/Hunyuan-MT-7B",
+              isCustomModel: false,
+              customModel: null,
+            },
+            providerSpecificSettings: {
+              authMode: "byok",
+            },
+          },
+        ],
+      })
+
+      const { getModelById } = await import("../model")
+      const result = await getModelById("siliconflow-default")
+
+      expect(result).toBe("custom-model")
+      expect(createOpenAICompatibleMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "siliconflow",
+          baseURL: "https://api.siliconflow.cn/v1",
+          apiKey: "sk-my-personal-key",
+          supportsStructuredOutputs: true,
+        }),
+      )
+      expect(createOpenAICompatibleMock.mock.calls[0]?.[0]?.fetch).toBeUndefined()
+      expect(openAICompatibleLanguageModelMock).toHaveBeenCalledWith("tencent/Hunyuan-MT-7B")
+    })
+
+    it("resolves to BYOK mode when apiKey is present without explicit authMode", async () => {
+      getStorageItemMock.mockResolvedValue({
+        providersConfig: [
+          {
+            id: "siliconflow-default",
+            name: "SiliconFlow",
+            enabled: true,
+            provider: "siliconflow",
+            baseURL: "https://api.siliconflow.cn/v1",
+            apiKey: "sk-legacy-key",
+            model: {
+              model: "Qwen/Qwen3-Next-80B-A3B-Instruct",
+              isCustomModel: false,
+              customModel: null,
+            },
+          },
+        ],
+      })
+
+      const { getModelById } = await import("../model")
+      await getModelById("siliconflow-default")
+
+      expect(createOpenAICompatibleMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "siliconflow",
+          baseURL: "https://api.siliconflow.cn/v1",
+          apiKey: "sk-legacy-key",
+        }),
+      )
+      expect(createOpenAICompatibleMock.mock.calls[0]?.[0]?.fetch).toBeUndefined()
+    })
+
+    it("resolves to sponsored mode when apiKey and authMode are both missing", async () => {
+      getStorageItemMock.mockResolvedValue({
+        providersConfig: [
+          {
+            id: "siliconflow-default",
+            name: "SiliconFlow",
+            enabled: true,
+            provider: "siliconflow",
+            baseURL: "https://api.siliconflow.cn/v1",
+            model: {
+              model: "tencent/Hunyuan-MT-7B",
+              isCustomModel: false,
+              customModel: null,
+            },
+          },
+        ],
+      })
+
+      const { getModelById } = await import("../model")
+      await getModelById("siliconflow-default")
+
+      expect(createOpenAICompatibleMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "siliconflow",
+          baseURL: SILICONFLOW_SPONSORED_GATEWAY_URL,
+          fetch: expect.any(Function),
+        }),
+      )
+      expect(createOpenAICompatibleMock.mock.calls[0]?.[0]).not.toHaveProperty("apiKey")
+    })
   })
 })

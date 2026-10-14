@@ -5,6 +5,10 @@ export const AZURE_API_MODES = ["responses", "chat"] as const
 export type AzureApiMode = (typeof AZURE_API_MODES)[number]
 export const DEFAULT_AZURE_API_MODE: AzureApiMode = "responses"
 
+export const SILICONFLOW_AUTH_MODES = ["sponsored", "byok"] as const
+export type SiliconFlowAuthMode = (typeof SILICONFLOW_AUTH_MODES)[number]
+export const DEFAULT_SILICONFLOW_AUTH_MODE: SiliconFlowAuthMode = "sponsored"
+
 interface ProviderSettingBaseUiMeta {
   labelKey: string
   placeholder?: string
@@ -90,11 +94,29 @@ export const azureProviderSpecificSettingsSchema = z.strictObject({
     }),
 })
 
+export const siliconFlowProviderSpecificSettingsSchema = z.strictObject({
+  authMode: z
+    .enum(SILICONFLOW_AUTH_MODES)
+    .optional()
+    .meta({
+      providerSettingUi: {
+        labelKey: "authMode",
+        type: "select",
+        defaultValue: DEFAULT_SILICONFLOW_AUTH_MODE,
+        options: [
+          { value: "sponsored", labelKey: "sponsored" },
+          { value: "byok", labelKey: "byok" },
+        ],
+      },
+    }),
+})
+
 export const PROVIDER_SPECIFIC_SETTINGS_SCHEMAS: Partial<
   Record<LLMProviderTypes, ProviderSpecificSettingsSchema>
 > = {
   azure: azureProviderSpecificSettingsSchema,
   bedrock: bedrockProviderSpecificSettingsSchema,
+  siliconflow: siliconFlowProviderSpecificSettingsSchema,
 }
 
 export function getProviderSpecificSettingFields(

@@ -34,7 +34,7 @@ function wrapper(store: ReturnType<typeof createStore>) {
 
 const LLM_PROVIDER_CONFIG = DEFAULT_CONFIG.providersConfig.find(
   (providerConfig): providerConfig is LLMProviderConfig =>
-    isLLMProviderConfig(providerConfig) && providerConfig.provider === "openai",
+    isLLMProviderConfig(providerConfig) && providerConfig.provider === "siliconflow",
 )!
 
 const LOCAL_PROVIDER_REF = {
@@ -139,7 +139,7 @@ describe("useNoteSuggestion", () => {
       expect.anything(),
     )
     expect(result.current.suggestion?.analyticsProvider).toEqual({
-      provider: "openai",
+      provider: LLM_PROVIDER_CONFIG.provider,
       backend_kind: "llm",
     })
   })

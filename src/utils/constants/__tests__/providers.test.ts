@@ -17,6 +17,9 @@ import {
   PROVIDER_GROUPS,
   PROVIDER_ITEMS,
   PROVIDER_URL_PLACEHOLDERS,
+  SILICONFLOW_DEFAULT_SPONSORED_MODEL,
+  SILICONFLOW_SPONSORED_GATEWAY_URL,
+  SILICONFLOW_SPONSORED_MODELS,
 } from "../providers"
 
 describe("provider constants", () => {
@@ -81,6 +84,7 @@ describe("provider constants", () => {
     // The two former sponsors resolve to their own canonical homepages.
     expect(PROVIDER_ITEMS.jalapenocloud.website).toBe("https://www.jalapeno-cloud.ai")
     expect(PROVIDER_ITEMS.atlascloud.website).toBe("https://atlascloud.ai")
+    expect(PROVIDER_ITEMS.siliconflow.apiKeyUrl).toBe("https://cloud.siliconflow.cn/i/tF7z382s")
   })
 
   it("drops the Jalapeno sponsorship attribution from forced provider headers", () => {
@@ -261,5 +265,31 @@ describe("provider constants", () => {
         reasoning: "none",
       }),
     ).toThrow(/Unrecognized key/)
+  })
+
+  it("exports canonical SiliconFlow sponsored models and initializes SiliconFlow with sponsored defaults", () => {
+    expect(SILICONFLOW_SPONSORED_MODELS).toEqual([
+      "tencent/Hunyuan-MT-7B",
+      "THUDM/GLM-Z1-9B-0414",
+      "XingChenAGI/Xing4.0-29B",
+    ])
+    expect(SILICONFLOW_DEFAULT_SPONSORED_MODEL).toBe("tencent/Hunyuan-MT-7B")
+    expect(SILICONFLOW_SPONSORED_GATEWAY_URL).toBeTruthy()
+
+    expect(DEFAULT_PROVIDER_CONFIG.siliconflow).toEqual(
+      expect.objectContaining({
+        id: "siliconflow-default",
+        provider: "siliconflow",
+        baseURL: "https://api.siliconflow.cn/v1",
+        model: {
+          model: "tencent/Hunyuan-MT-7B",
+          isCustomModel: false,
+          customModel: null,
+        },
+        providerSpecificSettings: {
+          authMode: "sponsored",
+        },
+      }),
+    )
   })
 })

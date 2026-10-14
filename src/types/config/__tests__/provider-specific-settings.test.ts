@@ -4,6 +4,7 @@ import {
   azureProviderSpecificSettingsSchema,
   bedrockProviderSpecificSettingsSchema,
   getProviderSpecificSettingFields,
+  siliconFlowProviderSpecificSettingsSchema,
 } from "../provider"
 
 describe("provider-specific settings metadata", () => {
@@ -41,6 +42,21 @@ describe("provider-specific settings metadata", () => {
         labelKey: "apiVersion",
         type: "text",
         placeholder: "v1",
+      },
+    ])
+  })
+
+  it("returns the SiliconFlow authMode field from Zod metadata", () => {
+    expect(getProviderSpecificSettingFields(siliconFlowProviderSpecificSettingsSchema)).toEqual([
+      {
+        key: "authMode",
+        labelKey: "authMode",
+        type: "select",
+        defaultValue: "sponsored",
+        options: [
+          { value: "sponsored", labelKey: "sponsored" },
+          { value: "byok", labelKey: "byok" },
+        ],
       },
     ])
   })

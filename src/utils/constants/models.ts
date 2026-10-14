@@ -9,6 +9,17 @@ interface OpenAIGPT5ReasoningEffortPolicy {
   recommendedValue?: OpenAIReasoningEffort
 }
 
+export const SILICONFLOW_SPONSORED_MODELS = [
+  "tencent/Hunyuan-MT-7B",
+  "THUDM/GLM-Z1-9B-0414",
+  "XingChenAGI/Xing4.0-29B",
+] as const
+
+export type SiliconFlowSponsoredModel = (typeof SILICONFLOW_SPONSORED_MODELS)[number]
+
+export const SILICONFLOW_DEFAULT_SPONSORED_MODEL: SiliconFlowSponsoredModel =
+  "tencent/Hunyuan-MT-7B"
+
 // Reviewed against provider catalogs and AI SDK docs on 2026-09-04.
 // Keep existing IDs: persisted provider configs validate against these enums.
 export const LLM_PROVIDER_MODELS = {
@@ -108,7 +119,7 @@ export const LLM_PROVIDER_MODELS = {
     "claude-opus-4-0",
     "claude-sonnet-4-0",
   ],
-  siliconflow: ["Qwen/Qwen3-Next-80B-A3B-Instruct"],
+  siliconflow: [...SILICONFLOW_SPONSORED_MODELS, "Qwen/Qwen3-Next-80B-A3B-Instruct"],
   tensdaq: ["Qwen3-30B-A3B-Instruct-2507", "deepseek-v3.1"],
   atlascloud: [
     "deepseek-ai/deepseek-v4-flash",

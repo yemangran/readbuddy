@@ -54,7 +54,9 @@ describe("config persistence and invalidation", () => {
   it("re-evaluates a pure updater against fresh storage and preserves unrelated changes", async () => {
     const store = mountStore()
     await tick()
-    const source = storage.value.providersConfig.find((provider) => provider.provider === "openai")!
+    const source = storage.value.providersConfig.find(
+      (provider) => provider.provider === "siliconflow",
+    )!
     storage.value.providersConfig = storage.value.providersConfig.map((provider) =>
       provider.id === source.id
         ? { ...provider, description: "external", headers: { old: "value" } }
@@ -183,7 +185,9 @@ describe("config persistence and invalidation", () => {
   it("rejects an entity deleted before the queued update instead of recreating it", async () => {
     const store = mountStore()
     await tick()
-    const source = storage.value.providersConfig.find((provider) => provider.provider === "openai")!
+    const source = storage.value.providersConfig.find(
+      (provider) => provider.provider === "siliconflow",
+    )!
     storage.value.providersConfig = storage.value.providersConfig.filter(
       (provider) => provider.id !== source.id,
     )

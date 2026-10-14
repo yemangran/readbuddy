@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { isLLMProviderConfig } from "@/types/config/provider"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
 import { buildFeatureProviderPatch } from "@/utils/constants/feature-providers"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { getSelectableProvidersForCapability } from "@/utils/providers/provider-registry"
 import {
   computeLanguageDetectionFallbackAfterDeletion,
@@ -13,8 +14,13 @@ import {
 } from "../helpers"
 
 function getProviderById(id: string): ProviderConfig {
-  const provider = DEFAULT_CONFIG.providersConfig.find((item) => item.id === id)
-  if (!provider) throw new Error(`Provider "${id}" not found in DEFAULT_CONFIG.providersConfig`)
+  const provider =
+    DEFAULT_CONFIG.providersConfig.find((item) => item.id === id) ??
+    Object.values(DEFAULT_PROVIDER_CONFIG).find((item) => item.id === id)
+  if (!provider)
+    throw new Error(
+      `Provider "${id}" not found in DEFAULT_CONFIG.providersConfig or DEFAULT_PROVIDER_CONFIG`,
+    )
   return provider
 }
 
@@ -420,7 +426,7 @@ describe("feature providers", () => {
 
       expect(result).toEqual({
         mode: "llm",
-        providerId: "openai-default",
+        providerId: "siliconflow-default",
       })
     })
 
@@ -428,7 +434,7 @@ describe("feature providers", () => {
       const result = resolveLanguageDetectionConfigForModeChange(
         {
           mode: "basic",
-          providerId: "jalapenocloud-default",
+          providerId: "siliconflow-default",
         },
         "llm",
         DEFAULT_CONFIG.providersConfig,
@@ -436,7 +442,7 @@ describe("feature providers", () => {
 
       expect(result).toEqual({
         mode: "llm",
-        providerId: "jalapenocloud-default",
+        providerId: "siliconflow-default",
       })
     })
 

@@ -9,10 +9,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { createStore, Provider } from "jotai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { storage } from "#imports"
 import { TooltipProvider } from "@/components/ui/base-ui/tooltip"
 import { isLLMProviderConfig } from "@/types/config/provider"
 import { configAtom } from "@/utils/atoms/config"
-import { DEFAULT_CONFIG } from "@/utils/constants/config"
+import { CONFIG_STORAGE_KEY, DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { getBuiltInDictionaryAction } from "@/utils/custom-actions"
 import { buildContextSnapshot, createRangeSnapshot, normalizeSelectedText } from "../../utils"
 import { setSelectionStateAtom } from "../atoms"
@@ -853,7 +855,7 @@ describe("selection toolbar requests", () => {
     renderWithProviders(<TranslateButton />, store)
 
     const updatedConfig = cloneConfig(store.get(configAtom))
-    setSelectionToolbarTranslateProvider(updatedConfig, "openai-default")
+    setSelectionToolbarTranslateProvider(updatedConfig, "siliconflow-default")
     act(() => {
       store.set(configAtom, updatedConfig)
     })
@@ -895,7 +897,7 @@ describe("selection toolbar requests", () => {
 
     const store = createStore()
     const updatedConfig = cloneConfig(DEFAULT_CONFIG)
-    setSelectionToolbarTranslateProvider(updatedConfig, "openai-default")
+    setSelectionToolbarTranslateProvider(updatedConfig, "siliconflow-default")
     store.set(configAtom, updatedConfig)
     setSelectionState(store, { text: "Selected text" })
     renderWithProviders(<TranslateButton />, store)
@@ -1657,7 +1659,7 @@ describe("selection toolbar requests", () => {
       expect(streamBackgroundStructuredObjectMock).toHaveBeenCalledTimes(1)
     })
     expect(streamBackgroundStructuredObjectMock.mock.calls[0]?.[0]).toMatchObject({
-      providerId: "openai-default",
+      providerId: "siliconflow-default",
     })
 
     await act(async () => {
@@ -1878,7 +1880,10 @@ describe("selection toolbar requests", () => {
     document.body.appendChild(paragraph)
 
     const store = createStore()
-    store.set(configAtom, cloneConfig(DEFAULT_CONFIG))
+    const initialConfig = cloneConfig(DEFAULT_CONFIG)
+    initialConfig.providersConfig.push(DEFAULT_PROVIDER_CONFIG.openai)
+    await storage.setItem(`local:${CONFIG_STORAGE_KEY}`, initialConfig)
+    store.set(configAtom, initialConfig)
     setSelectionState(store, { text: "Selected text", range: createRangeFor(paragraph) })
     renderWithProviders(<SelectionToolbarCustomActionButtons />, store)
 
@@ -2045,7 +2050,10 @@ describe("selection toolbar requests", () => {
     document.body.appendChild(paragraph)
 
     const store = createStore()
-    store.set(configAtom, cloneConfig(DEFAULT_CONFIG))
+    const initialConfig = cloneConfig(DEFAULT_CONFIG)
+    initialConfig.providersConfig.push(DEFAULT_PROVIDER_CONFIG.openai)
+    await storage.setItem(`local:${CONFIG_STORAGE_KEY}`, initialConfig)
+    store.set(configAtom, initialConfig)
     setSelectionState(store, { text: "Selected text", range: createRangeFor(paragraph) })
     renderWithProviders(<SelectionToolbarCustomActionButtons />, store)
 

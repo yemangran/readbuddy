@@ -329,7 +329,7 @@ describe("translate-text", () => {
         ...DEFAULT_CONFIG,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
-          providerId: "openai-default",
+          providerId: "siliconflow-default",
           enableAIContentAware: false,
         },
       }
@@ -363,7 +363,7 @@ describe("translate-text", () => {
         ...DEFAULT_CONFIG,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
-          providerId: "openai-default",
+          providerId: "siliconflow-default",
           enableAIContentAware: true,
         },
       }
@@ -397,7 +397,7 @@ describe("translate-text", () => {
         ...DEFAULT_CONFIG,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
-          providerId: "openai-default",
+          providerId: "siliconflow-default",
           enableAIContentAware: false,
         },
       }
@@ -453,7 +453,7 @@ describe("translate-text", () => {
         },
         inputTranslation: {
           ...DEFAULT_CONFIG.inputTranslation,
-          providerId: "openai-default",
+          providerId: "siliconflow-default",
         },
       }
 
@@ -492,7 +492,7 @@ describe("translate-text", () => {
         },
         inputTranslation: {
           ...DEFAULT_CONFIG.inputTranslation,
-          providerId: "openai-default",
+          providerId: "siliconflow-default",
         },
       })
       mockGetOrGenerateWebPageSummary.mockRejectedValue(new Error("summary provider offline"))

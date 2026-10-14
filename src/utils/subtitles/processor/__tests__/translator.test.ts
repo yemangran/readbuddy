@@ -31,7 +31,7 @@ describe("subtitles translator", () => {
       },
       videoSubtitles: {
         ...DEFAULT_CONFIG.videoSubtitles,
-        providerId: "openai-default",
+        providerId: "siliconflow-default",
       },
     })
 
@@ -111,7 +111,7 @@ describe("subtitles translator", () => {
         subtitlesContext: "subtitle transcript",
         providerRef: expect.objectContaining({
           kind: "local",
-          config: expect.objectContaining({ id: "openai-default" }),
+          config: expect.objectContaining({ id: "siliconflow-default" }),
         }),
       }),
     )
@@ -136,7 +136,7 @@ describe("subtitles translator", () => {
       },
       videoSubtitles: {
         ...DEFAULT_CONFIG.videoSubtitles,
-        providerId: "openai-default",
+        providerId: "siliconflow-default",
       },
     })
 
@@ -171,7 +171,7 @@ describe("subtitles translator", () => {
       },
       videoSubtitles: {
         ...DEFAULT_CONFIG.videoSubtitles,
-        providerId: "openai-default",
+        providerId: "siliconflow-default",
       },
     })
     const { translateSubtitles } = await import("../translator")
@@ -205,7 +205,7 @@ describe("subtitles translator", () => {
     const configSnapshot = {
       ...DEFAULT_CONFIG,
       pageTranslation: { ...DEFAULT_CONFIG.pageTranslation, enableAIContentAware: true },
-      videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId: "openai-default" },
+      videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId: "siliconflow-default" },
     }
     const videoContext = { videoTitle: "Video title", subtitlesTextContent: "subtitle transcript" }
 

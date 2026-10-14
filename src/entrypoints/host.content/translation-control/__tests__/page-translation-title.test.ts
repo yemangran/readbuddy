@@ -147,7 +147,7 @@ describe("pageTranslationManager title handling", () => {
       ...DEFAULT_CONFIG,
       pageTranslation: {
         ...DEFAULT_CONFIG.pageTranslation,
-        providerId: "openai-default",
+        providerId: "siliconflow-default",
         enableAIContentAware: true,
       },
     })

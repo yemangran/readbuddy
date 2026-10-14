@@ -32,6 +32,27 @@ import { omit, pick } from "@/types/utils"
 import { GITHUB_REPO_URL } from "@/utils/constants/app"
 import { i18n } from "@/utils/i18n"
 import { getLobeIconsCDNUrlFn } from "../logo"
+import {
+  SILICONFLOW_DEFAULT_SPONSORED_MODEL,
+  SILICONFLOW_SPONSORED_MODELS,
+  type SiliconFlowSponsoredModel,
+} from "./models"
+
+export {
+  SILICONFLOW_DEFAULT_SPONSORED_MODEL,
+  SILICONFLOW_SPONSORED_MODELS,
+  type SiliconFlowSponsoredModel,
+}
+
+export const SILICONFLOW_SPONSORED_GATEWAY_URL =
+  (typeof process !== "undefined" && process.env?.SILICONFLOW_SPONSORED_GATEWAY_URL) ||
+  "https://siliconflow-gateway.read-buddy.workers.dev/v1"
+
+export const SILICONFLOW_SPONSORED_CLIENT_NAME = "read-buddy"
+
+export const SILICONFLOW_SPONSORED_SALT =
+  (typeof process !== "undefined" && process.env?.SILICONFLOW_SPONSORED_SALT) ||
+  "read_buddy_2026_sponsor_salt"
 
 export const DEFAULT_LLM_PROVIDER_MODELS: LLMProviderModels = {
   openrouter: {
@@ -150,8 +171,8 @@ export const DEFAULT_LLM_PROVIDER_MODELS: LLMProviderModels = {
     customModel: null,
   },
   siliconflow: {
-    model: "Qwen/Qwen3-Next-80B-A3B-Instruct",
-    isCustomModel: true,
+    model: SILICONFLOW_DEFAULT_SPONSORED_MODEL,
+    isCustomModel: false,
     customModel: null,
   },
   tensdaq: {
@@ -258,6 +279,7 @@ export const PROVIDER_ITEMS: Record<
     logo: getLobeIconsCDNUrlFn("siliconcloud-color"),
     name: "SiliconFlow",
     website: "https://siliconflow.cn/",
+    apiKeyUrl: "https://cloud.siliconflow.cn/i/tF7z382s",
   },
   openai: {
     logo: getLobeIconsCDNUrlFn("openai"),
@@ -422,6 +444,9 @@ export const DEFAULT_PROVIDER_CONFIG = {
     provider: "siliconflow",
     baseURL: "https://api.siliconflow.cn/v1",
     model: DEFAULT_LLM_PROVIDER_MODELS.siliconflow,
+    providerSpecificSettings: {
+      authMode: "sponsored",
+    },
   },
   tensdaq: {
     id: "tensdaq-default",
@@ -709,9 +734,7 @@ export const PROVIDER_URL_PLACEHOLDERS: Partial<Record<APIProviderTypes, string>
 export const DEFAULT_PROVIDER_CONFIG_LIST: ProvidersConfig = [
   DEFAULT_PROVIDER_CONFIG["google-translate"],
   DEFAULT_PROVIDER_CONFIG["microsoft-translate"],
-  DEFAULT_PROVIDER_CONFIG.openai,
-  DEFAULT_PROVIDER_CONFIG.jalapenocloud,
-  DEFAULT_PROVIDER_CONFIG.atlascloud,
+  DEFAULT_PROVIDER_CONFIG.siliconflow,
 ]
 
 /** Resolve a provider's default description in the active interface language. */
