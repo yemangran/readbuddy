@@ -162,5 +162,81 @@ describe("siliconflow-signing", () => {
       expect(headers.get("X-Plugin-Client")).toBe("read-buddy")
       expect(headers.get("X-Signature")).toBeTruthy()
     })
+
+    it("intercepts HTTP 429 response and returns user-friendly rate limit notice", async () => {
+      const rawGatewayDump = JSON.stringify({
+        error: {
+          message: "cf worker rate limit: rate exceeded for client ip 1.2.3.4",
+          code: "rate_limit_exceeded",
+        },
+      })
+      const mockFetch = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response(rawGatewayDump, { status: 429, statusText: "Too Many Requests" }),
+        )
+      const sponsorFetch = createSiliconFlowSponsorFetch(mockFetch)
+
+      const response = await sponsorFetch(
+        "https://siliconflow-gateway.read-buddy.workers.dev/v1/chat/completions",
+        {
+          method: "POST",
+          body: JSON.stringify({ messages: [{ role: "user", content: "test" }] }),
+        },
+      )
+
+      expect(response.status).toBe(429)
+      const data = await response.json()
+      expect(data.error.message).toBe("options.apiProviders.form.siliconflow.rateLimitNotice")
+      expect(data.error.code).toBe(429)
+      expect(data.error.type).toBe("sponsor_rate_limit_error")
+    })
+
+    it("intercepts HTTP 403 response and returns user-friendly authentication error notice", async () => {
+      const rawGatewayDump = JSON.stringify({
+        error: {
+          message: "gateway signature expired or invalid signature header",
+          code: "forbidden",
+        },
+      })
+      const mockFetch = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response(rawGatewayDump, { status: 403, statusText: "Forbidden" }))
+      const sponsorFetch = createSiliconFlowSponsorFetch(mockFetch)
+
+      const response = await sponsorFetch(
+        "https://siliconflow-gateway.read-buddy.workers.dev/v1/chat/completions",
+        {
+          method: "POST",
+          body: JSON.stringify({ messages: [{ role: "user", content: "test" }] }),
+        },
+      )
+
+      expect(response.status).toBe(403)
+      const data = await response.json()
+      expect(data.error.message).toBe("options.apiProviders.form.siliconflow.authErrorNotice")
+      expect(data.error.code).toBe(403)
+      expect(data.error.type).toBe("sponsor_auth_error")
+    })
+
+    it("passes through 200 and other status responses untouched", async () => {
+      const successBody = JSON.stringify({ choices: [{ message: { content: "translated" } }] })
+      const mockFetch = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response(successBody, { status: 200 }))
+      const sponsorFetch = createSiliconFlowSponsorFetch(mockFetch)
+
+      const response = await sponsorFetch(
+        "https://siliconflow-gateway.read-buddy.workers.dev/v1/chat/completions",
+        {
+          method: "POST",
+          body: JSON.stringify({ messages: [{ role: "user", content: "test" }] }),
+        },
+      )
+
+      expect(response.status).toBe(200)
+      const data = await response.json()
+      expect(data).toEqual(JSON.parse(successBody))
+    })
   })
 })

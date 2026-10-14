@@ -222,6 +222,8 @@ options:
         byokMode: 자체 API 키 모드
         sponsoredNoticeTitle: 스폰서 무료 채널 활성화됨
         sponsoredNoticeDescription: SiliconFlow 제공으로 API 키나 맞춤 URL 없이 엄선된 고속 번역 모델을 무료로 사용할 수 있습니다.
+        rateLimitNotice: 스폰서 채널 동시 요청 한도에 도달했습니다. 잠시 후 다시 시도하거나 개인 API 키 모드로 전환해 주세요.
+        authErrorNotice: 스폰서 채널 인증에 실패했습니다. 네트워크 연결을 확인하고 다시 시도하거나 개인 API 키 모드로 전환해 주세요.
       temperature: 온도
       temperatureHint: 응답의 무작위성을 제어합니다. 낮은 값(0)은 더 결정적이고, 높은 값은 더 창의적입니다. 범위는 제공자에 따라 다릅니다. 비워두면 제공자 기본값을 사용합니다.
       reasoning:

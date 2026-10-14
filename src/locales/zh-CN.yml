@@ -460,6 +460,8 @@ options:
         byokMode: 自有 Key 模式
         sponsoredNoticeTitle: 免 Key 赞助通道已启用
         sponsoredNoticeDescription: 由 SiliconFlow 赞助支持，无需配置 API Key 与接口地址，即可免费使用精选高速模型。
+        rateLimitNotice: 免 Key 赞助通道并发已满，请稍后再试或切换为自有 API Key 模式。
+        authErrorNotice: 免 Key 赞助通道验证失败，请检查网络、重试或切换为自有 API Key 模式。
       temperature: 温度
       temperatureHint: 控制响应的随机性。较低的值（0）更确定性，较高的值更具创造性。范围因提供商而异。留空则使用提供商默认值。
       reasoning:

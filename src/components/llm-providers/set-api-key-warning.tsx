@@ -3,6 +3,7 @@ import { Link, useInRouterContext } from "react-router"
 import { isAPIProviderConfig, isPureAPIProvider } from "@/types/config/provider"
 import { i18n } from "@/utils/i18n"
 import { buildProviderConfigRoute, openOptionsPage } from "@/utils/navigation"
+import { resolveSiliconFlowAuthMode } from "@/utils/providers/siliconflow-signing"
 
 const LINK_CLASS = "cursor-pointer text-blue-500 hover:underline"
 
@@ -13,6 +14,13 @@ const LINK_SLOT = "\u0000"
 function needsApiKeyWarning(
   providerConfig: ProviderConfig | null,
 ): providerConfig is ProviderConfig {
+  if (
+    providerConfig?.provider === "siliconflow" &&
+    resolveSiliconFlowAuthMode(providerConfig) === "sponsored"
+  ) {
+    return false
+  }
+
   return (
     !!providerConfig &&
     isAPIProviderConfig(providerConfig) &&

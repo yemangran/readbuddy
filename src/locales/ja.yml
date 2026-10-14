@@ -222,6 +222,8 @@ options:
         byokMode: 独自 API キーモード
         sponsoredNoticeTitle: スポンサー無料チャンネル有効
         sponsoredNoticeDescription: SiliconFlow 提供により、API キーや接続 URL なしで高速翻訳モデルを無料利用できます。
+        rateLimitNotice: スポンサー枠の同時接続数が上限に達しました。しばらく待つか、個人用APIキーモードに切り替えてください。
+        authErrorNotice: スポンサー枠の認証に失敗しました。接続を確認して再試行するか、個人用APIキーモードに切り替えてください。
       temperature: 温度
       temperatureHint: 応答のランダム性を制御します。低い値（0）はより決定的で、高い値はより創造的です。範囲はプロバイダーによって異なります。空欄の場合はプロバイダーのデフォルト値を使用します。
       reasoning:

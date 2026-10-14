@@ -15,6 +15,7 @@ import { logger } from "@/utils/logger"
 import { getTranslatePrompt } from "@/utils/prompts/translate"
 import { serializeProviderRef } from "@/utils/providers/provider-ref"
 import { resolveProviderRefForCapability } from "@/utils/providers/provider-registry"
+import { resolveSiliconFlowAuthMode } from "@/utils/providers/siliconflow-signing"
 import { TranslationCancelledError } from "@/utils/request/cancellation"
 import { Sha256Hex } from "../../hash"
 import { sendMessage } from "../../message"
@@ -316,11 +317,16 @@ export function validateTranslationConfigAndToast(
   }
 
   // check if the API key is configured
+  const isKeyless =
+    ["deeplx", "ollama"].includes(provider.config.provider) ||
+    (provider.config.provider === "siliconflow" &&
+      resolveSiliconFlowAuthMode(provider.config) === "sponsored")
+
   if (
     provider.kind === "local" &&
     isAPIProviderConfig(provider.config) &&
     !provider.config.apiKey?.trim() &&
-    !["deeplx", "ollama"].includes(provider.config.provider)
+    !isKeyless
   ) {
     toastManager.add({ type: "error", title: i18n.t("noAPIKeyConfig.warning") })
     logger.info("validateTranslationConfig: returning false (no API key)")

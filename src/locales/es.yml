@@ -223,6 +223,8 @@ options:
         byokMode: Modo de clave API personal
         sponsoredNoticeTitle: Canal gratuito patrocinado activo
         sponsoredNoticeDescription: Patrocinado por SiliconFlow. No requiere clave API ni URL de gateway para usar modelos rápidos seleccionados gratis.
+        rateLimitNotice: El canal patrocinado está ocupado (límite de concurrencia alcanzado). Espera un momento o cambia al modo de clave API personal.
+        authErrorNotice: Error de autenticación del canal patrocinado. Comprueba tu conexión, reinténtalo o cambia al modo de clave API personal.
       temperature: Temperatura
       temperatureHint: Controla la aleatoriedad en las respuestas. Los valores más bajos (0) son más deterministas; los más altos son más creativos. El rango varía según el proveedor. Déjalo vacío para usar el valor predeterminado del proveedor.
       reasoning:

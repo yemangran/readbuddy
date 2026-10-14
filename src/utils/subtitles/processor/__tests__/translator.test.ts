@@ -313,4 +313,93 @@ describe("subtitles translator", () => {
     expect(first).toBe(second)
     expect(first).not.toBe(differentWithinLimit)
   })
+
+  it("functions with SiliconFlow in both sponsored mode and BYOK mode", async () => {
+    const { translateSubtitles } = await import("../translator")
+
+    const fragments = [{ text: "hello", start: 0, end: 1_000 }]
+    const baseContext = {
+      videoTitle: "SiliconFlow Video",
+      videoDescription: "Description",
+      subtitlesTextContent: "Transcript",
+    }
+
+    // 1. Sponsored mode
+    getLocalConfigMock.mockResolvedValueOnce({
+      ...DEFAULT_CONFIG,
+      videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId: "siliconflow-default" },
+      providersConfig: DEFAULT_CONFIG.providersConfig.map((p) =>
+        p.id === "siliconflow-default"
+          ? { ...p, apiKey: "", providerSpecificSettings: { authMode: "sponsored" } }
+          : p,
+      ),
+    })
+    sendMessageMock.mockResolvedValueOnce("你好（免Key赞助）")
+
+    const sponsoredResult = await translateSubtitles(fragments, baseContext)
+    expect(sponsoredResult[0]!.translation).toBe("你好（免Key赞助）")
+
+    // 2. BYOK mode
+    getLocalConfigMock.mockResolvedValueOnce({
+      ...DEFAULT_CONFIG,
+      videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId: "siliconflow-default" },
+      providersConfig: DEFAULT_CONFIG.providersConfig.map((p) =>
+        p.id === "siliconflow-default"
+          ? { ...p, apiKey: "sk-my-personal-key", providerSpecificSettings: { authMode: "byok" } }
+          : p,
+      ),
+    })
+    sendMessageMock.mockResolvedValueOnce("你好（自有Key）")
+
+    const byokResult = await translateSubtitles(fragments, baseContext)
+    expect(byokResult[0]!.translation).toBe("你好（自有Key）")
+  })
+
+  it("surfaces user-friendly notice when SiliconFlow sponsor gateway returns 429", async () => {
+    const { translateSubtitles } = await import("../translator")
+    const { APICallError } = await import("ai")
+
+    const fragments = [{ text: "hello", start: 0, end: 1_000 }]
+    const baseContext = { videoTitle: "Test", subtitlesTextContent: "Transcript" }
+
+    sendMessageMock.mockRejectedValue(
+      new APICallError({
+        message: "options.apiProviders.form.siliconflow.rateLimitNotice",
+        url: "https://api.siliconflow.cn/v1/chat/completions",
+        requestBodyValues: {},
+        statusCode: 429,
+        responseBody: JSON.stringify({
+          error: { message: "options.apiProviders.form.siliconflow.rateLimitNotice" },
+        }),
+      }),
+    )
+
+    await expect(translateSubtitles(fragments, baseContext)).rejects.toThrow(
+      "options.apiProviders.form.siliconflow.rateLimitNotice",
+    )
+  })
+
+  it("surfaces user-friendly notice when SiliconFlow sponsor gateway returns 403", async () => {
+    const { translateSubtitles } = await import("../translator")
+    const { APICallError } = await import("ai")
+
+    const fragments = [{ text: "hello", start: 0, end: 1_000 }]
+    const baseContext = { videoTitle: "Test", subtitlesTextContent: "Transcript" }
+
+    sendMessageMock.mockRejectedValue(
+      new APICallError({
+        message: "options.apiProviders.form.siliconflow.authErrorNotice",
+        url: "https://api.siliconflow.cn/v1/chat/completions",
+        requestBodyValues: {},
+        statusCode: 403,
+        responseBody: JSON.stringify({
+          error: { message: "options.apiProviders.form.siliconflow.authErrorNotice" },
+        }),
+      }),
+    )
+
+    await expect(translateSubtitles(fragments, baseContext)).rejects.toThrow(
+      "options.apiProviders.form.siliconflow.authErrorNotice",
+    )
+  })
 })

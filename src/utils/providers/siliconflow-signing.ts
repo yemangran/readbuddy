@@ -3,6 +3,7 @@ import {
   SILICONFLOW_SPONSORED_CLIENT_NAME,
   SILICONFLOW_SPONSORED_SALT,
 } from "@/utils/constants/providers"
+import { i18n } from "@/utils/i18n"
 
 export interface BuildSponsorClientHeadersOptions {
   allContent?: string
@@ -112,7 +113,9 @@ export function extractContentFromMessages(messages: unknown): string {
 /**
  * Creates custom fetch middleware for sponsored SiliconFlow calls.
  * Dynamically computes sampleText and client signature per request,
- * attaches required headers, and ensures client Authorization header is stripped.
+ * attaches required headers, ensures client Authorization header is stripped,
+ * and intercepts rate limit (429) / authentication (403) gateway responses
+ * with user-friendly notices.
  */
 export function createSiliconFlowSponsorFetch(
   customFetch?: typeof fetch,
@@ -138,9 +141,51 @@ export function createSiliconFlowSponsorFetch(
     headers.delete("Authorization")
 
     const fetchImpl = customFetch ?? globalThis.fetch
-    return fetchImpl(input, {
+    const response = await fetchImpl(input, {
       ...init,
       headers,
     })
+
+    if (response.status === 429) {
+      const message = i18n.t("options.apiProviders.form.siliconflow.rateLimitNotice")
+      return new Response(
+        JSON.stringify({
+          error: {
+            message,
+            type: "sponsor_rate_limit_error",
+            code: 429,
+          },
+        }),
+        {
+          status: 429,
+          statusText: "Too Many Requests",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      )
+    }
+
+    if (response.status === 403) {
+      const message = i18n.t("options.apiProviders.form.siliconflow.authErrorNotice")
+      return new Response(
+        JSON.stringify({
+          error: {
+            message,
+            type: "sponsor_auth_error",
+            code: 403,
+          },
+        }),
+        {
+          status: 403,
+          statusText: "Forbidden",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      )
+    }
+
+    return response
   }
 }

@@ -4,6 +4,8 @@ import * as React from "react"
 import textSmallCSS from "@/assets/styles/text-small.css?inline"
 import themeCSS from "@/assets/styles/theme.css?inline"
 import { TranslationError } from "@/components/translation/error"
+import { toastManager } from "@/components/ui/base-ui/toast"
+import { i18n } from "@/utils/i18n"
 import { createReactShadowHost } from "@/utils/react-shadow-host/create-shadow-host"
 import { isTranslationCancelledError } from "@/utils/request/cancellation"
 import { SPINNER_CLASS, TRANSLATION_ERROR_CONTAINER_CLASS } from "../../../constants/dom-labels"
@@ -139,6 +141,24 @@ export async function getTranslatedTextAndRemoveSpinner(
     // wrapper (the #1831 leak class).
     if (isTranslationCancelledError(error)) return undefined
     if (!isCurrent()) return undefined
+
+    const rawMessage = error instanceof Error ? error.message : String(error)
+    const rateLimitNotice = i18n.t("options.apiProviders.form.siliconflow.rateLimitNotice")
+    const authErrorNotice = i18n.t("options.apiProviders.form.siliconflow.authErrorNotice")
+
+    if (rawMessage.includes(rateLimitNotice)) {
+      toastManager.add({
+        id: "siliconflow-sponsor-rate-limit",
+        type: "error",
+        title: rateLimitNotice,
+      })
+    } else if (rawMessage.includes(authErrorNotice)) {
+      toastManager.add({
+        id: "siliconflow-sponsor-auth-error",
+        type: "error",
+        title: authErrorNotice,
+      })
+    }
 
     const errorComponent = React.createElement(TranslationError, {
       nodes,

@@ -460,6 +460,8 @@ options:
         byokMode: Personal API Key Mode
         sponsoredNoticeTitle: Sponsored Free Channel Active
         sponsoredNoticeDescription: Sponsored by SiliconFlow. No API key or custom gateway URL required to use selected fast free models.
+        rateLimitNotice: Sponsored channel is busy (concurrency full). Please wait a moment or switch to personal API key mode.
+        authErrorNotice: Sponsored channel authentication failed. Please check your connection, retry, or switch to personal API key mode.
       temperature: Temperature
       temperatureHint: Controls randomness in responses. Lower values (0) are more deterministic, higher values are more creative. Range varies by provider. Leave empty to use provider default.
       reasoning:

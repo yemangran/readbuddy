@@ -223,6 +223,8 @@ options:
         byokMode: 自有 Key 模式
         sponsoredNoticeTitle: 免 Key 贊助通道已啟用
         sponsoredNoticeDescription: 由 SiliconFlow 贊助支援，無需配置 API Key 與介面位址，即可免費使用精選高速模型。
+        rateLimitNotice: 免 Key 贊助通道並發已滿，請稍後再試或切換為自有 API Key 模式。
+        authErrorNotice: 免 Key 贊助通道驗證失敗，請檢查網路、重試或切換為自有 API Key 模式。
       temperature: 溫度
       temperatureHint: 控制回應的隨機性。數值越低（如 0）越穩定，數值越高越有創造性。可用範圍依提供者而異。留空則使用提供者預設值。
       reasoning:

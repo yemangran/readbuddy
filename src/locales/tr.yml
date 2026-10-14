@@ -222,6 +222,8 @@ options:
         byokMode: Kişisel API Anahtarı Modu
         sponsoredNoticeTitle: Sponsorlu Ücretsiz Kanal Aktif
         sponsoredNoticeDescription: SiliconFlow sponsorluğundadır. Seçilen hızlı modelleri ücretsiz kullanmak için API anahtarı veya ağ geçidi URL'si gerekmez.
+        rateLimitNotice: Sponsor kanalı meşgul (eşzamanlılık sınırı aşıldı). Lütfen biraz bekleyin veya kişisel API anahtarı moduna geçin.
+        authErrorNotice: Sponsor kanalı kimlik doğrulaması başarısız oldu. Lütfen bağlantınızı kontrol edin, tekrar deneyin veya kişisel API anahtarı moduna geçin.
       temperature: Sıcaklık
       temperatureHint: Yanıtlardaki rastgeleliği kontrol eder. Düşük değerler (0) daha belirleyici, yüksek değerler daha yaratıcıdır. Aralık sağlayıcıya göre değişir. Sağlayıcı varsayılanını kullanmak için boş bırakın.
       reasoning:

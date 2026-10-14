@@ -30,6 +30,24 @@ import { resolveProviderRefForCapability } from "@/utils/providers/provider-regi
 export type SubtitlesTask = "lineTranslation" | "summary" | "segmentation"
 
 function toFriendlyErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  const rateLimitNotice = i18n.t("options.apiProviders.form.siliconflow.rateLimitNotice")
+  const authErrorNotice = i18n.t("options.apiProviders.form.siliconflow.authErrorNotice")
+
+  if (
+    message.includes(rateLimitNotice) ||
+    (error instanceof APICallError && error.responseBody?.includes(rateLimitNotice))
+  ) {
+    return rateLimitNotice
+  }
+
+  if (
+    message.includes(authErrorNotice) ||
+    (error instanceof APICallError && error.responseBody?.includes(authErrorNotice))
+  ) {
+    return authErrorNotice
+  }
+
   if (error instanceof APICallError) {
     switch (error.statusCode) {
       case 429:
@@ -45,8 +63,6 @@ function toFriendlyErrorMessage(error: unknown): string {
         break
     }
   }
-
-  const message = error instanceof Error ? error.message : String(error)
 
   if (message.includes("No Response") || message.includes("Empty response")) {
     return i18n.t("subtitles.errors.aiNoResponse")

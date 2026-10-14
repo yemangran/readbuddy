@@ -3,10 +3,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
 import { NO_TRANSLATION_SENTINEL } from "@/utils/constants/prompt"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { detectLanguage } from "@/utils/content/language"
 import { Sha256Hex } from "@/utils/hash"
 import { executeTranslate } from "@/utils/host/translate/execute-translate"
-import { MIN_LENGTH_FOR_SKIP_LANGUAGE_DETECTION } from "@/utils/host/translate/translate-text"
+import {
+  MIN_LENGTH_FOR_SKIP_LANGUAGE_DETECTION,
+  validateTranslationConfigAndToast,
+} from "@/utils/host/translate/translate-text"
 import {
   translateTextForInput,
   translateTextForPage,
@@ -642,6 +646,62 @@ describe("translate-text", () => {
       expect(mockDeepLXTranslate).toHaveBeenCalledWith(html, "en", "zh", deeplxProviderConfig, {
         textFormat: "html",
       })
+    })
+  })
+
+  describe("validateTranslationConfigAndToast with SiliconFlow", () => {
+    it("allows SiliconFlow in sponsored mode without an API key", () => {
+      const config: Parameters<typeof validateTranslationConfigAndToast>[0] = {
+        ...DEFAULT_CONFIG,
+        pageTranslation: {
+          ...DEFAULT_CONFIG.pageTranslation,
+          providerId: "siliconflow-default",
+        },
+        providersConfig: [
+          {
+            ...DEFAULT_PROVIDER_CONFIG.siliconflow,
+            apiKey: "",
+            providerSpecificSettings: { authMode: "sponsored" as const },
+          },
+        ],
+      }
+      expect(validateTranslationConfigAndToast(config)).toBe(true)
+    })
+
+    it("blocks SiliconFlow in BYOK mode when API key is missing", () => {
+      const config: Parameters<typeof validateTranslationConfigAndToast>[0] = {
+        ...DEFAULT_CONFIG,
+        pageTranslation: {
+          ...DEFAULT_CONFIG.pageTranslation,
+          providerId: "siliconflow-default",
+        },
+        providersConfig: [
+          {
+            ...DEFAULT_PROVIDER_CONFIG.siliconflow,
+            apiKey: "",
+            providerSpecificSettings: { authMode: "byok" as const },
+          },
+        ],
+      }
+      expect(validateTranslationConfigAndToast(config)).toBe(false)
+    })
+
+    it("allows SiliconFlow in BYOK mode when API key is provided", () => {
+      const config: Parameters<typeof validateTranslationConfigAndToast>[0] = {
+        ...DEFAULT_CONFIG,
+        pageTranslation: {
+          ...DEFAULT_CONFIG.pageTranslation,
+          providerId: "siliconflow-default",
+        },
+        providersConfig: [
+          {
+            ...DEFAULT_PROVIDER_CONFIG.siliconflow,
+            apiKey: "sk-personal-key",
+            providerSpecificSettings: { authMode: "byok" as const },
+          },
+        ],
+      }
+      expect(validateTranslationConfigAndToast(config)).toBe(true)
     })
   })
 })

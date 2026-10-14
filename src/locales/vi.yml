@@ -222,6 +222,8 @@ options:
         byokMode: Chế độ khóa API cá nhân
         sponsoredNoticeTitle: Kênh tài trợ miễn phí đang hoạt động
         sponsoredNoticeDescription: Được tài trợ bởi SiliconFlow. Không cần khóa API hay URL cổng tùy chỉnh để sử dụng miễn phí các mô hình tốc độ cao đã chọn.
+        rateLimitNotice: Kênh tài trợ đang bận (đạt giới hạn đồng thời). Vui lòng đợi một lát hoặc chuyển sang chế độ khóa API cá nhân.
+        authErrorNotice: Xác thực kênh tài trợ thất bại. Vui lòng kiểm tra kết nối, thử lại hoặc chuyển sang chế độ khóa API cá nhân.
       temperature: Nhiệt độ
       temperatureHint: Kiểm soát tính ngẫu nhiên trong phản hồi. Giá trị thấp (0) mang tính xác định hơn, giá trị cao mang tính sáng tạo hơn. Phạm vi thay đổi theo nhà cung cấp. Để trống để sử dụng giá trị mặc định của nhà cung cấp.
       reasoning:

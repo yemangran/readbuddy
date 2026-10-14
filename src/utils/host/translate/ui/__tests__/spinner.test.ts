@@ -11,12 +11,19 @@ import {
   MAX_ANIMATED_SPINNERS,
 } from "../spinner"
 
-const { ensurePresetStylesMock } = vi.hoisted(() => ({
+const { ensurePresetStylesMock, toastManagerAddMock } = vi.hoisted(() => ({
   ensurePresetStylesMock: vi.fn<(...args: any[]) => any>(),
+  toastManagerAddMock: vi.fn<(...args: any[]) => any>(),
 }))
 
 vi.mock("@/utils/host/translate/ui/style-injector", () => ({
   ensurePresetStyles: ensurePresetStylesMock,
+}))
+
+vi.mock("@/components/ui/base-ui/toast", () => ({
+  toastManager: {
+    add: toastManagerAddMock,
+  },
 }))
 
 describe("spinner", () => {
@@ -142,9 +149,18 @@ describe("spinner animation registry (#1881)", () => {
       writable: true,
     })
     // The reduced-motion test above redefines window.matchMedia persistently;
-    // force motion back on for this block.
+    // force motion back on for this block while providing standard event listener mocks.
     Object.defineProperty(window, "matchMedia", {
-      value: vi.fn<(...args: any[]) => any>().mockReturnValue({ matches: false }),
+      value: vi.fn<(...args: any[]) => any>().mockReturnValue({
+        matches: false,
+        media: "",
+        onchange: null,
+        addListener: vi.fn<(...args: any[]) => any>(),
+        removeListener: vi.fn<(...args: any[]) => any>(),
+        addEventListener: vi.fn<(...args: any[]) => any>(),
+        removeEventListener: vi.fn<(...args: any[]) => any>(),
+        dispatchEvent: vi.fn<(...args: any[]) => any>(),
+      }),
       configurable: true,
       writable: true,
     })
@@ -204,6 +220,58 @@ describe("spinner animation registry (#1881)", () => {
     expect(wrapper.querySelector(`.${TRANSLATION_ERROR_CONTAINER_CLASS}`)).toBeNull()
     expect(spinner.isConnected).toBe(false)
     expect(createdAnimations[0]!.cancel).toHaveBeenCalled()
+
+    wrapper.remove()
+  })
+
+  it("triggers deduplicated toast when error includes SiliconFlow rate limit notice", async () => {
+    const wrapper = document.createElement("span")
+    document.body.append(wrapper)
+    const spinner = makeSpinner()
+    wrapper.append(spinner)
+
+    await getTranslatedTextAndRemoveSpinner(
+      [],
+      "source text",
+      spinner,
+      wrapper,
+      () => true,
+      "plain",
+      () => Promise.reject(new Error("options.apiProviders.form.siliconflow.rateLimitNotice")),
+    )
+
+    expect(toastManagerAddMock).toHaveBeenCalledWith({
+      id: "siliconflow-sponsor-rate-limit",
+      type: "error",
+      title: "options.apiProviders.form.siliconflow.rateLimitNotice",
+    })
+    expect(wrapper.querySelector(`.${TRANSLATION_ERROR_CONTAINER_CLASS}`)).not.toBeNull()
+
+    wrapper.remove()
+  })
+
+  it("triggers deduplicated toast when error includes SiliconFlow auth error notice", async () => {
+    const wrapper = document.createElement("span")
+    document.body.append(wrapper)
+    const spinner = makeSpinner()
+    wrapper.append(spinner)
+
+    await getTranslatedTextAndRemoveSpinner(
+      [],
+      "source text",
+      spinner,
+      wrapper,
+      () => true,
+      "plain",
+      () => Promise.reject(new Error("options.apiProviders.form.siliconflow.authErrorNotice")),
+    )
+
+    expect(toastManagerAddMock).toHaveBeenCalledWith({
+      id: "siliconflow-sponsor-auth-error",
+      type: "error",
+      title: "options.apiProviders.form.siliconflow.authErrorNotice",
+    })
+    expect(wrapper.querySelector(`.${TRANSLATION_ERROR_CONTAINER_CLASS}`)).not.toBeNull()
 
     wrapper.remove()
   })
